@@ -14,7 +14,7 @@
 | STT / TTS | Gemini Live 내장 | 별도 서비스 불필요 |
 | 백엔드 | Python FastAPI + WebSocket | 브라우저 ↔ Gemini 프록시 |
 | 프론트엔드 | 바닐라 JS + AudioWorklet | 실시간 마이크 캡처 |
-| 아바타 | 추후 D-ID / Simli 추가 예정 | 모듈식 설계 |
+| 아바타 립싱크 | Simli (WebRTC P2P) | 사진 한 장으로 실시간 립싱크 |
 
 ---
 
@@ -28,6 +28,8 @@ FastAPI 서버 (server.py)
 Gemini Live 2.5 Flash Native Audio
     ↓ 오디오 응답 스트리밍
 브라우저 스피커 (AudioContext, 24kHz PCM)
+    ↓ 동시 전송 (24kHz → 16kHz 리샘플링)
+Simli WebRTC (실시간 립싱크 영상)
 ```
 
 ### 핵심 설계 결정
@@ -47,39 +49,41 @@ Gemini Live 2.5 Flash Native Audio
 - 청크 단위 스케줄링 (`nextPlayTime` 기반 seamless 재생)
 - AudioContext 자동재생 정책 우회 (버튼 클릭 시점에 생성)
 
+**Simli 립싱크 연동**
+- 연습생 선택 시 즉시 Simli WebRTC 연결 → 통화 전부터 얼굴 표시
+- P2P 프로토콜: ICE 수집 완료 후 전체 offer 전송 (`enableSFU=true`)
+- Gemini 오디오(24kHz) → 16kHz 리샘플링 → 3200샘플 단위 버퍼링 후 전송
+- 통화 종료 후 Simli idle 상태 유지 (얼굴 계속 표시)
+
 ---
 
 ## 연습생 목록
 
-| 이름 | Buppy Companion ID |
-|------|-------------------|
-| 양우진 | cc426433-4ba4-45c3-9b12-60ebc43e27cd |
-| 황정우 | 2746e567-8a38-4c95-863a-3b3daccdf57c |
-| 노담 | aa20ecf3-4784-4667-a333-6b056ec6068a |
-| 남지안 | 12842208-2240-4618-b96b-2974af3f8d78 |
-| 염윤호 | 73a38b21-7a8c-4246-8d37-d25b1a787068 |
-| 김수호 | 99a736dd-e725-454f-9dbd-e74c99f83a56 |
-| 허우진 | 9b0fb290-5b4c-4af1-aab2-c012700d46cc |
-| 장준혁 | 003b0d18-457a-4575-8050-25da26f75e2f |
+| 이름 | 성격 | Simli Face ID |
+|------|------|--------------|
+| 도윤 | 밝고 에너지 넘침 | `01f4f536-6612-40f5-b9ba-f635f0b92670` |
+| 레오 | 차분하고 성숙함 | 미등록 |
+| 유우키 | 장난기 많고 유쾌함 | 미등록 |
+| 하늘 | 조용하고 감성적 | 미등록 |
 
 ---
 
-## 프로토타입 파일 구조
+## 파일 구조
 
 ```
-prototype/
-├── server.py          # FastAPI 백엔드 + Gemini Live 연동
-├── index.html         # 프론트엔드 UI
+services/voice-call/
+├── server.py          # FastAPI 백엔드 + Gemini Live + Simli 토큰 발급
+├── index.html         # 프론트엔드 UI (Simli WebRTC 포함)
 ├── pcm-processor.js   # AudioWorklet 마이크 캡처 모듈
-└── .env               # GEMINI_API_KEY (git 제외)
+└── .env               # SIMLI_API_KEY, (git 제외)
 ```
 
 ### 실행 방법
 
 ```bash
-cd prototype
+cd services/voice-call
 pip install fastapi uvicorn google-genai python-dotenv
-python server.py
+python3 -m uvicorn server:app --host 0.0.0.0 --port 8000
 # → http://localhost:8000
 ```
 
@@ -90,8 +94,10 @@ python server.py
 | 단계 | 내용 | 상태 |
 |------|------|------|
 | 1단계 | Gemini Live 음성 대화 프로토타입 | ✅ 완료 |
-| 2단계 | 연습생별 성격 프롬프트 | 🔲 다음 |
-| 3단계 | 아바타 립싱크 연결 | 🔲 추후 |
+| 2단계 | 연습생별 성격 프롬프트 | ✅ 완료 |
+| 3단계 | Simli 아바타 립싱크 연결 | ✅ 완료 |
+| 4단계 | 나머지 연습생 Face 등록 (레오, 유우키, 하늘) | 🔲 다음 |
+| 5단계 | 연습생 성격 프롬프트 고도화 | 🔲 다음 |
 
 ---
 
@@ -99,6 +105,7 @@ python server.py
 
 | 항목 | 비용 |
 |------|------|
-| Vertex AI Gemini Live | GCP 무료 크레딧 사용 중 |
-| 오디오 정가 | 입력 $2.10 / 출력 $8.50 per 1M 토큰 |
-| 아바타 (추후) | D-ID 무료 티어 or Simli 유료 검토 |
+| Vertex AI Gemini Live | GCP 무료 크레딧 사용 중 ($300) |
+| Gemini Live 정가 | 오디오 입력 $3 / 출력 $12 per 1M 토큰 |
+| 예상 사용량 | 1분 대화 약 $0.05 → 크레딧으로 ~100시간 가능 |
+| Simli | 무료 플랜 (월 사용 시간 제한, simli_version: 1) |
