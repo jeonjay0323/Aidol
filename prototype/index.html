@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 연습생 음성통화</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 24px;
+    }
+    h1 { font-size: 20px; font-weight: 600; color: #aaa; }
+    .trainees {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .trainee-btn {
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .trainee-btn:hover { border-color: #666; }
+    .trainee-btn.active { background: #fff; color: #000; border-color: #fff; }
+    .avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      border: 3px solid #333;
+      transition: border-color 0.3s;
+    }
+    .avatar.speaking { border-color: #4ade80; animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+      50% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+    }
+    .status {
+      font-size: 13px;
+      color: #666;
+      height: 20px;
+    }
+    .call-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 28px;
+      transition: transform 0.1s;
+    }
+    .call-btn:active { transform: scale(0.95); }
+    .call-btn.start { background: #4ade80; }
+    .call-btn.end { background: #f87171; }
+    .call-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .transcript {
+      max-width: 400px;
+      width: 90%;
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      color: #aaa;
+      line-height: 1.6;
+      min-height: 60px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI 연습생 음성통화</h1>
+
+  <div class="trainees" id="traineeList"></div>
+
+  <div class="avatar" id="avatar">🎤</div>
+  <div class="status" id="status">연습생을 선택하세요</div>
+
+  <button class="call-btn start" id="callBtn" disabled>📞</button>
+
+  <div class="transcript" id="transcript">대화 내용이 여기에 표시됩니다.</div>
+
+  <script>
+    let ws = null;
+    let mediaStream = null;
+    let micContext = null;
+    let processor = null;
+    let playContext = null;
+    let selectedTrainee = null;
+    let isCallActive = false;
+    let activeSources = 0;
+    let nextPlayTime = 0;
+
+    const callBtn = document.getElementById('callBtn');
+    const status = document.getElementById('status');
+    const avatar = document.getElementById('avatar');
+    const transcript = document.getElementById('transcript');
+
+    const traineeEmojis = { '양우진': '😊', '황정우': '😎', '노담': '😄', '남지안': '🙂' };
+
+    fetch('/trainees').then(r => r.json()).then(trainees => {
+      const list = document.getElementById('traineeList');
+      trainees.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'trainee-btn';
+        btn.textContent = name;
+        btn.onclick = () => selectTrainee(name, btn);
+        list.appendChild(btn);
+      });
+    });
+
+    function selectTrainee(name, btn) {
+      if (isCallActive) return;
+      document.querySelectorAll('.trainee-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedTrainee = name;
+      avatar.textContent = traineeEmojis[name] || '🎤';
+      status.textContent = `${name}에게 전화하기`;
+      callBtn.disabled = false;
+    }
+
+    callBtn.onclick = () => {
+      if (isCallActive) endCall();
+      else startCall();
+    };
+
+    async function startCall() {
+      if (!selectedTrainee) return;
+      isCallActive = true;
+      callBtn.className = 'call-btn end';
+      callBtn.textContent = '📵';
+      status.textContent = '연결 중...';
+
+      // 버튼 클릭 컨텍스트 안에서 AudioContext 생성 (자동재생 정책 우회)
+      playContext = new AudioContext({ sampleRate: 24000 });
+      await playContext.resume();
+      nextPlayTime = playContext.currentTime;
+
+      ws = new WebSocket(`ws://localhost:8000/ws/${encodeURIComponent(selectedTrainee)}`);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = async () => {
+        status.textContent = `${selectedTrainee}와 통화 중`;
+        await startMicrophone();
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'connected') {
+          status.textContent = `${selectedTrainee}와 통화 중 🟢`;
+        }
+        if (msg.type === 'audio') {
+          scheduleAudio(base64ToArrayBuffer(msg.data));
+        }
+        if (msg.type === 'turn_complete') {
+          status.textContent = `${selectedTrainee}와 통화 중 🟢`;
+        }
+        if (msg.type === 'text') {
+          transcript.textContent = msg.data;
+        }
+        if (msg.type === 'error') {
+          status.textContent = '오류: ' + msg.data;
+          endCall();
+        }
+      };
+
+      ws.onclose = () => { if (isCallActive) endCall(); };
+    }
+
+    async function startMicrophone() {
+      micContext = new AudioContext({ sampleRate: 16000 });
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+
+      await micContext.audioWorklet.addModule('/pcm-processor.js');
+
+      const source = micContext.createMediaStreamSource(mediaStream);
+      processor = new AudioWorkletNode(micContext, 'pcm-processor');
+
+      // 클라이언트 VAD 설정
+      const SPEECH_THRESHOLD = 0.02;   // 발화 감지 임계값 (높일수록 덜 예민)
+      const SILENCE_MS = 1000;         // 침묵 판정 시간
+      const MIN_SPEECH_CHUNKS = 15;    // 최소 발화 길이 (약 120ms)
+      const PREROLL_CHUNKS = 5;
+
+      let vadState = 'silent';
+      let silenceTimer = null;
+      let prerollBuffer = [];
+      let speechChunkCount = 0;
+
+      processor.port.onmessage = (e) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (activeSources > 0) return; // AI 말하는 동안 뮤트
+
+        const samples = e.data;
+        const pcm = float32ToPCM16(samples);
+        const b64 = arrayBufferToBase64(pcm);
+
+        // RMS 계산
+        let rms = 0;
+        for (let i = 0; i < samples.length; i++) rms += samples[i] * samples[i];
+        rms = Math.sqrt(rms / samples.length);
+
+        if (rms > SPEECH_THRESHOLD) {
+          if (vadState === 'silent') {
+            vadState = 'speaking';
+            speechChunkCount = 0;
+            status.textContent = '듣는 중... 🎤';
+            ws.send(JSON.stringify({ type: 'activity_start' }));
+            prerollBuffer.forEach(buf => ws.send(JSON.stringify({ type: 'audio', data: buf })));
+            prerollBuffer = [];
+          }
+          speechChunkCount++;
+          clearTimeout(silenceTimer);
+          silenceTimer = setTimeout(() => {
+            if (speechChunkCount >= MIN_SPEECH_CHUNKS) {
+              vadState = 'silent';
+              speechChunkCount = 0;
+              status.textContent = `${selectedTrainee}와 통화 중 🟢`;
+              ws.send(JSON.stringify({ type: 'activity_end' }));
+            } else {
+              // 너무 짧은 발화는 무시
+              vadState = 'silent';
+              speechChunkCount = 0;
+            }
+          }, SILENCE_MS);
+          ws.send(JSON.stringify({ type: 'audio', data: b64 }));
+        } else {
+          if (vadState === 'silent') {
+            prerollBuffer.push(b64);
+            if (prerollBuffer.length > PREROLL_CHUNKS) prerollBuffer.shift();
+          } else {
+            ws.send(JSON.stringify({ type: 'audio', data: b64 }));
+          }
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(micContext.destination);
+    }
+
+    function endCall() {
+      isCallActive = false;
+      callBtn.className = 'call-btn start';
+      callBtn.textContent = '📞';
+      status.textContent = `${selectedTrainee}에게 전화하기`;
+      avatar.classList.remove('speaking');
+
+      if (processor) { processor.disconnect(); processor = null; }
+      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+      if (micContext) { micContext.close(); micContext = null; }
+      if (playContext) { playContext.close(); playContext = null; }
+      if (ws) { ws.close(); ws = null; }
+      nextPlayTime = 0;
+      activeSources = 0;
+    }
+
+    function scheduleAudio(pcmData) {
+      if (!playContext) return;
+      activeSources++;
+      avatar.classList.add('speaking');
+      status.textContent = `${selectedTrainee} 말하는 중... 💬`;
+      const samples = pcmToFloat32(pcmData);
+      const buffer = playContext.createBuffer(1, samples.length, 24000);
+      buffer.copyToChannel(samples, 0);
+      const src = playContext.createBufferSource();
+      src.buffer = buffer;
+      src.connect(playContext.destination);
+      const startAt = Math.max(playContext.currentTime, nextPlayTime);
+      src.start(startAt);
+      nextPlayTime = startAt + buffer.duration;
+      src.onended = () => {
+        activeSources--;
+        if (activeSources === 0) {
+          avatar.classList.remove('speaking');
+          status.textContent = `${selectedTrainee}와 통화 중 🟢`;
+        }
+      };
+    }
+
+    function float32ToPCM16(float32Array) {
+      const buffer = new ArrayBuffer(float32Array.length * 2);
+      const view = new DataView(buffer);
+      for (let i = 0; i < float32Array.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32Array[i]));
+        view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return buffer;
+    }
+
+    function pcmToFloat32(buffer) {
+      const view = new DataView(buffer);
+      const result = new Float32Array(buffer.byteLength / 2);
+      for (let i = 0; i < result.length; i++) {
+        result[i] = view.getInt16(i * 2, true) / 0x8000;
+      }
+      return result;
+    }
+
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary);
+    }
+
+    function base64ToArrayBuffer(b64) {
+      const binary = atob(b64);
+      const buffer = new ArrayBuffer(binary.length);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+      return buffer;
+    }
+  </script>
+</body>
+</html>
