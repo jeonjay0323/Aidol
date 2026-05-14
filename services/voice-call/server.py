@@ -3,9 +3,10 @@ import base64
 import json
 import logging
 import os
+import urllib.request
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 import google.genai as genai
 from google.genai import types
 
@@ -17,12 +18,13 @@ app = FastAPI()
 GCP_PROJECT = "project-0cc445dc-b940-4148-849"
 GCP_LOCATION = "us-central1"
 MODEL = "gemini-live-2.5-flash-native-audio"
+SIMLI_API_KEY = os.getenv("SIMLI_API_KEY", "")
 
 TRAINEES = {
-    "양우진": "너는 K-pop 아이돌 연습생 양우진이야. 밝고 에너지 넘치는 성격이야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
-    "황정우": "너는 K-pop 아이돌 연습생 황정우야. 차분하고 성숙한 분위기야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
-    "노담": "너는 K-pop 아이돌 연습생 노담이야. 장난기 많고 유쾌한 성격이야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
-    "남지안": "너는 K-pop 아이돌 연습생 남지안이야. 조용하고 감성적인 성격이야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
+    "도윤": "너는 K-pop 아이돌 연습생 도윤이야. 밝고 에너지 넘치는 성격이야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
+    "레오": "너는 K-pop 아이돌 연습생 레오야. 차분하고 성숙한 분위기야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
+    "유우키": "너는 K-pop 아이돌 연습생 유우키야. 장난기 많고 유쾌한 성격이야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
+    "하늘": "너는 K-pop 아이돌 연습생 하늘이야. 조용하고 감성적인 성격이야. 한국어로 자연스럽게 대화해. 팬과 통화하는 것처럼 친근하게 말해.",
 }
 
 
@@ -47,12 +49,38 @@ async def get_trainees():
     return list(TRAINEES.keys())
 
 
+@app.post("/simli-token")
+async def get_simli_token(body: dict):
+    face_id = body.get("faceId")
+    payload = json.dumps({
+        "faceId": face_id,
+        "apiVersion": "v2",
+        "handleSilence": True,
+        "audioInputFormat": "pcm16",
+        "maxSessionLength": 3600,
+        "maxIdleTime": 300,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.simli.ai/compose/token",
+        data=payload,
+        headers={
+            "x-simli-api-key": SIMLI_API_KEY,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req) as r:
+        result = json.loads(r.read())
+    log.info(f"Simli 토큰 발급: {face_id}")
+    return JSONResponse(result)
+
+
 @app.websocket("/ws/{trainee_name}")
 async def websocket_endpoint(websocket: WebSocket, trainee_name: str):
     await websocket.accept()
     log.info(f"WebSocket 연결: {trainee_name}")
 
-    system_prompt = TRAINEES.get(trainee_name, TRAINEES["양우진"])
+    system_prompt = TRAINEES.get(trainee_name, list(TRAINEES.values())[0])
     client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
 
     config = types.LiveConnectConfig(

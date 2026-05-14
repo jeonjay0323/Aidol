@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 연습생 음성통화</title>
+  <title>AI 연습생 영상통화</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -15,17 +15,12 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      gap: 24px;
+      gap: 20px;
     }
-    h1 { font-size: 20px; font-weight: 600; color: #aaa; }
-    .trainees {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+    h1 { font-size: 18px; font-weight: 600; color: #aaa; }
+    .trainees { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
     .trainee-btn {
-      padding: 10px 20px;
+      padding: 8px 18px;
       border-radius: 999px;
       border: 1px solid #333;
       background: #1a1a1a;
@@ -36,34 +31,38 @@
     }
     .trainee-btn:hover { border-color: #666; }
     .trainee-btn.active { background: #fff; color: #000; border-color: #fff; }
-    .avatar {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: #222;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 48px;
+
+    .video-wrap {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #1a1a1a;
       border: 3px solid #333;
       transition: border-color 0.3s;
     }
-    .avatar.speaking { border-color: #4ade80; animation: pulse 1s infinite; }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
-      50% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+    .video-wrap.speaking { border-color: #4ade80; }
+    #simliVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
     }
-    .status {
-      font-size: 13px;
-      color: #666;
-      height: 20px;
+    .avatar-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 80px;
     }
+
+    .status { font-size: 13px; color: #666; height: 20px; }
     .call-btn {
-      width: 72px;
-      height: 72px;
+      width: 72px; height: 72px;
       border-radius: 50%;
-      border: none;
-      cursor: pointer;
+      border: none; cursor: pointer;
       font-size: 28px;
       transition: transform 0.1s;
     }
@@ -71,50 +70,41 @@
     .call-btn.start { background: #4ade80; }
     .call-btn.end { background: #f87171; }
     .call-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .transcript {
-      max-width: 400px;
-      width: 90%;
-      background: #1a1a1a;
-      border-radius: 12px;
-      padding: 16px;
-      font-size: 13px;
-      color: #aaa;
-      line-height: 1.6;
-      min-height: 60px;
-      max-height: 120px;
-      overflow-y: auto;
-    }
   </style>
 </head>
 <body>
-  <h1>AI 연습생 음성통화</h1>
-
+  <h1>AI 연습생 영상통화</h1>
   <div class="trainees" id="traineeList"></div>
 
-  <div class="avatar" id="avatar">🎤</div>
-  <div class="status" id="status">연습생을 선택하세요</div>
+  <div class="video-wrap" id="videoWrap">
+    <video id="simliVideo" autoplay playsinline muted></video>
+    <div class="avatar-fallback" id="avatarFallback">🎤</div>
+  </div>
 
+  <div class="status" id="status">연습생을 선택하세요</div>
   <button class="call-btn start" id="callBtn" disabled>📞</button>
 
-  <div class="transcript" id="transcript">대화 내용이 여기에 표시됩니다.</div>
-
   <script>
-    let ws = null;
-    let mediaStream = null;
-    let micContext = null;
-    let processor = null;
-    let playContext = null;
-    let selectedTrainee = null;
-    let isCallActive = false;
-    let activeSources = 0;
-    let nextPlayTime = 0;
+    // 연습생별 Face ID (Simli에 업로드된 ID)
+    const TRAINEE_FACES = {
+      "도윤": "01f4f536-6612-40f5-b9ba-f635f0b92670",
+      "레오": null,
+      "유우키": null,
+      "하늘": null,
+    };
+    const TRAINEE_EMOJIS = { "도윤": "🐱", "레오": "🐺", "유우키": "🦊", "하늘": "🦌" };
+
+    let ws = null, micContext = null, processor = null;
+    let playContext = null, nextPlayTime = 0, activeSources = 0;
+    let simliWs = null, simliPc = null;
+    let selectedTrainee = null, isCallActive = false;
+    let simliBuffer = new Int16Array(0); // Simli 오디오 버퍼 (3200샘플 = 200ms @16kHz)
 
     const callBtn = document.getElementById('callBtn');
     const status = document.getElementById('status');
-    const avatar = document.getElementById('avatar');
-    const transcript = document.getElementById('transcript');
-
-    const traineeEmojis = { '양우진': '😊', '황정우': '😎', '노담': '😄', '남지안': '🙂' };
+    const videoWrap = document.getElementById('videoWrap');
+    const simliVideo = document.getElementById('simliVideo');
+    const avatarFallback = document.getElementById('avatarFallback');
 
     fetch('/trainees').then(r => r.json()).then(trainees => {
       const list = document.getElementById('traineeList');
@@ -127,20 +117,29 @@
       });
     });
 
-    function selectTrainee(name, btn) {
+    async function selectTrainee(name, btn) {
       if (isCallActive) return;
       document.querySelectorAll('.trainee-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      selectedTrainee = name;
-      avatar.textContent = traineeEmojis[name] || '🎤';
+      avatarFallback.textContent = TRAINEE_EMOJIS[name] || '🎤';
       status.textContent = `${name}에게 전화하기`;
       callBtn.disabled = false;
+
+      // 다른 연습생으로 바꾸면 기존 Simli 연결 해제
+      if (selectedTrainee !== name) {
+        if (simliWs) { simliWs.close(); simliWs = null; }
+        if (simliPc) { simliPc.close(); simliPc = null; }
+        simliVideo.style.display = 'none';
+        avatarFallback.style.display = 'flex';
+      }
+      selectedTrainee = name;
+
+      // Face ID 있으면 바로 얼굴 연결
+      const faceId = TRAINEE_FACES[name];
+      if (faceId && !simliWs) await initSimli(faceId);
     }
 
-    callBtn.onclick = () => {
-      if (isCallActive) endCall();
-      else startCall();
-    };
+    callBtn.onclick = () => isCallActive ? endCall() : startCall();
 
     async function startCall() {
       if (!selectedTrainee) return;
@@ -149,136 +148,224 @@
       callBtn.textContent = '📵';
       status.textContent = '연결 중...';
 
-      // 버튼 클릭 컨텍스트 안에서 AudioContext 생성 (자동재생 정책 우회)
       playContext = new AudioContext({ sampleRate: 24000 });
       await playContext.resume();
       nextPlayTime = playContext.currentTime;
 
+      // Gemini 연결
       ws = new WebSocket(`ws://localhost:8000/ws/${encodeURIComponent(selectedTrainee)}`);
-      ws.binaryType = 'arraybuffer';
-
       ws.onopen = async () => {
-        status.textContent = `${selectedTrainee}와 통화 중`;
+        status.textContent = `${selectedTrainee}와 통화 중 🟢`;
         await startMicrophone();
       };
-
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
-        if (msg.type === 'connected') {
-          status.textContent = `${selectedTrainee}와 통화 중 🟢`;
-        }
+        if (msg.type === 'connected') status.textContent = `${selectedTrainee}와 통화 중 🟢`;
         if (msg.type === 'audio') {
-          scheduleAudio(base64ToArrayBuffer(msg.data));
+          const bytes = base64ToArrayBuffer(msg.data);
+          scheduleAudio(bytes);
+          sendToSimli(bytes); // Gemini 오디오 → Simli 립싱크
         }
         if (msg.type === 'turn_complete') {
+          flushSimliBuffer();
           status.textContent = `${selectedTrainee}와 통화 중 🟢`;
         }
-        if (msg.type === 'text') {
-          transcript.textContent = msg.data;
-        }
-        if (msg.type === 'error') {
-          status.textContent = '오류: ' + msg.data;
-          endCall();
-        }
+        if (msg.type === 'error') { status.textContent = '오류: ' + msg.data; endCall(); }
       };
-
       ws.onclose = () => { if (isCallActive) endCall(); };
+    }
+
+    async function initSimli(faceId) {
+      try {
+        status.textContent = 'Simli 아바타 연결 중...';
+        const tokenRes = await fetch('/simli-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faceId })
+        });
+        const { session_token } = await tokenRes.json();
+
+        // Simli TURN 서버 가져오기 (실패시 Google STUN 사용)
+        let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+        try {
+          const iceRes = await fetch('https://api.simli.ai/compose/ice', {
+            headers: { 'x-simli-api-key': 'xlt4c79xqjmh547lg9c2q' }
+          });
+          if (iceRes.ok) iceServers = await iceRes.json();
+        } catch (_) {}
+
+        simliPc = new RTCPeerConnection({ iceServers });
+        simliPc.addTransceiver('audio', { direction: 'recvonly' });
+        simliPc.addTransceiver('video', { direction: 'recvonly' });
+
+        simliPc.ontrack = (e) => {
+          console.log('[Simli] track:', e.track.kind);
+          if (e.track.kind === 'video') {
+            simliVideo.srcObject = e.streams[0];
+            simliVideo.style.display = 'block';
+            avatarFallback.style.display = 'none';
+            simliVideo.play().catch(err => console.error('[Simli] play error:', err));
+          }
+        };
+
+        // ICE 수집 완료 후 offer 전송 (Simli P2P 프로토콜)
+        const offer = await simliPc.createOffer();
+        await simliPc.setLocalDescription(offer);
+        await waitForIceGathering(simliPc);
+
+        simliWs = new WebSocket(
+          `wss://api.simli.ai/compose/webrtc/p2p?session_token=${session_token}&enableSFU=true`
+        );
+
+        simliWs.onopen = () => {
+          console.log('[Simli] WS opened, sending offer');
+          simliWs.send(JSON.stringify(simliPc.localDescription));
+        };
+
+        simliWs.onmessage = async (e) => {
+          const firstToken = e.data.toUpperCase().split(' ')[0];
+          console.log('[Simli] msg:', firstToken);
+          if (firstToken.includes('SDP')) {
+            const info = JSON.parse(e.data);
+            await simliPc.setRemoteDescription(new RTCSessionDescription(info));
+            console.log('[Simli] remote desc set');
+          }
+          // ACK는 무시 (status는 통화 시작 시에만 변경)
+        };
+
+        simliWs.onerror = (e) => console.error('[Simli] WS error:', e);
+        simliWs.onclose = (e) => console.log('[Simli] WS closed:', e.code, e.reason);
+
+        simliPc.oniceconnectionstatechange = () =>
+          console.log('[Simli] ICE:', simliPc.iceConnectionState);
+        simliPc.onconnectionstatechange = () =>
+          console.log('[Simli] conn:', simliPc.connectionState);
+
+      } catch (e) {
+        console.warn('Simli 연결 실패, 이모지 모드로 진행:', e);
+      }
+    }
+
+    function waitForIceGathering(pc) {
+      return new Promise((resolve) => {
+        if (pc.iceGatheringState === 'complete') { resolve(); return; }
+        let prev = 0, count = 0;
+        pc.onicecandidate = () => count++;
+        const check = () => {
+          if (pc.iceGatheringState === 'complete' || count === prev) resolve();
+          else { prev = count; setTimeout(check, 150); }
+        };
+        setTimeout(check, 150);
+      });
+    }
+
+    // Gemini 오디오(PCM16 24kHz) → Simli(PCM16 16kHz) 변환 후 버퍼링 전송
+    const SIMLI_CHUNK = 3200; // 200ms @ 16kHz
+    function sendToSimli(pcmBytes) {
+      if (!simliWs || simliWs.readyState !== WebSocket.OPEN) return;
+      const resampled = resample24to16(new Int16Array(pcmBytes));
+
+      // 버퍼에 추가
+      const merged = new Int16Array(simliBuffer.length + resampled.length);
+      merged.set(simliBuffer);
+      merged.set(resampled, simliBuffer.length);
+      simliBuffer = merged;
+
+      // SIMLI_CHUNK 단위로 전송
+      while (simliBuffer.length >= SIMLI_CHUNK) {
+        simliWs.send(new Uint8Array(simliBuffer.slice(0, SIMLI_CHUNK).buffer));
+        simliBuffer = simliBuffer.slice(SIMLI_CHUNK);
+      }
+    }
+
+    function flushSimliBuffer() {
+      if (simliWs && simliWs.readyState === WebSocket.OPEN && simliBuffer.length > 0) {
+        simliWs.send(new Uint8Array(simliBuffer.buffer));
+      }
+      simliBuffer = new Int16Array(0);
+    }
+
+    function resample24to16(input) {
+      const outLen = Math.floor(input.length * 2 / 3);
+      const output = new Int16Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        const src = i * 1.5;
+        const lo = Math.floor(src), hi = Math.min(lo + 1, input.length - 1);
+        output[i] = Math.round(input[lo] * (1 - (src - lo)) + input[hi] * (src - lo));
+      }
+      return output;
     }
 
     async function startMicrophone() {
       micContext = new AudioContext({ sampleRate: 16000 });
-      mediaStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       });
-
+      if (!micContext) return; // endCall() called during getUserMedia
       await micContext.audioWorklet.addModule('/pcm-processor.js');
-
-      const source = micContext.createMediaStreamSource(mediaStream);
+      const source = micContext.createMediaStreamSource(stream);
       processor = new AudioWorkletNode(micContext, 'pcm-processor');
 
-      // 클라이언트 VAD 설정
-      const SPEECH_THRESHOLD = 0.02;   // 발화 감지 임계값 (높일수록 덜 예민)
-      const SILENCE_MS = 1000;         // 침묵 판정 시간
-      const MIN_SPEECH_CHUNKS = 15;    // 최소 발화 길이 (약 120ms)
-      const PREROLL_CHUNKS = 5;
-
-      let vadState = 'silent';
-      let silenceTimer = null;
-      let prerollBuffer = [];
-      let speechChunkCount = 0;
+      const SPEECH_THRESHOLD = 0.02, SILENCE_MS = 1000, MIN_SPEECH_CHUNKS = 15, PREROLL = 5;
+      let vadState = 'silent', silenceTimer = null, speechCount = 0, preroll = [];
 
       processor.port.onmessage = (e) => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-        if (activeSources > 0) return; // AI 말하는 동안 뮤트
-
+        if (!ws || ws.readyState !== WebSocket.OPEN || activeSources > 0) return;
         const samples = e.data;
         const pcm = float32ToPCM16(samples);
         const b64 = arrayBufferToBase64(pcm);
-
-        // RMS 계산
         let rms = 0;
         for (let i = 0; i < samples.length; i++) rms += samples[i] * samples[i];
         rms = Math.sqrt(rms / samples.length);
 
         if (rms > SPEECH_THRESHOLD) {
           if (vadState === 'silent') {
-            vadState = 'speaking';
-            speechChunkCount = 0;
+            vadState = 'speaking'; speechCount = 0;
             status.textContent = '듣는 중... 🎤';
             ws.send(JSON.stringify({ type: 'activity_start' }));
-            prerollBuffer.forEach(buf => ws.send(JSON.stringify({ type: 'audio', data: buf })));
-            prerollBuffer = [];
+            preroll.forEach(b => ws.send(JSON.stringify({ type: 'audio', data: b })));
+            preroll = [];
           }
-          speechChunkCount++;
+          speechCount++;
           clearTimeout(silenceTimer);
           silenceTimer = setTimeout(() => {
-            if (speechChunkCount >= MIN_SPEECH_CHUNKS) {
-              vadState = 'silent';
-              speechChunkCount = 0;
-              status.textContent = `${selectedTrainee}와 통화 중 🟢`;
+            if (speechCount >= MIN_SPEECH_CHUNKS) {
               ws.send(JSON.stringify({ type: 'activity_end' }));
-            } else {
-              // 너무 짧은 발화는 무시
-              vadState = 'silent';
-              speechChunkCount = 0;
             }
+            vadState = 'silent'; speechCount = 0;
+            status.textContent = `${selectedTrainee}와 통화 중 🟢`;
           }, SILENCE_MS);
           ws.send(JSON.stringify({ type: 'audio', data: b64 }));
         } else {
           if (vadState === 'silent') {
-            prerollBuffer.push(b64);
-            if (prerollBuffer.length > PREROLL_CHUNKS) prerollBuffer.shift();
+            preroll.push(b64);
+            if (preroll.length > PREROLL) preroll.shift();
           } else {
             ws.send(JSON.stringify({ type: 'audio', data: b64 }));
           }
         }
       };
-
       source.connect(processor);
       processor.connect(micContext.destination);
     }
 
     function endCall() {
       isCallActive = false;
-      callBtn.className = 'call-btn start';
-      callBtn.textContent = '📞';
-      status.textContent = `${selectedTrainee}에게 전화하기`;
-      avatar.classList.remove('speaking');
-
+      callBtn.className = 'call-btn start'; callBtn.textContent = '📞';
+      status.textContent = selectedTrainee ? `${selectedTrainee}에게 전화하기` : '연습생을 선택하세요';
+      videoWrap.classList.remove('speaking');
+      // Simli는 유지 (idle 상태로 얼굴 계속 표시)
       if (processor) { processor.disconnect(); processor = null; }
-      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
       if (micContext) { micContext.close(); micContext = null; }
       if (playContext) { playContext.close(); playContext = null; }
       if (ws) { ws.close(); ws = null; }
-      nextPlayTime = 0;
-      activeSources = 0;
+      nextPlayTime = 0; activeSources = 0; simliBuffer = new Int16Array(0);
     }
 
     function scheduleAudio(pcmData) {
       if (!playContext) return;
       activeSources++;
-      avatar.classList.add('speaking');
-      status.textContent = `${selectedTrainee} 말하는 중... 💬`;
+      videoWrap.classList.add('speaking');
       const samples = pcmToFloat32(pcmData);
       const buffer = playContext.createBuffer(1, samples.length, 24000);
       buffer.copyToChannel(samples, 0);
@@ -290,45 +377,37 @@
       nextPlayTime = startAt + buffer.duration;
       src.onended = () => {
         activeSources--;
-        if (activeSources === 0) {
-          avatar.classList.remove('speaking');
-          status.textContent = `${selectedTrainee}와 통화 중 🟢`;
-        }
+        if (activeSources === 0) videoWrap.classList.remove('speaking');
       };
     }
 
-    function float32ToPCM16(float32Array) {
-      const buffer = new ArrayBuffer(float32Array.length * 2);
-      const view = new DataView(buffer);
-      for (let i = 0; i < float32Array.length; i++) {
-        const s = Math.max(-1, Math.min(1, float32Array[i]));
+    function float32ToPCM16(f32) {
+      const buf = new ArrayBuffer(f32.length * 2);
+      const view = new DataView(buf);
+      for (let i = 0; i < f32.length; i++) {
+        const s = Math.max(-1, Math.min(1, f32[i]));
         view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
       }
-      return buffer;
+      return buf;
     }
-
-    function pcmToFloat32(buffer) {
-      const view = new DataView(buffer);
-      const result = new Float32Array(buffer.byteLength / 2);
-      for (let i = 0; i < result.length; i++) {
-        result[i] = view.getInt16(i * 2, true) / 0x8000;
-      }
-      return result;
+    function pcmToFloat32(buf) {
+      const view = new DataView(buf);
+      const out = new Float32Array(buf.byteLength / 2);
+      for (let i = 0; i < out.length; i++) out[i] = view.getInt16(i * 2, true) / 0x8000;
+      return out;
     }
-
-    function arrayBufferToBase64(buffer) {
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      bytes.forEach(b => binary += String.fromCharCode(b));
-      return btoa(binary);
+    function arrayBufferToBase64(buf) {
+      const bytes = new Uint8Array(buf);
+      let b = '';
+      bytes.forEach(x => b += String.fromCharCode(x));
+      return btoa(b);
     }
-
     function base64ToArrayBuffer(b64) {
-      const binary = atob(b64);
-      const buffer = new ArrayBuffer(binary.length);
-      const view = new Uint8Array(buffer);
-      for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-      return buffer;
+      const bin = atob(b64);
+      const buf = new ArrayBuffer(bin.length);
+      const view = new Uint8Array(buf);
+      for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+      return buf;
     }
   </script>
 </body>
