@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+
+# DB
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Services
+services/voice-call/.env
