@@ -8,25 +8,17 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 
 from config import TRAINEES, SIMLI_API_KEY
 from solo_call import router as solo_router
-from duo_chat import router as duo_router
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("trainee")
 
 app = FastAPI()
-app.include_router(duo_router)   # /ws/duo 먼저 등록
-app.include_router(solo_router)  # /ws/{trainee_name} 나중에
+app.include_router(solo_router)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
     with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-@app.get("/duo", response_class=HTMLResponse)
-async def duo_page():
-    with open("duo.html", "r", encoding="utf-8") as f:
         return f.read()
 
 

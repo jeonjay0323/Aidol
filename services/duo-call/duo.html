@@ -192,7 +192,7 @@
     await playContext.resume();
 
     setStatus('연결 중...');
-    ws = new WebSocket('ws://localhost:8000/ws/duo');
+    ws = new WebSocket(`ws://${location.host}/ws/duo`);
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ char_a: CHAR_A, char_b: CHAR_B }));
