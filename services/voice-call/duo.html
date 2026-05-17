@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>연습생 대화</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #000; color: #fff; height: 100dvh; overflow: hidden; }
+
+    /* ── 두 캐릭터 화면 ── */
+    #stage {
+      display: flex;
+      height: 100dvh;
+    }
+
+    .char-panel {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      transition: flex 0.4s ease;
+    }
+    .char-panel.speaking { flex: 1.35; }
+
+    .char-bg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 110px;
+      transition: filter 0.3s;
+    }
+    .char-panel:not(.speaking) .char-bg { filter: brightness(0.45); }
+
+    /* speaking glow */
+    .speak-ring {
+      position: absolute;
+      inset: 0;
+      border: 3px solid #4ade80;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 8;
+      animation: ringPulse 1.4s ease-in-out infinite;
+    }
+    .char-panel.speaking .speak-ring { opacity: 1; }
+    @keyframes ringPulse {
+      0%,100% { border-color: rgba(74,222,128,0.5); }
+      50%      { border-color: rgba(74,222,128,1); }
+    }
+
+    /* 그라디언트 */
+    .grad-top {
+      position: absolute; top: 0; left: 0; right: 0; height: 120px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+      z-index: 5; pointer-events: none;
+    }
+    .grad-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 160px;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      z-index: 5; pointer-events: none;
+    }
+
+    /* 캐릭터 이름 */
+    .char-name {
+      position: absolute; top: 20px; left: 0; right: 0;
+      text-align: center; z-index: 10;
+      font-size: 15px; font-weight: 700;
+      opacity: 0.7;
+      transition: opacity 0.3s, font-size 0.3s;
+    }
+    .char-panel.speaking .char-name { opacity: 1; font-size: 16px; }
+
+    /* 구분선 */
+    #divider {
+      width: 1px;
+      background: rgba(255,255,255,0.1);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    /* ── 하단 자막/컨트롤 ── */
+    #bottom {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 30;
+      padding: 0 20px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #subtitle {
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 14px;
+      padding: 10px 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: center;
+      max-width: 320px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.92);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #subtitle.visible { opacity: 1; }
+
+    .controls { display: flex; gap: 16px; align-items: center; }
+
+    .ctrl-btn {
+      border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(12px);
+      transition: transform 0.12s;
+      font-size: 22px;
+    }
+    .ctrl-btn:active { transform: scale(0.90); }
+
+    #startBtn  { width: 72px; height: 72px; background: #22c55e; font-size: 28px; }
+    #backBtn   { width: 52px; height: 52px; background: rgba(255,255,255,0.18); font-size: 18px; color: #fff; }
+    #statusText { font-size: 12px; color: rgba(255,255,255,0.5); text-align: center; }
+
+    /* 배경 색상 */
+    .bg-doyun  { background: linear-gradient(160deg, #1a140a, #2e200e); }
+    .bg-leo    { background: linear-gradient(160deg, #090d15, #101826); }
+    .bg-yuuki  { background: linear-gradient(160deg, #0a150c, #111e14); }
+    .bg-haneul { background: linear-gradient(160deg, #110918, #1c1025); }
+  </style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="char-panel speaking" id="panelA">
+    <div class="char-bg bg-doyun" id="bgA"><span id="emojiA">🐱</span></div>
+    <div class="speak-ring"></div>
+    <div class="grad-top"></div>
+    <div class="grad-bottom"></div>
+    <div class="char-name" id="nameA">도윤</div>
+  </div>
+
+  <div id="divider"></div>
+
+  <div class="char-panel" id="panelB">
+    <div class="char-bg bg-leo" id="bgB"><span id="emojiB">🐺</span></div>
+    <div class="speak-ring"></div>
+    <div class="grad-top"></div>
+    <div class="grad-bottom"></div>
+    <div class="char-name" id="nameB">레오</div>
+  </div>
+</div>
+
+<div id="bottom">
+  <div id="subtitle"></div>
+  <div class="controls">
+    <button class="ctrl-btn" id="backBtn">←</button>
+    <button class="ctrl-btn" id="startBtn">▶</button>
+  </div>
+  <div id="statusText">버튼을 눌러 대화를 시작하세요</div>
+</div>
+
+<script>
+  const CHAR_A = "도윤", CHAR_B = "레오";
+
+  const panelA = document.getElementById('panelA');
+  const panelB = document.getElementById('panelB');
+  const subtitle   = document.getElementById('subtitle');
+  const statusText = document.getElementById('statusText');
+  const startBtn   = document.getElementById('startBtn');
+  const backBtn    = document.getElementById('backBtn');
+
+  let ws = null;
+  let playContext = null;
+  let isRunning = false;
+
+  backBtn.onclick = () => {
+    cleanup();
+    window.location.href = '/';
+  };
+
+  startBtn.onclick = async () => {
+    if (isRunning) return;
+    startBtn.disabled = true;
+    startBtn.style.background = '#555';
+    isRunning = true;
+
+    playContext = new AudioContext({ sampleRate: 24000 });
+    await playContext.resume();
+
+    setStatus('연결 중...');
+    ws = new WebSocket('ws://localhost:8000/ws/duo');
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ char_a: CHAR_A, char_b: CHAR_B }));
+    };
+
+    ws.onmessage = async (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === 'generating') {
+        setStatus('대본 생성 중...');
+      }
+
+      if (msg.type === 'start') {
+        setStatus('대화 중...');
+      }
+
+      if (msg.type === 'line') {
+        const isSpeakerA = msg.character === CHAR_A;
+        setSpeaking(isSpeakerA ? 'A' : 'B');
+        showSubtitle(`${msg.character}: ${msg.text}`);
+
+        if (msg.audio) {
+          const bytes = base64ToArrayBuffer(msg.audio);
+          await playAndWait(bytes);
+        } else {
+          await sleep(1500);
+        }
+
+        ws.send(JSON.stringify({ type: 'ack' }));
+      }
+
+      if (msg.type === 'end') {
+        setStatus('대화 종료');
+        showSubtitle('');
+        setSpeaking(null);
+        isRunning = false;
+        startBtn.disabled = false;
+        startBtn.style.background = '#22c55e';
+        startBtn.textContent = '↩';
+        startBtn.onclick = () => window.location.reload();
+      }
+
+      if (msg.type === 'error') {
+        setStatus('오류: ' + msg.data);
+        isRunning = false;
+      }
+    };
+
+    ws.onclose = () => { if (isRunning) setStatus('연결 끊김'); };
+  };
+
+  function setSpeaking(side) {
+    panelA.classList.toggle('speaking', side === 'A');
+    panelB.classList.toggle('speaking', side === 'B');
+  }
+
+  function showSubtitle(text) {
+    subtitle.textContent = text;
+    subtitle.classList.toggle('visible', !!text);
+  }
+
+  function setStatus(text) { statusText.textContent = text; }
+
+  // 오디오 재생 + 완료까지 대기
+  function playAndWait(pcmData) {
+    return new Promise((resolve) => {
+      if (!playContext) { resolve(); return; }
+      const samples = pcmToFloat32(pcmData);
+      const buffer = playContext.createBuffer(1, samples.length, 24000);
+      buffer.copyToChannel(samples, 0);
+      const src = playContext.createBufferSource();
+      src.buffer = buffer;
+      src.connect(playContext.destination);
+      src.start(playContext.currentTime);
+      src.onended = resolve;
+    });
+  }
+
+  function cleanup() {
+    if (ws) { ws.close(); ws = null; }
+    if (playContext) { playContext.close(); playContext = null; }
+  }
+
+  // ── 유틸 ──
+  function pcmToFloat32(buf) {
+    const view = new DataView(buf);
+    const out = new Float32Array(buf.byteLength / 2);
+    for (let i = 0; i < out.length; i++) out[i] = view.getInt16(i * 2, true) / 0x8000;
+    return out;
+  }
+  function base64ToArrayBuffer(b64) {
+    const bin = atob(b64);
+    const buf = new ArrayBuffer(bin.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+    return buf;
+  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
