@@ -24,3 +24,7 @@ node_modules/
 
 # Services
 services/voice-call/.env
+
+# Exhibition card — 실행 환경의 로컬 IP가 박히므로 커밋하지 않는다
+services/exhibition-card/qr.png
+services/exhibition-card/url.txt
