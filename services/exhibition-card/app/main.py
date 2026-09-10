@@ -17,13 +17,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-import call
-import db
-import room
-import simli
+from . import call, db, room, simli
 
 HERE = Path(__file__).parent
-load_dotenv(HERE / ".env")
+load_dotenv(HERE.parent / ".env")
 
 # 카드 QR에 박히는 주소. 전시 배포 시 고정 도메인으로 바꾼다.
 BASE_URL = os.getenv("BASE_URL", "").rstrip("/")

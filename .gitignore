@@ -32,7 +32,11 @@ tools/image-generator/archive/
 tools/image-generator/refs_clean/
 tools/image-generator/sheet.html
 
-# 카드 서버 — 생성된 얼굴·워커 스테이징·로컬 QR
-services/card-server/faces/
-services/card-server/static/faces/
-services/card-server/*.log
+# 전시 카드 — 생성물·런타임 상태는 로컬에만 둔다
+services/exhibition-card/faces/
+services/exhibition-card/app/static/faces/
+services/exhibition-card/qr/
+services/exhibition-card/qr*.png
+services/exhibition-card/url.txt
+services/exhibition-card/faces.json
+services/exhibition-card/*.log

@@ -5,11 +5,16 @@
   python worker.py [확인주기_분]
 """
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # app 패키지를 찾기 위해
+
+import sys
 import time
 from datetime import datetime
 
-import db
-import simli
+from app import db
+from app import simli
 
 READY_WORDS = ("complete", "ready", "success", "done")
 FAIL_WORDS = ("fail", "error")

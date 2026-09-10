@@ -5,7 +5,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB = Path(__file__).parent / "cards.db"
+DB = Path(__file__).parent.parent / "cards.db"
 
 # 카드 발급은 즉시, 얼굴 등록은 최대 8시간.
 # 그래서 card_id와 face_id를 분리하고 face_status로 그 간격을 표현한다.

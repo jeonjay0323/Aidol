@@ -5,7 +5,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 API = "https://api.simli.ai"
 KEY = os.getenv("SIMLI_API_KEY", "")
 
