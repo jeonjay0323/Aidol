@@ -15,7 +15,9 @@ window.AidolCall = (() => {
   const SIMLI_CHUNK = 3200;
 
   /* ── Simli ── */
+  let t0 = 0;
   async function initSimli(faceId, videoEl) {
+    t0 = performance.now();
     const { session_token } = await (await fetch('/api/simli/token', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ faceId })
@@ -32,6 +34,7 @@ window.AidolCall = (() => {
     simliPc.addTransceiver('video', { direction: 'recvonly' });
     simliPc.ontrack = (e) => {
       if (e.track.kind === 'video' && videoEl) {
+        console.log('[Simli] 영상 도착', Math.round(performance.now() - t0), 'ms');
         videoEl.srcObject = e.streams[0];
         videoEl.style.display = 'block';
         videoEl.play().catch(() => {});
@@ -45,7 +48,10 @@ window.AidolCall = (() => {
 
     simliWs = new WebSocket(
       `wss://api.simli.ai/compose/webrtc/p2p?session_token=${session_token}&enableSFU=true`);
-    simliWs.onopen = () => simliWs.send(JSON.stringify(simliPc.localDescription));
+    simliWs.onopen = () => {
+      console.log('[Simli] WS 연결', Math.round(performance.now() - t0), 'ms');
+      simliWs.send(JSON.stringify(simliPc.localDescription));
+    };
     simliWs.onmessage = async (e) => {
       if (e.data.toUpperCase().split(' ')[0].includes('SDP')) {
         await simliPc.setRemoteDescription(new RTCSessionDescription(JSON.parse(e.data)));
@@ -53,16 +59,17 @@ window.AidolCall = (() => {
     };
   }
 
-  function waitForIce(pc) {
+  // ICE 수집은 최대 2초만 기다린다. 상한이 없으면 후보가 계속 들어올 때
+  // 연결이 시작조차 못 한다 (얼굴이 안 뜨는 주된 원인).
+  function waitForIce(pc, timeoutMs = 2000) {
     return new Promise((resolve) => {
       if (pc.iceGatheringState === 'complete') return resolve();
-      let prev = 0, count = 0;
-      pc.onicecandidate = () => count++;
-      const check = () => {
-        if (pc.iceGatheringState === 'complete' || count === prev) resolve();
-        else { prev = count; setTimeout(check, 150); }
-      };
-      setTimeout(check, 150);
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      const timer = setTimeout(finish, timeoutMs);
+      pc.addEventListener('icegatheringstatechange', () => {
+        if (pc.iceGatheringState === 'complete') { clearTimeout(timer); finish(); }
+      });
     });
   }
 
@@ -207,6 +214,7 @@ window.AidolCall = (() => {
     active = false;
     if (ws) { ws.close(); ws = null; }
     if (simliWs) { simliWs.close(); simliWs = null; }
+    pending = [];
     if (simliPc) { simliPc.close(); simliPc = null; }
     if (processor) { processor.disconnect(); processor = null; }
     if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
