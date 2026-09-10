@@ -13,4 +13,4 @@ COPY . .
 
 # Cloud Run 은 PORT 를 주입한다. 로컬 실행 시엔 8000.
 ENV PORT=8080
-CMD exec uvicorn server:app --host 0.0.0.0 --port ${PORT}
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}

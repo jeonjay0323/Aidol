@@ -8,6 +8,11 @@
     python3 make_qr.py G6CNSAAA        # 특정 카드만
     python3 make_qr.py --base http://localhost:8000   # 로컬 테스트용
 """
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # app 패키지를 찾기 위해
+
 import os
 import sys
 from pathlib import Path
@@ -15,7 +20,7 @@ from pathlib import Path
 import segno
 
 BASE_URL = "https://aidol-card-294218538342.asia-northeast3.run.app"
-HERE = Path(__file__).parent
+HERE = Path(__file__).parent.parent
 OUT = HERE / "qr"
 
 

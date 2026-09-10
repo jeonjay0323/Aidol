@@ -13,6 +13,11 @@ Simli legacy face 등록 · 상태 추적.
 
 키는 .env의 SIMLI_API_KEY에서 읽는다.
 """
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # app 패키지를 찾기 위해
+
 import json
 import sys
 import time
@@ -23,7 +28,7 @@ import requests
 from dotenv import load_dotenv
 import os
 
-HERE = Path(__file__).parent
+HERE = Path(__file__).parent.parent
 STATE = HERE / "faces.json"
 API = "https://api.simli.ai"
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp"}

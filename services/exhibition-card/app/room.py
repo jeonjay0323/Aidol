@@ -19,10 +19,10 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google.genai import types
 
-import db
+from . import db
 
-load_dotenv(Path(__file__).parent / ".env")
-GCP_PROJECT = os.getenv("GCP_PROJECT", "aidol-505503")
+load_dotenv(Path(__file__).parent.parent / ".env")
+GCP_PROJECT = os.getenv("GCP_PROJECT", "project-8f215caa-065e-4ffe-ac9")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
 
