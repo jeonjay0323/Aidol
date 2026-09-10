@@ -1,0 +1,90 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>카드 관리 — AIDOL</title>
+<style>
+  :root{--bg:#17110c;--surface:#221812;--paper:#e8d6bb;--dim:rgba(232,214,187,.55);
+        --line:rgba(232,214,187,.12);--ok:#3ecf8e;--wait:#e0a93c;--err:#d8452f}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--paper);
+       font-family:"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;
+       padding:28px 20px 60px;line-height:1.6}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+  .sub{font-size:13px;color:var(--dim);margin-bottom:24px}
+  .nfc-state{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+             padding:14px 16px;font-size:13px;margin-bottom:20px;color:var(--dim)}
+  .nfc-state b{color:var(--paper)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+        padding:14px;margin-bottom:10px;display:flex;gap:14px;align-items:center}
+  .card img{width:52px;height:66px;object-fit:cover;border-radius:8px;flex:none;background:#2a2119}
+  .info{flex:1;min-width:0}
+  .info b{font-size:15px;font-weight:800;display:block}
+  .info small{font-size:12px;color:var(--dim);display:block;font-family:ui-monospace,monospace}
+  .chip{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;margin-top:4px}
+  .chip.ready{color:var(--ok);background:rgba(62,207,142,.14)}
+  .chip.processing{color:var(--wait);background:rgba(224,169,60,.14)}
+  .chip.failed,.chip.none{color:var(--err);background:rgba(216,69,47,.14)}
+  .acts{display:flex;flex-direction:column;gap:6px;flex:none;min-width:96px}
+  button,a.btn{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;
+    border-radius:9px;border:1px solid var(--line);background:none;color:var(--paper);
+    cursor:pointer;text-decoration:none;text-align:center;white-space:nowrap}
+  button:active{transform:scale(.97)}
+  button.write{background:var(--paper);color:#2b1d14;border-color:transparent}
+  button:disabled{opacity:.35;cursor:default}
+  .log{margin-top:20px;font-size:12px;color:var(--dim);font-family:ui-monospace,monospace;
+       white-space:pre-wrap;background:var(--surface);border-radius:10px;padding:12px 14px;min-height:44px}
+</style>
+
+<div class="wrap">
+  <h1>카드 관리</h1>
+  <p class="sub">NFC 쓰기 · QR · 인쇄</p>
+
+  <div class="nfc-state" id="nfcState">NFC 지원 여부 확인 중…</div>
+
+  {% for c in cards %}
+  <div class="card">
+    {% if c.image_path %}<img src="{{ c.image_path }}" alt="">{% else %}<img alt="">{% endif %}
+    <div class="info">
+      <b>{{ c.name }}</b>
+      <small>{{ c.card_id }} · {{ "공식" if c.source == "official" else "유저" }}</small>
+      <span class="chip {{ c.face_status }}">{{ c.face_status }}</span>
+    </div>
+    <div class="acts">
+      <button class="write" onclick="writeTag('{{ c.card_id }}')">NFC 쓰기</button>
+      <a class="btn" href="/qr/{{ c.card_id }}.png" target="_blank">QR 크게</a>
+      <a class="btn" href="/card/{{ c.card_id }}" target="_blank">카드 인쇄</a>
+      <a class="btn" href="/c/{{ c.card_id }}" target="_blank">스캔 화면</a>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="log" id="log">대기 중</div>
+</div>
+
+<script>
+  const BASE = {{ base_url | tojson }};
+  const logEl = document.getElementById('log');
+  const say = (m) => { logEl.textContent = m; };
+
+  // Web NFC는 안드로이드 Chrome에서만 동작한다. iOS는 NFC Tools 같은 앱으로 대신 쓴다.
+  const supported = 'NDEFReader' in window;
+  document.getElementById('nfcState').innerHTML = supported
+    ? 'NFC 사용 가능. <b>NFC 쓰기</b>를 누른 뒤 태그를 폰 뒷면에 대세요.'
+    : '이 브라우저는 Web NFC를 지원하지 않습니다. <b>안드로이드 Chrome</b>에서 열거나, '
+      + 'iOS는 <b>NFC Tools</b> 앱에 아래 주소를 URL 레코드로 직접 쓰세요.';
+  if (!supported) document.querySelectorAll('button.write').forEach(b => b.disabled = true);
+
+  async function writeTag(cardId) {
+    const url = `${BASE}/c/${cardId}`;
+    if (!supported) { say(url); return; }
+    try {
+      say(`태그를 대주세요…\n${url}`);
+      const writer = new NDEFReader();
+      await writer.write({ records: [{ recordType: 'url', data: url }] });
+      say(`✓ 기록 완료\n${cardId} → ${url}`);
+    } catch (e) {
+      say(`✗ 실패: ${e.message}`);
+    }
+  }
+</script>

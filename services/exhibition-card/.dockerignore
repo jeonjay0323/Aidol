@@ -1,0 +1,9 @@
+cards.db
+*.log
+/faces/
+qr*.png
+url.txt
+.env
+__pycache__/
+.DS_Store
+c/

@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>AIDOL CARD — 더미 #AID7K2M9</title>
+<title>{{ card.name }} — AIDOL CARD</title>
 <style>
   :root{
     --paper:#e8d6bb;
@@ -81,6 +81,7 @@
   }
 
   /* ── 사진 ── */
+  .photo .face{width:100%;height:100%;object-fit:cover;display:block}
   .photo{
     height:42mm;flex:none;margin-top:1mm;border-radius:1.4mm;
     background:linear-gradient(150deg,#c9a97f,#a8825a 55%,#8d6a48);
@@ -153,39 +154,33 @@
   <div class="card">
     <div class="inner">
 
-      <div class="serial">AID7K2M9 · 2026-08-14</div>
+      <div class="serial">{{ card.card_id }} · {{ card.created_at[:10] }}</div>
 
       <div class="top">
-        <div class="grade">N</div>
+        <div class="grade">{{ "O" if card.source == "official" else "U" }}</div>
         <div class="wordmark">AIDOL<span>TRAINEE CARD</span></div>
-        <div class="stamp"><b>OFFICIAL</b><i>★</i></div>
+        <div class="stamp"><b>{{ "OFFICIAL" if card.source == "official" else "USER" }}</b><i>★</i></div>
       </div>
 
       <div class="photo">
-        <div class="ph">
-          <b>PHOTO</b>
-          아이돌 이미지 자리<br>51 × 42 mm
-        </div>
+        {% if card.image_path %}<img class="face" src="{{ card.image_path }}" alt="">
+        {% else %}<div class="ph"><b>PHOTO</b>아이돌 이미지 자리<br>51 × 42 mm</div>{% endif %}
       </div>
 
-      <div class="name">리안</div>
+      <div class="name">{{ card.name }}</div>
 
-      <div class="tags"><em>[RIAN]</em>보컬 · 새벽형 · 저음</div>
+      <div class="tags">{{ card.tags | join(" · ") }}</div>
 
       <div class="foot">
         <div class="stats">
-          <div class="stat"><span>보컬</span>
-            <div class="gauge"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="hot"></i><i></i><i></i></div>
+          {% for label, value in card.stats.items() %}
+          <div class="stat"><span>{{ label }}</span>
+            <div class="gauge">{% for i in range(8) %}<i class="{{ 'on' if i < value else '' }}"></i>{% endfor %}</div>
           </div>
-          <div class="stat"><span>퍼포먼스</span>
-            <div class="gauge"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
-          </div>
-          <div class="stat"><span>비주얼</span>
-            <div class="gauge"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="hot"></i><i></i></div>
-          </div>
+          {% endfor %}
         </div>
         <div class="qr">
-          <img src="qr.png" alt="스캔용 QR">
+          <img src="{{ qr_url }}" alt="스캔용 QR">
           <small>SCAN ME</small>
         </div>
       </div>
@@ -196,16 +191,10 @@
 </div>
 
 <div class="meta">
-  <h2>스캔 테스트용 더미 카드</h2>
-  실제 크기 63 × 88 mm (표준 트레카) · QR 15 mm<br>
-  QR 대상 → <code id="target">url.txt 참조</code><br>
-  IP가 바뀌면 <code>python make_qr.py</code> 다시 실행
+  <h2>{{ card.name }}</h2>
+  63 × 88 mm · QR 14 mm · {{ card.card_id }}<br>
+  얼굴 상태: <code>{{ card.face_status }}</code>
 </div>
 
-<script>
-  fetch('url.txt').then(r=>r.text()).then(t=>{
-    document.getElementById('target').textContent = t.trim();
-  }).catch(()=>{});
-</script>
 </body>
 </html>

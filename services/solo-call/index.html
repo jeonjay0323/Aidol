@@ -413,9 +413,8 @@
 
       let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
       try {
-        const iceRes = await fetch('https://api.simli.ai/compose/ice', {
-          headers: { 'x-simli-api-key': 'xlt4c79xqjmh547lg9c2q' }
-        });
+        // 키를 클라이언트에 두지 않는다. 서버가 대신 받아온다.
+        const iceRes = await fetch('/simli-ice');
         if (iceRes.ok) iceServers = await iceRes.json();
       } catch (_) {}
 

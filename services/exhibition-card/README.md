@@ -1,95 +1,107 @@
 # Exhibition Card — 전시용 피지컬 카드 시스템
 
-졸업전시장에서 Lukids를 체험시키기 위한 오프라인 진입점.
-관람객이 **아이돌 카드를 스캔하면 그 아이돌과 영상통화**가 시작되고,
-다른 카드를 스캔해 **그 아이돌과 카드 주인**을 멀티콜에 부를 수 있다.
+카드를 스캔하면 그 아이돌과 영상통화가 시작된다.
+다른 카드를 초대하면 여럿이 함께 대화한다.
 
-## 카드 두 갈래
+**배포** Cloud Run `aidol-card` (asia-northeast3) · Firestore
 
-|  | 공식 카드 | 유저 카드 |
+## 왜 이렇게 만들었나
+
+카드 발급은 즉시 이뤄져야 하고, Simli 얼굴 등록은 **최대 8시간**이 걸린다.
+이 간격을 `face_status`로 표현하는 것이 설계의 뼈대다.
+
+| face_status | 스캔 화면 | 통화 |
 |---|---|---|
-| 수량 | 12~20종, 전시 벽에 진열 | 1인 1장, 현장 인쇄 |
-| 역할 | 완성도 높은 기준점 · 세계관 앵커 | 애착 · 소유 · 반출 굿즈 |
-| 멀티콜 초대 시 | 아이돌만 입장 | 아이돌 + 카드를 만든 사람 (주인 수락 필요) |
+| `ready` | "지금 영상통화할 수 있어요" | 영상 + 음성 |
+| `processing` | "얼굴을 만드는 중" | 음성만 |
+| `failed` / `none` | "목소리로 통화할 수 있어요" | 음성만 |
 
-시스템은 카드의 출처를 구분하지 않는다. 둘 다 동일한 ID 체계를 쓰므로
-한 통화에 공식 카드와 유저 카드를 섞을 수 있다.
-
-**순환 동선:** 공식 카드로 첫 체험 → 내 아이돌 생성 → 카드 인쇄 → 전시 벽에 등록
-→ 다음 관람객이 내 카드를 스캔해 나를 부름. 전시가 진행될수록 벽이 채워진다.
-
-## 규격 결정
-
-| 항목 | 결정 |
-|---|---|
-| 카드 크기 | 63 × 88 mm (표준 트레카 세로) |
-| 스캔 | NFC(현장 탭) + QR(반출 후) 병기, 앱 설치 없음 |
-| NFC 범위 | 공식 카드만 (NTAG213 + NDEF URL 레코드) |
-| QR 크기 | 14 mm, 오류정정 레벨 M |
-| ID | `https://{도메인}/c/{8자 랜덤}` — 카드엔 ID만, 데이터는 서버 |
-
-카드에 아이돌 데이터를 담지 않는 이유는 NTAG213이 144바이트라 애초에 부족하고,
-서버를 단일 진실 공급원으로 두어야 카드 재발급·수정이 가능하기 때문이다.
+등록이 실패해도 카드는 이미 관람객 손에 있고 대화는 된다.
 
 ## 구조
 
 ```
-exhibition-card/
-├── card.html              더미 카드 (63×88mm, ⌘P로 실제 크기 인쇄)
-├── make_qr.py             로컬 IP 자동 감지 → qr.png 생성
-└── c/AID7K2M9/index.html  스캔 랜딩 + 통화 플로우
+server.py          FastAPI · 라우팅 · Simli 프록시
+db.py              DB_BACKEND 로 Firestore / SQLite 선택
+  db_firestore.py    운영 (Cloud Run)
+  db_sqlite.py       로컬 개발
+call.py            1:1 통화 WebSocket
+room.py            멀티콜 · 발언권 중재
+simli.py           Simli API 래퍼
+worker.py          얼굴 등록 상태 폴링
+face_registry.py   얼굴 일괄 등록 CLI
+make_qr.py         카드 QR 생성
+templates/         scan · card · admin
+static/            통화 클라이언트 · jsQR
 ```
 
-`qr.png` / `url.txt`는 실행 환경의 IP가 박히므로 커밋하지 않는다. 아래 순서로 생성한다.
+## 통화
 
-## 로컬 실행
+**1:1** — Gemini 자동 발화감지를 끄고 브라우저가 RMS로 판단한다.
+임계값 0.02 · 침묵 1초 · 최소 15청크 · preroll 5청크(첫 음절 잘림 방지).
+응답 오디오는 스피커와 Simli로 동시에 흐른다(24kHz → 16kHz 리샘플).
+
+**멀티콜** — 여럿이 동시에 말하면 겹치므로 서버가 매 턴 화자 하나를 정한다.
+
+```
+사람 발화 → 선택된 아이돌에게만 음성 → 응답
+                                    ├→ 나머지에게 텍스트 주입 (turn_complete=False, 응답 안 함)
+                                    └→ 한 명에게 릴레이 (turn_complete=True, 받아침)
+```
+
+`MAX_RELAYS`(기본 2)만큼 아이돌끼리 주고받은 뒤 사람을 기다린다.
+화면에서 얼굴을 탭하면 그 아이돌이 답한다.
+
+## 초대 경로
+
+관람객 기기를 통제할 수 없어 넷을 열어뒀다. 모두 같은 로비로 모인다.
+
+| 경로 | 기기 |
+|---|---|
+| QR 스캔 (`BarcodeDetector`, 없으면 `jsQR`) | 전 기기 |
+| NFC 탭 (`NDEFReader`) | 안드로이드 Chrome |
+| 카드 탭 → 페이지 열림 → 참여 배너 | **전 기기 (iOS 포함)** |
+| 로비에서 직접 선택 | 전 기기 |
+
+iOS는 Web NFC와 BarcodeDetector가 모두 없다. QR은 jsQR로, NFC는
+"카드를 탭하면 OS가 페이지를 연다"는 성질을 이용해 우회했다.
+
+## API
+
+| | |
+|---|---|
+| `POST /api/cards` | 카드 발급. 이미지 동봉 시 얼굴 등록까지 |
+| `GET /api/cards/{id}/call` | 통화 설정 — mode · persona · voice · faceId |
+| `GET /c/{id}` | 스캔 랜딩 |
+| `GET /card/{id}` · `/qr/{id}.png` | 인쇄용 카드 · QR |
+| `GET /admin` | 카드 관리 · NFC 쓰기 |
+| `WS /ws/call/{id}` · `WS /ws/room` | 1:1 · 멀티콜 |
+| `POST /api/lobby/{id}/open` 외 | 로비 · 원격 참여 |
+
+## 실행
 
 ```bash
-python3 -m venv .venv && ./.venv/bin/pip install segno
-./.venv/bin/python make_qr.py          # 현재 IP로 QR 생성
-python3 -m http.server 8000 --bind 0.0.0.0 --directory .
-open card.html                          # 폰 카메라로 QR 스캔
+python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+cp .env.example .env      # SIMLI_API_KEY 등을 채운다
+./.venv/bin/python -m uvicorn server:app --port 8000
+
+# 얼굴 등록 (faces/ 에 정면 이미지를 넣고)
+./.venv/bin/python face_registry.py register
+./.venv/bin/python worker.py 30      # 상태를 DB 에 반영
 ```
 
-폰과 같은 네트워크여야 한다. IP가 바뀌면 `make_qr.py`만 다시 실행한다.
+폰에서 마이크를 쓰려면 **HTTPS가 필수**다(`getUserMedia`는 secure context 전용).
+로컬 IP로는 통화가 되지 않는다.
 
-## 플로우
+## 얼굴 이미지 요건
 
-```
-카드 스캔 → 프로필
-   ├─ 영상통화 걸기 ─→ 1:1 대화 (마이크 / 카메라 / 종료)
-   └─ 멀티콜 ────────→ 로비 → 카드 스캔 초대 → 다자 대화
-```
+정면 · 손이 얼굴을 가리지 않을 것 · **1024×1024 정사각형**.
+그 외 비율은 정사각으로 크롭되고, 512 배수가 아니면 스케일링 손실이 생긴다.
 
-노래 제작·춤·꾸미기는 범위에서 제외했다. Simli는 발화 립싱크 아바타라 전신 안무가 없고
-TTS는 노래를 부르지 못해, 현재 스택으로는 흉내만 가능하기 때문이다.
+## 알려진 제약
 
-## 통화 엔진 연결
-
-통화 화면은 아직 목업이다. 실제 연결은 카드 ID로 세 값을 조회해 봇에 주입하는 구조가 된다.
-
-```
-POST /call {cardId} → {roomUrl, faceId, voiceId, persona}
-```
-
-| 카드 데이터 | 주입 지점 |
-|---|---|
-| 페르소나 | 봇의 system prompt |
-| 얼굴 | `SIMLI_FACE_ID` |
-| 목소리 | `ELEVENLABS_VOICE_ID` |
-
-`c/AID7K2M9/index.html`의 `startCall()`에 자리를 주석으로 표시해두었다.
-
-**어느 구현을 쓸지는 미정이다.** 후보가 둘 있다.
-
-- `services/solo-call` — Gemini Live Native Audio + Simli WebRTC (이 레포)
-- `talking-face` — Pipecat 1.4.0 + Google STT + Vertex Gemini + ElevenLabs + Simli (별도 로컬 프로젝트)
-
-## 미해결
-
-- [ ] 통화 엔진 확정 (solo-call vs talking-face)
-- [ ] 멀티콜 다자 립싱크 — Simli 무료 플랜은 1연결 제한. 유료 플랜 비용 산정 필요
-- [ ] 전시장 동시 세션 수 = 봇 인스턴스 비용, 미산정
-- [ ] 카드 얼굴 이미지 (현재 전부 플레이스홀더)
-- [ ] 배포용 고정 도메인 (현재 로컬 IP 의존)
-- [ ] 네트워크 다운 시 폴백 경로
+- **인쇄 QR 밀도** — Cloud Run 기본 주소(66자)는 버전 5·37모듈이라 14mm 인쇄 시
+  모듈당 0.378mm로 권장치(0.4mm) 미만이다. **짧은 커스텀 도메인**이 필요하다.
+- **legacy 얼굴 API는 deprecated** — Trinity가 현행이지만 동시 세션 때문에 legacy를 쓴다.
+- **로비는 "가장 최근 하나"** — 전시 부스가 하나라는 전제다.
+- **통화 중 초대 불가** — 참가자는 시작 전에 확정된다.

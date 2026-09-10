@@ -37,6 +37,17 @@ async def get_trainees():
     return list(TRAINEES.keys())
 
 
+@app.get("/simli-ice")
+async def get_simli_ice():
+    """ICE 서버 목록. 키가 필요하므로 서버가 프록시한다."""
+    req = urllib.request.Request(
+        "https://api.simli.ai/compose/ice",
+        headers={"x-simli-api-key": SIMLI_API_KEY},
+    )
+    with urllib.request.urlopen(req) as r:
+        return JSONResponse(json.loads(r.read()))
+
+
 @app.post("/simli-token")
 async def get_simli_token(body: dict):
     face_id = body.get("faceId")
