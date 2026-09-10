@@ -24,3 +24,15 @@ node_modules/
 
 # Services
 services/voice-call/.env
+
+# 이미지 생성기 — 결과물·레퍼런스·아카이브는 로컬에만 둔다
+tools/image-generator/out/
+tools/image-generator/keep/
+tools/image-generator/archive/
+tools/image-generator/refs_clean/
+tools/image-generator/sheet.html
+
+# 카드 서버 — 생성된 얼굴·워커 스테이징·로컬 QR
+services/card-server/faces/
+services/card-server/static/faces/
+services/card-server/*.log

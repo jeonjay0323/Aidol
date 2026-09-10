@@ -1,0 +1,6 @@
+.env
+.venv/
+faces.json
+qr.png
+url.txt
+__pycache__/
