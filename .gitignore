@@ -25,6 +25,18 @@ node_modules/
 # Services
 services/voice-call/.env
 
-# Exhibition card — 실행 환경의 로컬 IP가 박히므로 커밋하지 않는다
-services/exhibition-card/qr.png
+# 이미지 생성기 — 결과물·레퍼런스·아카이브는 로컬에만 둔다
+tools/image-generator/out/
+tools/image-generator/keep/
+tools/image-generator/archive/
+tools/image-generator/refs_clean/
+tools/image-generator/sheet.html
+
+# 전시 카드 — 생성물·런타임 상태는 로컬에만 둔다
+services/exhibition-card/faces/
+services/exhibition-card/app/static/faces/
+services/exhibition-card/qr/
+services/exhibition-card/qr*.png
 services/exhibition-card/url.txt
+services/exhibition-card/faces.json
+services/exhibition-card/*.log

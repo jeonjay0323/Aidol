@@ -22,6 +22,8 @@ Aidol/
 │   └── 유저 취향 분석.md
 ├── services/                구현
 │   └── exhibition-card/     전시용 피지컬 카드 · 통화 · 멀티콜
+├── tools/                   제작 도구
+│   └── image-generator/     아이돌 이미지 생성
 └── archive/                 대체된 프로토타입
     ├── solo-call/           1:1 통화 원형
     └── multi-call/          대사 사전생성 방식
@@ -33,6 +35,9 @@ Aidol/
 카드를 스캔하면 그 아이돌과 영상통화가 시작된다.
 다른 카드를 초대하면 여럿이 함께 대화한다. Cloud Run + Firestore 로 배포되어 있다.
 → [상세 문서](services/exhibition-card/README.md)
+
+### `tools/image-generator` — 아이돌 이미지 생성
+카드에 들어갈 인물 이미지를 만든다. Simli 얼굴 등록에는 정면 · 1024×1024 정사각형이 필요하다.
 
 ### `archive/` — 대체된 프로토타입
 `solo-call`(Gemini Live + Simli 1:1 통화)의 구조는 exhibition-card 로 흡수됐다.
