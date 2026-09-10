@@ -20,26 +20,25 @@ Aidol/
 │   ├── AI 개인 영상 통화.md
 │   ├── AI 다자간 통화.md
 │   └── 유저 취향 분석.md
-└── services/                구현
-    ├── solo-call/           1:1 영상통화
-    ├── multi-call/          다자간 통화
-    └── exhibition-card/     전시용 피지컬 카드
+├── services/                구현
+│   └── exhibition-card/     전시용 피지컬 카드 · 통화 · 멀티콜
+└── archive/                 대체된 프로토타입
+    ├── solo-call/           1:1 통화 원형
+    └── multi-call/          대사 사전생성 방식
 ```
 
 ## 서비스
 
-### `solo-call` — 1:1 영상통화
-Gemini Live 2.5 Flash Native Audio + Simli WebRTC 실시간 립싱크.
-FastAPI / WebSocket, AudioWorklet 16kHz, 클라이언트 VAD, 다중 턴.
-
-### `multi-call` — 다자간 통화
-Gemini 2.5 Flash로 대사 일괄 생성 후 Gemini TTS 1줄 선행 파이프라인 + ACK 동기화, 분할 화면.
-Simli 무료 플랜의 1연결 제한으로 다자간 립싱크는 미적용 상태.
-
 ### `exhibition-card` — 전시용 피지컬 카드
-아이돌 카드를 스캔하면 그 아이돌과 영상통화가 시작된다.
-다른 카드를 스캔하면 그 아이돌과 **카드 주인**을 멀티콜에 부를 수 있다.
+카드를 스캔하면 그 아이돌과 영상통화가 시작된다.
+다른 카드를 초대하면 여럿이 함께 대화한다. Cloud Run + Firestore 로 배포되어 있다.
 → [상세 문서](services/exhibition-card/README.md)
+
+### `archive/` — 대체된 프로토타입
+`solo-call`(Gemini Live + Simli 1:1 통화)의 구조는 exhibition-card 로 흡수됐다.
+`multi-call`은 대사를 미리 만들어 재생하는 다른 기능이라 재사용하지 않았다.
+개발 과정을 보여주는 자료로 남겨뒀다.
+→ [archive/README.md](archive/README.md)
 
 ## 실행
 
