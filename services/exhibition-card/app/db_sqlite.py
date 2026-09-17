@@ -127,3 +127,56 @@ def pending_faces():
 if __name__ == "__main__":
     init()
     print(f"{DB} 준비 완료")
+
+
+# ── 이벤트 로그 ──────────────────────────────────────────
+EVENT_SCHEMA = """
+CREATE TABLE IF NOT EXISTS events (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  type       TEXT NOT NULL,
+  card_id    TEXT,
+  session_id TEXT,
+  meta       TEXT NOT NULL DEFAULT '{}',
+  ts         TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ev_type ON events(type);
+CREATE INDEX IF NOT EXISTS idx_ev_card ON events(card_id);
+"""
+
+
+def log_event(type, card_id=None, session_id=None, meta=None):
+    with connect() as con:
+        con.executescript(EVENT_SCHEMA)
+        con.execute(
+            "INSERT INTO events (type, card_id, session_id, meta, ts) VALUES (?,?,?,?,?)",
+            (type, card_id, session_id, json.dumps(meta or {}, ensure_ascii=False), now()),
+        )
+    return {"type": type, "card_id": card_id, "session_id": session_id, "ts": now()}
+
+
+def list_events(limit=5000, type=None):
+    with connect() as con:
+        con.executescript(EVENT_SCHEMA)
+        q = "SELECT * FROM events"
+        args = []
+        if type:
+            q += " WHERE type=?"
+            args.append(type)
+        q += " ORDER BY ts ASC LIMIT ?"
+        args.append(limit)
+        rows = con.execute(q, args).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["meta"] = json.loads(d["meta"])
+        out.append(d)
+    return out
+
+
+def count_scans_by_card():
+    with connect() as con:
+        con.executescript(EVENT_SCHEMA)
+        rows = con.execute(
+            "SELECT card_id, COUNT(*) c FROM events WHERE type='scan' AND card_id IS NOT NULL GROUP BY card_id"
+        ).fetchall()
+    return {r["card_id"]: r["c"] for r in rows}

@@ -112,3 +112,41 @@ def pending_faces():
 if __name__ == "__main__":
     init()
     print(f"Firestore 연결 확인 — {PROJECT}/{COLLECTION}, {len(list_cards())}장")
+
+
+# ── 이벤트 로그 ──────────────────────────────────────────
+# 소유감(카드 반출)과 애정(재방문)을 나눠 보려면 행동이 남아야 한다.
+EVENTS = "events"
+
+
+def _events():
+    return client().collection(EVENTS)
+
+
+def log_event(type, card_id=None, session_id=None, meta=None):
+    doc = {
+        "type": type, "card_id": card_id, "session_id": session_id,
+        "meta": meta or {}, "ts": now(),
+    }
+    _events().add(doc)
+    return doc
+
+
+def list_events(limit=5000, type=None):
+    q = _events()
+    if type:
+        q = q.where("type", "==", type)
+    docs = q.limit(limit).stream()
+    out = [d.to_dict() for d in docs]
+    out.sort(key=lambda e: e.get("ts") or "")
+    return out
+
+
+def count_scans_by_card():
+    """card_id -> 스캔 횟수. 2회 이상이면 재방문으로 본다."""
+    counts = {}
+    for e in list_events(type="scan"):
+        cid = e.get("card_id")
+        if cid:
+            counts[cid] = counts.get(cid, 0) + 1
+    return counts

@@ -192,6 +192,14 @@ async def room_socket(websocket: WebSocket):
             return
 
         log.info(f"멀티콜 시작: {', '.join(c['name'] for c in cards)}")
+        import time, uuid
+        room_id = uuid.uuid4().hex[:12]
+        started = time.time()
+        try:
+            db.log_event("room_start", card_id=cards[0]["card_id"], session_id=room_id,
+                         meta={"members": [c["card_id"] for c in cards], "size": len(cards)})
+        except Exception as e:
+            log.warning(f"room_start 로그 실패: {e}")
         client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
         room = Room(websocket, cards)
 
@@ -215,6 +223,12 @@ async def room_socket(websocket: WebSocket):
             tasks = [asyncio.create_task(room.pump(c)) for c in cards]
             tasks.append(asyncio.create_task(room.from_client()))
             await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                db.log_event("room_end", card_id=cards[0]["card_id"], session_id=room_id,
+                             meta={"size": len(cards), "seconds": round(time.time() - started, 1),
+                                   "relays": room.relay_turn})
+            except Exception as e:
+                log.warning(f"room_end 로그 실패: {e}")
 
     except Exception as e:
         log.error(f"멀티콜 오류: {e}")

@@ -121,7 +121,11 @@
   .feed.talking{animation:talk 1.8s ease-in-out infinite}
   @keyframes talk{50%{filter:brightness(1.08)}}
 
-  .self{
+  .self video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+              display:none;border-radius:11px;transform:scaleX(-1)}
+  .self span{position:relative;z-index:2}
+  .self.on span{display:none}
+  .self{position:relative;overflow:hidden;
     position:absolute;bottom:14px;right:14px;width:74px;aspect-ratio:3/4;
     border-radius:11px;background:#2a2119;border:1px solid rgba(255,255,255,.14);
     display:flex;align-items:center;justify-content:center;
@@ -209,6 +213,7 @@
   }
   .cell.person{background:#2a2119;color:var(--dim)}
   .cell video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+  .cell.person video{transform:scaleX(-1)}
   .cell.turn{outline:2px solid var(--live);outline-offset:-2px}
   .cell .who{z-index:2}
   .cell .who{
@@ -346,7 +351,7 @@
     <div class="feed" id="feed-solo">
       <video id="avatar" autoplay playsinline></video>
       <div class="ph" id="feed-ph"><b>LIVE</b>{{ "연결 중" if card.face_status == "ready" else "음성 통화" }}</div>
-      <div class="self" id="self-solo">내 화면</div>
+      <div class="self" id="self-solo"><video id="selfcam" autoplay playsinline muted></video><span>내 화면</span></div>
     </div>
     <div class="caption" id="cap-solo">
       안녕, 와줘서 고마워.<br><em>말을 걸어보세요</em>
@@ -558,7 +563,9 @@
         });
         const me = document.createElement('div');
         me.className = 'cell person';
-        me.innerHTML = '내 화면<span class="who">나</span>';
+        me.id = 'cell-me';
+        me.innerHTML = '<video id="selfcam-multi" autoplay playsinline muted></video>'
+                     + '<span class="label">내 화면</span><span class="who">나</span>';
         grid.appendChild(me);
         document.getElementById('multi-title').textContent = `멀티콜 · ${members.length + 1}명`;
         openCall('c-multi');
@@ -568,6 +575,11 @@
         const el = document.getElementById('cell-' + cid);
         const img = el && el.querySelector('img');
         if (img) img.style.display = 'none';
+      },
+      onSelfStream(stream){
+        const v = document.getElementById('selfcam-multi');
+        if (v) { v.srcObject = stream; v.style.display = 'block'; v.play().catch(()=>{});
+                 const l = document.querySelector('#cell-me .label'); if (l) l.style.display = 'none'; }
       },
       onMicReady(){ setMultiCaption('', '말을 걸어보세요 · 얼굴을 탭하면 그 사람에게 말합니다'); },
       onMicDenied(){ setMultiCaption('', '마이크 권한을 허용해야 대화할 수 있어요'); },
@@ -595,10 +607,8 @@
     btn.querySelector('i').textContent = off ? '🔇' : '🎙️';
   }
   function toggleCam(btn){
-    const off = btn.dataset.off !== '1';
-    btn.dataset.off = off ? '1' : '0';
+    const off = AidolCall.toggleCam();
     btn.querySelector('i').textContent = off ? '🚫' : '📷';
-    document.getElementById('self-solo').style.opacity = off ? '.25' : '';
   }
 
   /* ───────── 진행 중인 통화에 참여 ───────── */

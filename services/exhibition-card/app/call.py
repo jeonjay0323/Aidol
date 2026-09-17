@@ -39,6 +39,15 @@ async def call(websocket: WebSocket, card_id: str):
         return
 
     log.info(f"통화 연결: {card['name']} ({card_id}) / face={card['face_status']}")
+    import time, uuid
+    session_id = uuid.uuid4().hex[:12]
+    started = time.time()
+    mode = "video" if card["face_status"] == "ready" else "voice"
+    turns = 0
+    try:
+        db.log_event("call_start", card_id=card_id, session_id=session_id, meta={"mode": mode})
+    except Exception as e:
+        log.warning(f"call_start 로그 실패: {e}")
 
     client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
     config = types.LiveConnectConfig(
@@ -94,12 +103,20 @@ async def call(websocket: WebSocket, card_id: str):
                                 }))
                             sc = getattr(response, "server_content", None)
                             if sc and getattr(sc, "turn_complete", False):
+                                nonlocal turns
+                                turns += 1
                                 await websocket.send_text(json.dumps({"type": "turn_complete"}))
                                 break
                 except Exception as e:
                     log.info(f"수신 종료: {e}")
 
             await asyncio.gather(from_client(), to_client(), return_exceptions=True)
+            try:
+                db.log_event("call_end", card_id=card_id, session_id=session_id,
+                             meta={"mode": mode, "seconds": round(time.time() - started, 1),
+                                   "turns": turns})
+            except Exception as e:
+                log.warning(f"call_end 로그 실패: {e}")
 
     except Exception as e:
         log.error(f"통화 오류 {card_id}: {e}")
