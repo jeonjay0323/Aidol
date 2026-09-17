@@ -88,13 +88,23 @@ window.AidolRoom = (() => {
 
   async function startMic() {
     micCtx = new AudioContext({ sampleRate: 16000 });
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const constraints = {
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: { facingMode: 'user', width: { ideal: 640 } },
+    };
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (e) {
+      console.warn('카메라 포함 요청 실패, 음성만:', e.name);
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: constraints.audio });
+    }
+    const vt = micStream.getVideoTracks();
+    if (vt.length && hooks.onSelfStream) hooks.onSelfStream(new MediaStream(vt));
     await micCtx.audioWorklet.addModule('/static/pcm-processor.js');
     const source = micCtx.createMediaStreamSource(micStream);
     processor = new AudioWorkletNode(micCtx, 'pcm-processor');
 
-    const THRESH = 0.02, SILENCE_MS = 1000, MIN_CHUNKS = 15, PREROLL = 5;
+    const THRESH = 0.045, SILENCE_MS = 1000, MIN_CHUNKS = 22, PREROLL = 5;
     let state = 'silent', timer = null, count = 0, preroll = [];
 
     processor.port.onmessage = (e) => {

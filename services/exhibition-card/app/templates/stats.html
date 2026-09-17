@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>측정 — Lukids 전시</title>
+<style>
+  :root{
+    --bg:#14110d; --panel:#1d1811; --line:#2f2820;
+    --ink:#ece3d5; --dim:#a3957f; --dim2:#6f6455;
+    --accent:#d8452f; --live:#3ecf8e; --wait:#e0a93c;
+    --f:"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;
+    --m:ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);line-height:1.7;
+       word-break:keep-all;padding:0 0 5rem;-webkit-font-smoothing:antialiased}
+  .wrap{width:min(100% - 2.5rem, 74rem);margin-inline:auto}
+
+  header{padding:3.5rem 0 2rem;border-bottom:1px solid var(--line);margin-bottom:2.5rem}
+  .kicker{font-family:var(--m);font-size:11px;letter-spacing:2.2px;color:var(--dim2)}
+  h1{font-size:2rem;font-weight:800;letter-spacing:-.04em;margin:.5rem 0 .6rem}
+  .lead{color:var(--dim);font-size:.95rem;max-width:56ch}
+  .refresh{font-family:var(--m);font-size:11px;color:var(--dim2);margin-top:1rem}
+
+  h2{font-size:1.05rem;font-weight:800;letter-spacing:-.02em;margin:2.6rem 0 .3rem;
+     display:flex;align-items:baseline;gap:.6rem}
+  h2 em{font-style:normal;font-family:var(--m);font-size:.68rem;color:var(--dim2);
+        letter-spacing:.1em;text-transform:uppercase}
+  .note{color:var(--dim);font-size:.85rem;margin-bottom:1.1rem;max-width:60ch}
+
+  .grid{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.2rem}
+  .tile .k{font-family:var(--m);font-size:10.5px;letter-spacing:.9px;color:var(--dim2);
+           text-transform:uppercase}
+  .tile .v{font-size:1.9rem;font-weight:800;letter-spacing:-.03em;margin-top:.35rem;
+           font-variant-numeric:tabular-nums;line-height:1.1}
+  .tile .u{font-size:.78rem;color:var(--dim);margin-top:.2rem}
+  .tile.hi{border-color:color-mix(in srgb,var(--live) 45%,var(--line))}
+  .tile.hi .v{color:var(--live)}
+  .tile.warn .v{color:var(--wait)}
+
+  .bars{display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:.8rem;
+        background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.9rem}
+  .bars i{flex:1;background:var(--accent);border-radius:2px 2px 0 0;min-height:2px;opacity:.85}
+  .bars-x{display:flex;justify-content:space-between;font-family:var(--m);
+          font-size:10px;color:var(--dim2);margin-top:.35rem}
+
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin-top:.9rem}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:40rem}
+  th,td{text-align:left;padding:.62rem .9rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead th{background:#241e16;font-family:var(--m);font-size:10px;letter-spacing:1px;
+           text-transform:uppercase;color:var(--dim2);font-weight:500}
+  tbody tr:last-child td{border-bottom:none}
+  td.mono{font-family:var(--m);font-size:.8rem;color:var(--dim)}
+  td.num{font-variant-numeric:tabular-nums;font-weight:700}
+  .pill{display:inline-block;font-family:var(--m);font-size:10px;padding:.1rem .42rem;
+        border-radius:4px;letter-spacing:.04em}
+  .pill.official{color:var(--dim);background:#2a2319}
+  .pill.user{color:var(--live);background:color-mix(in srgb,var(--live) 15%,transparent)}
+  .pill.re{color:var(--wait);background:color-mix(in srgb,var(--wait) 16%,transparent)}
+
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:10px;
+         padding:2rem;text-align:center;color:var(--dim2);font-size:.88rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">LUKIDS · EXHIBITION MEASUREMENT</div>
+    <h1>측정</h1>
+    <p class="lead">
+      소유감과 애정을 나눠서 본다. 카드를 가져갔는지(소유)와
+      다시 열었는지(애정)는 다른 이야기다.
+    </p>
+    <div class="refresh">30초마다 자동 갱신 · <span id="at"></span></div>
+  </header>
+
+  <h2>핵심 <em>key metrics</em></h2>
+  <p class="note">재방문율이 이 실험의 중심 지표다. 전시장에서의 재미와 실제 애착을 가른다.</p>
+  <div class="grid">
+    <div class="tile hi">
+      <div class="k">재방문율</div>
+      <div class="v">{{ s.scan.revisitRate }}%</div>
+      <div class="u">{{ s.scan.revisited }} / {{ s.scan.uniqueCards }}장 재스캔</div>
+    </div>
+    <div class="tile warn">
+      <div class="k">날 넘겨 재방문</div>
+      <div class="v">{{ s.scan.returnedNextDay }}</div>
+      <div class="u">집에서 다시 연 카드</div>
+    </div>
+    <div class="tile">
+      <div class="k">발급 카드</div>
+      <div class="v">{{ s.issued }}</div>
+      <div class="u">유저 {{ s.cards.user }} · 공식 {{ s.cards.official }}</div>
+    </div>
+    <div class="tile">
+      <div class="k">총 통화</div>
+      <div class="v">{{ s.call.sessions + s.room.sessions }}</div>
+      <div class="u">1:1 {{ s.call.sessions }} · 멀티 {{ s.room.sessions }}</div>
+    </div>
+  </div>
+
+  <h2>스캔 <em>ownership</em></h2>
+  <div class="grid">
+    <div class="tile"><div class="k">스캔 수</div><div class="v">{{ s.scan.events }}</div></div>
+    <div class="tile"><div class="k">스캔된 카드</div><div class="v">{{ s.scan.uniqueCards }}</div>
+      <div class="u">전체 {{ s.cards.total }}장 중</div></div>
+    <div class="tile"><div class="k">멀티콜 참여 신청</div><div class="v">{{ s.lobbyJoins }}</div>
+      <div class="u">남을 부른 횟수</div></div>
+    <div class="tile"><div class="k">얼굴 준비됨</div><div class="v">{{ s.cards.faceReady }}</div>
+      <div class="u">영상통화 가능</div></div>
+  </div>
+
+  <h2>통화 <em>engagement</em></h2>
+  <div class="grid">
+    <div class="tile"><div class="k">1:1 평균 시간</div><div class="v">{{ s.call.avgSeconds }}</div>
+      <div class="u">초 · 총 {{ s.call.totalMinutes }}분</div></div>
+    <div class="tile"><div class="k">평균 턴</div><div class="v">{{ s.call.avgTurns }}</div>
+      <div class="u">주고받은 횟수</div></div>
+    <div class="tile"><div class="k">영상 · 음성</div><div class="v">{{ s.call.video }}·{{ s.call.voice }}</div></div>
+    <div class="tile"><div class="k">멀티콜 평균</div><div class="v">{{ s.room.avgSize }}명</div>
+      <div class="u">{{ s.room.avgSeconds }}초</div></div>
+  </div>
+
+  {% if s.hours %}
+  <h2>시간대 <em>activity</em></h2>
+  <div class="bars">
+    {% set mx = s.hours.values() | max %}
+    {% for k, v in s.hours.items() %}
+      <i style="height:{{ (v / mx * 100) | round(1) }}%" title="{{ k }} · {{ v }}"></i>
+    {% endfor %}
+  </div>
+  <div class="bars-x">
+    <span>{{ (s.hours.keys() | list | first)[5:] }}</span>
+    <span>{{ (s.hours.keys() | list | last)[5:] }}</span>
+  </div>
+  {% endif %}
+
+  <h2>카드별 <em>per card</em></h2>
+  <p class="note">스캔이 2회 이상이면 재방문이다. 마지막 스캔 날짜가 최초와 다르면 날을 넘긴 것이다.</p>
+  {% if s.perCard %}
+  <div class="tw"><table>
+    <thead><tr><th>카드</th><th>이름</th><th>구분</th><th>스캔</th><th>최초</th><th>마지막</th></tr></thead>
+    <tbody>
+      {% for c in s.perCard %}
+      <tr>
+        <td class="mono">{{ c.cardId }}</td>
+        <td>{{ c.name }}</td>
+        <td><span class="pill {{ c.source }}">{{ "공식" if c.source == "official" else "유저" }}</span></td>
+        <td class="num">{{ c.scans }}
+          {% if c.scans >= 2 %}<span class="pill re">재방문</span>{% endif %}</td>
+        <td class="mono">{{ c.first[:16] | replace("T", " ") }}</td>
+        <td class="mono">{{ c.last[:16] | replace("T", " ") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty">아직 스캔 기록이 없습니다.</div>
+  {% endif %}
+
+  <h2>원시 집계 <em>raw</em></h2>
+  <div class="tw"><table>
+    <thead><tr><th>이벤트</th><th>횟수</th></tr></thead>
+    <tbody>
+      {% for k, v in s.byType.items() %}
+      <tr><td class="mono">{{ k }}</td><td class="num">{{ v }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+
+</div>
+
+<script>
+  document.getElementById('at').textContent = new Date().toLocaleString('ko-KR');
+  setTimeout(() => location.reload(), 30000);
+</script>
+</body>
+</html>

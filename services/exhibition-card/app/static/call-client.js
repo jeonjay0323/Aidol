@@ -15,7 +15,7 @@ window.AidolCall = (() => {
   const SIMLI_CHUNK = 3200;
 
   /* ── Simli ── */
-  let t0 = 0;
+  let t0 = 0, selfEl = null;
   async function initSimli(faceId, videoEl) {
     t0 = performance.now();
     const { session_token } = await (await fetch('/api/simli/token', {
@@ -102,15 +102,32 @@ window.AidolCall = (() => {
   /* ── 마이크 · VAD ── */
   async function startMic() {
     micCtx = new AudioContext({ sampleRate: 16000 });
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
+    const constraints = {
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: selfEl ? { facingMode: 'user', width: { ideal: 640 } } : false,
+    };
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (e) {
+      // 카메라가 거부되거나 없으면 음성만으로 이어간다
+      console.warn('카메라 포함 요청 실패, 음성만:', e.name);
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: constraints.audio });
+    }
+    if (selfEl) {
+      const vt = micStream.getVideoTracks();
+      if (vt.length) {
+        selfEl.srcObject = new MediaStream(vt);
+        selfEl.style.display = 'block';
+        selfEl.play().catch(() => {});
+        hooks.onSelfVideo && hooks.onSelfVideo();
+      }
+    }
     await micCtx.audioWorklet.addModule('/static/pcm-processor.js');
     const source = micCtx.createMediaStreamSource(micStream);
     processor = new AudioWorkletNode(micCtx, 'pcm-processor');
 
     // 임계값 직전 청크를 들고 있다가 발화 시작 때 함께 보낸다 → 첫 음절 잘림 방지
-    const THRESH = 0.02, SILENCE_MS = 1000, MIN_CHUNKS = 15, PREROLL = 5;
+    const THRESH = 0.045, SILENCE_MS = 1000, MIN_CHUNKS = 22, PREROLL = 5;
     let state = 'silent', timer = null, count = 0, preroll = [];
 
     processor.port.onmessage = (e) => {
@@ -169,8 +186,9 @@ window.AidolCall = (() => {
   }
 
   /* ── 공개 API ── */
-  async function start(cardId, videoEl, cb = {}) {
+  async function start(cardId, videoEl, cb = {}, selfVideoEl = null) {
     hooks = cb;
+    selfEl = selfVideoEl;
     active = true;
     playCtx = new AudioContext({ sampleRate: 24000 });
     nextPlayTime = 0; activeSources = 0; muted = false;
@@ -218,6 +236,7 @@ window.AidolCall = (() => {
     if (simliPc) { simliPc.close(); simliPc = null; }
     if (processor) { processor.disconnect(); processor = null; }
     if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    if (selfEl) { selfEl.srcObject = null; selfEl.style.display = 'none'; }
     if (micCtx) { micCtx.close(); micCtx = null; }
     if (playCtx) { playCtx.close(); playCtx = null; }
     simliBuffer = new Int16Array(0);
@@ -225,6 +244,15 @@ window.AidolCall = (() => {
   }
 
   function toggleMute() { muted = !muted; return muted; }
+
+  function toggleCam() {
+    if (!micStream) return true;
+    const vt = micStream.getVideoTracks();
+    if (!vt.length) return true;
+    vt[0].enabled = !vt[0].enabled;
+    if (selfEl) selfEl.style.opacity = vt[0].enabled ? '' : '.25';
+    return !vt[0].enabled;   // true = 꺼짐
+  }
 
   /* ── 유틸 ── */
   function float32ToPCM16(f32) {
@@ -250,5 +278,5 @@ window.AidolCall = (() => {
     return buf;
   }
 
-  return { start, end, toggleMute };
+  return { start, end, toggleMute, toggleCam };
 })();

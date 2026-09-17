@@ -1,0 +1,21 @@
+# gcloud 는 .gcloudignore 가 없으면 .gitignore 를 따른다.
+# .gitignore 는 저장소 기준이라 얼굴 이미지를 제외하는데,
+# 배포에는 그 이미지가 반드시 들어가야 하므로 여기서 따로 정한다.
+.git/
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.log
+cards.db
+faces.json
+url.txt
+
+# 얼굴 원본(등록용 소스) — 컨테이너에는 필요 없다
+/faces/
+
+# QR 은 서버가 실시간 생성한다
+qr/
+qr*.png

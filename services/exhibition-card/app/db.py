@@ -10,9 +10,11 @@ if os.getenv("DB_BACKEND", "sqlite").lower() == "firestore":
     from .db_firestore import (  # noqa: F401
         ALPHABET, create_card, get_card, init, list_cards,
         new_card_id, now, pending_faces, set_face,
+        log_event, list_events, count_scans_by_card,
     )
 else:
     from .db_sqlite import (  # noqa: F401
         ALPHABET, create_card, get_card, init, list_cards,
         new_card_id, now, pending_faces, set_face,
+        log_event, list_events, count_scans_by_card,
     )
