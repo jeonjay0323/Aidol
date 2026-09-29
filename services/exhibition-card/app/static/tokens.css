@@ -1,0 +1,77 @@
+/* ══════════════════════════════════════════════════════════════
+   원티드 디자인 시스템 (Community) — Dark
+   https://www.figma.com/design/XF9637qqgmBQHKTH8BoY99
+
+   슥 멀티툴(localhost:8778/solo)에 적용된 것을 그대로 옮겨왔다.
+   색은 Atomic(원자) → Semantic(의미) 2단. 규칙은 Semantic 만 쓴다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 전시장 네트워크를 믿을 수 없어 CDN 대신 로컬 폰트를 쓴다 */
+@font-face{font-family:'Paperlogy';font-weight:400;font-display:swap;
+  src:url('/static/fonts/Paperlogy-4Regular.ttf') format('truetype')}
+@font-face{font-family:'Paperlogy';font-weight:500;font-display:swap;
+  src:url('/static/fonts/Paperlogy-5Medium.ttf') format('truetype')}
+@font-face{font-family:'Paperlogy';font-weight:700;font-display:swap;
+  src:url('/static/fonts/Paperlogy-7Bold.ttf') format('truetype')}
+
+:root{
+  /* ── Atomic ── */
+  --green-50:#429e00; --green-55:#58cf04; --green-60:#6be016;
+  --cn-5:#0f0f10;  --cn-7:#141415;  --cn-15:#1b1c1e; --cn-17:#212225;
+  --cn-22:#2e2f33; --cn-23:#333438; --cn-25:#37383c; --cn-40:#5a5c63;
+  --cn-50:#70737c; --cn-70:#989ba2; --cn-80:#aeb0b6; --cn-90:#c2c4c8;
+  --cn-99:#f7f7f8;
+  --status-green-60:#1ed45a; --orange-60:#ffa938; --red-60:#ff6363;
+
+  /* ── Semantic (Dark) ── */
+  --bg-normal:var(--cn-15);            /* Background/Normal/Normal */
+  --bg-alt:var(--cn-5);                /* Background/Normal/Alternative */
+  --bg-elevated:var(--cn-17);          /* Background/Elevated/Normal */
+  --bg-elevated-alt:var(--cn-7);       /* Background/Elevated/Alternative */
+  --label-strong:#ffffff;              /* Label/Strong */
+  --label-normal:var(--cn-99);         /* Label/Normal */
+  --label-neutral:#c2c4c8e0;           /* Label/Neutral 88% */
+  --label-alt:#aeb0b69c;               /* Label/Alternative 61% */
+  --label-assistive:#aeb0b647;         /* Label/Assistive 28% */
+  --label-disable:#989ba229;           /* Label/Disable 16% */
+  --line-solid:var(--cn-25);           /* Line/Solid/Normal */
+  --line-solid-neutral:var(--cn-23);   /* Line/Solid/Neutral */
+  --line-solid-alt:var(--cn-22);       /* Line/Solid/Alternative */
+  --line-normal:#70737c52;             /* Line/Normal/Normal */
+  --fill-normal:#70737c38;             /* Fill/Normal */
+  --fill-alt:#70737c1f;                /* Fill/Alternative */
+  --primary-normal:var(--green-60);    /* Primary/Normal */
+  --primary-strong:var(--green-55);
+  --primary-heavy:var(--green-50);
+  --accent-fg:var(--green-60);         /* 작은 글씨용 */
+  --status-positive:var(--status-green-60);
+  --status-caution:var(--orange-60);
+  --status-negative:var(--red-60);
+  --interaction-inactive:var(--cn-40);
+  --interaction-disable:var(--cn-22);
+  --dimmer:#171719bd;                  /* Material/Dimmer 74% */
+  --static-white:#ffffff; --static-black:#000000;
+
+  /* 브랜드 서체 — 라벨·버튼·제목. 본문은 Pretendard */
+  --brand:'Paperlogy','Pretendard',sans-serif;
+  --body:'Pretendard','Apple SD Gothic Neo',-apple-system,sans-serif;
+
+  /* 이 시스템은 모서리를 거의 세우지 않는다 */
+  --r:4px; --r-sheet:16px; --r-pill:999px;
+}
+
+/* ── 타이포 스케일 (원티드 18단계 중 쓰는 것만) ──
+   크기 / 행간 / 자간 이 한 벌로 묶여 다닌다. 따로 떼어 쓰지 않는다. */
+.t-title2   {font-size:28px;line-height:38px;letter-spacing:-0.0236em;font-family:var(--brand);font-weight:700}
+.t-title3   {font-size:24px;line-height:32px;letter-spacing:-0.023em; font-family:var(--brand);font-weight:700}
+.t-heading1 {font-size:22px;line-height:30px;letter-spacing:-0.0194em;font-family:var(--brand);font-weight:700}
+.t-heading2 {font-size:20px;line-height:28px;letter-spacing:-0.012em; font-family:var(--brand);font-weight:700}
+.t-headline1{font-size:18px;line-height:26px;letter-spacing:-0.002em; font-family:var(--brand);font-weight:700}
+.t-headline2{font-size:17px;line-height:24px;letter-spacing:0}
+.t-body1    {font-size:16px;line-height:24px;letter-spacing:0.0057em}
+.t-body1r   {font-size:16px;line-height:26px;letter-spacing:0.0057em}  /* Reading */
+.t-body2    {font-size:15px;line-height:22px;letter-spacing:0.0096em}
+.t-label1   {font-size:14px;line-height:20px;letter-spacing:0.0145em}
+.t-label2   {font-size:13px;line-height:18px;letter-spacing:0.0194em}
+.t-caption1 {font-size:12px;line-height:16px;letter-spacing:0.0252em}
+.t-caption2 {font-size:11px;line-height:14px;letter-spacing:0.0311em}

@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google.genai import types
 
-from . import db
+from . import call, db
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 GCP_PROJECT = os.getenv("GCP_PROJECT", "project-8f215caa-065e-4ffe-ac9")
@@ -35,7 +35,7 @@ router = APIRouter()
 
 def build_config(card, others):
     """다른 멤버가 누구인지 알려줘야 서로를 아는 대화가 된다."""
-    persona = card["persona"]
+    persona = call.persona_of(card)
     if others:
         names = ", ".join(o["name"] for o in others)
         persona += (
@@ -62,9 +62,10 @@ def build_config(card, others):
 
 
 class Room:
-    def __init__(self, websocket, cards):
+    def __init__(self, websocket, cards, room_id=""):
         self.ws = websocket
         self.cards = cards
+        self.room_id = room_id
         self.sessions = {}          # card_id -> live session
         self.turn = 0               # 라운드로빈 커서
         self.target = None          # 클라이언트가 지목한 상대
@@ -157,6 +158,13 @@ class Room:
 
                 if t == "target":
                     self.target = msg.get("cardId")
+                    # 누구를 지목했는지가 RQ2(통제 욕구·자기 것 편애)의 핵심 지표다
+                    try:
+                        db.log_event("room_target", card_id=self.target,
+                                     session_id=self.room_id,
+                                     meta={"host": self.cards[0]["card_id"]})
+                    except Exception as e:
+                        log.warning(f"room_target 로그 실패: {e}")
 
                 elif t == "activity_start":
                     async with self.lock:
@@ -201,7 +209,7 @@ async def room_socket(websocket: WebSocket):
         except Exception as e:
             log.warning(f"room_start 로그 실패: {e}")
         client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
-        room = Room(websocket, cards)
+        room = Room(websocket, cards, room_id)
 
         async with AsyncExitStack() as stack:
             for card in cards:
@@ -215,7 +223,8 @@ async def room_socket(websocket: WebSocket):
                 "type": "joined",
                 "members": [{
                     "cardId": c["card_id"], "name": c["name"], "voice": c["voice"],
-                    "faceId": c["face_id"] if c["face_status"] == "ready" else None,
+                    "faceId": (call.avatar_of(c) or {}).get("faceId"),
+                    "avatar": call.avatar_of(c),
                     "image": c["image_path"],
                 } for c in cards],
             }))

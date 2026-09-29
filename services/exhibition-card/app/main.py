@@ -8,6 +8,7 @@ import io
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 import segno
@@ -57,25 +58,36 @@ async def create_card(
     stats: str = Form("{}"),
     source: str = Form("user"),
     image: UploadFile = File(None),
+    model: UploadFile = File(None),
 ):
     """
     companion-creator가 호출하는 엔드포인트.
     이미지를 함께 주면 얼굴 등록까지 바로 걸어둔다 (카드 발급은 기다리지 않는다).
+    model(.vrm)을 주면 버추얼 카드가 된다. 이때 이미지는 카드 썸네일로만 쓰고
+    Simli 등록은 건너뛴다 — 브라우저가 모델을 직접 그리므로 바로 영상통화가 된다.
     """
+    is_vrm = model is not None
     card_id = db.create_card(
         name=name, persona=persona, voice=voice,
         tags=json.loads(tags), stats=json.loads(stats), source=source,
+        avatar_type="vrm" if is_vrm else "photo",
     )
 
     warnings = []
+    if is_vrm:
+        models = HERE / "static" / "models"
+        models.mkdir(exist_ok=True)
+        (models / f"{card_id}.vrm").write_bytes(await model.read())
+        db.set_media(card_id, model_path=f"/static/models/{card_id}.vrm")
+        db.set_face(card_id, face_status="ready")
+
     if image is not None:
         data = await image.read()
         path = HERE / "static" / "faces" / f"{card_id}.png"
         path.write_bytes(data)
+        db.set_media(card_id, image_path=f"/static/faces/{card_id}.png")
+    if image is not None and not is_vrm:
         db.set_face(card_id, face_status="none")
-        with db.connect() as con:
-            con.execute("UPDATE cards SET image_path=? WHERE card_id=?",
-                        (f"/static/faces/{card_id}.png", card_id))
         try:
             face_id, warnings = simli.submit_face(data, card_id, image.filename or "face.png")
             db.set_face(card_id, face_id=face_id, face_status="processing")
@@ -87,13 +99,15 @@ async def create_card(
     card = db.get_card(card_id)
     try:
         db.log_event("card_issued", card_id=card_id,
-                     meta={"source": source, "hasImage": image is not None})
+                     meta={"source": source, "hasImage": image is not None,
+                           "avatar": "vrm" if is_vrm else "photo"})
     except Exception as e:
         logging.warning(f"card_issued 로그 실패: {e}")
     return JSONResponse({
         "cardId": card_id,
         "scanUrl": f"/c/{card_id}",
         "faceStatus": card["face_status"],
+        "avatarType": card["avatar_type"],
         "warnings": warnings,
     })
 
@@ -116,11 +130,66 @@ async def api_get(card_id: str):
 async def api_call_config(card_id: str):
     """통화 엔진이 세션을 열 때 필요한 세 값."""
     card = card_or_404(card_id)
-    if card["face_status"] != "ready":
+    av = call.avatar_of(card)
+    if not av:
         return {"mode": "voice", "persona": card["persona"], "voice": card["voice"],
-                "faceId": None, "reason": card["face_status"]}
+                "faceId": None, "avatar": None, "reason": card["face_status"]}
     return {"mode": "video", "persona": card["persona"], "voice": card["voice"],
-            "faceId": card["face_id"]}
+            "faceId": av.get("faceId"), "avatar": av}
+
+
+# ── 꾸미기 ───────────────────────────────────────────────
+COLOR_PARTS = {"hair", "eye", "top", "bottom", "shoes"}
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+@app.post("/api/cards/{card_id}/custom")
+async def api_custom(card_id: str, payload: dict):
+    """버추얼 카드의 색 · 말투 · 호칭 · 한 줄 설정. 다음 통화부터 반영된다."""
+    card = card_or_404(card_id)
+    colors = {k: v for k, v in (payload.get("colors") or {}).items()
+              if k in COLOR_PARTS and isinstance(v, str) and HEX.match(v)}
+    custom = {
+        "colors": colors,
+        "speech": payload.get("speech") if payload.get("speech") in call.SPEECH else None,
+        "callme": str(payload.get("callme") or "").strip()[:10],
+        "note": str(payload.get("note") or "").strip()[:100],
+    }
+    db.set_custom(card_id, custom)
+    try:
+        before = card.get("custom") or {}
+        db.log_event("customize", card_id=card_id, meta={
+            "parts": sorted(colors), "speech": custom["speech"],
+            "callme": bool(custom["callme"]), "noteLen": len(custom["note"]),
+            "first": not before,
+        })
+    except Exception as e:
+        logging.warning(f"customize 로그 실패: {e}")
+    return custom
+
+
+@app.post("/api/cards/{card_id}/thumb")
+async def api_thumb(card_id: str, request: Request):
+    """꾸민 모습을 브라우저가 찍어 올린다. 카드 · 로비 · 멀티콜 화면이 이 이미지를 쓴다."""
+    card = card_or_404(card_id)
+    if card.get("avatar_type") != "vrm":
+        raise HTTPException(400, "버추얼 카드만 올릴 수 있습니다")
+    data = await request.body()
+    # Firestore 문서 한도(1MB) 안쪽. JPEG 시그니처만 받는다.
+    if not data.startswith(b"\xff\xd8") or len(data) > 700_000:
+        raise HTTPException(400, "JPEG 700KB 이하만 받습니다")
+    db.set_thumb(card_id, data)
+    return {"imagePath": db.get_card(card_id)["image_path"]}
+
+
+@app.get("/thumb/{card_id}.jpg")
+async def thumb(card_id: str):
+    data = db.get_thumb(card_id)
+    if not data:
+        raise HTTPException(404)
+    # 주소에 버전(?v=)이 붙어 있어 바뀌면 새 주소가 된다. 오래 캐시해도 된다.
+    return Response(data, media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 # ── 화면 ─────────────────────────────────────────────────
@@ -146,6 +215,7 @@ async def scan_landing(request: Request, card_id: str):
 @app.get("/card/{card_id}", response_class=HTMLResponse)
 async def printable_card(request: Request, card_id: str):
     card = card_or_404(card_id)
+    card["image_path"] = card["photo_path"]   # 인쇄물은 실물 카드와 같아야 한다
     return templates.TemplateResponse("card.html", {
         "request": request, "card": card,
         "qr_url": f"/qr/{card_id}.png",
@@ -318,6 +388,7 @@ def _summarize():
             "official": sum(1 for c in cards.values() if c.get("source") == "official"),
             "user": sum(1 for c in cards.values() if c.get("source") == "user"),
             "faceReady": sum(1 for c in cards.values() if c.get("face_status") == "ready"),
+            "virtual": sum(1 for c in cards.values() if c.get("avatar_type") == "vrm"),
         },
         "scan": {
             "events": by_type.get("scan", 0),
@@ -354,6 +425,63 @@ def _summarize():
             } for cid, n in scans.items()
         ], key=lambda x: -x["scans"]),
     }
+
+
+# ── 연구용 ────────────────────────────────────────────────
+# docs/연구 설계 — 커스터마이징과 다인 참여.md 참고
+
+CONDITIONS = ["A", "B", "C"]     # A 프리셋 / B 이름 / C 성격까지 직접
+
+
+@app.get("/api/condition")
+async def api_condition():
+    """만들기를 시작할 때 조건을 배정한다.
+
+    참가자가 고르게 두면 자기선택 편향이 생기므로 서버가 정한다.
+    무작위 대신 가장 적게 배정된 칸을 채워 균형을 맞춘다(전시 표본이 작다).
+    """
+    counts = {c: 0 for c in CONDITIONS}
+    try:
+        for e in db.list_events(limit=20000, type="condition_assigned"):
+            c = (e.get("meta") or {}).get("depth")
+            if c in counts:
+                counts[c] += 1
+    except Exception as e:
+        logging.warning(f"조건 집계 실패: {e}")
+    depth = min(CONDITIONS, key=lambda c: counts[c])
+    try:
+        db.log_event("condition_assigned", meta={"depth": depth, "counts": counts})
+    except Exception as e:
+        logging.warning(f"condition_assigned 로그 실패: {e}")
+    return {"depth": depth, "counts": counts}
+
+
+@app.post("/api/step")
+async def api_step(payload: dict):
+    """만들기 단계별 도달 기록. 완주율과 소진 효과를 본다."""
+    try:
+        db.log_event("create_step", meta={
+            "step": str(payload.get("step"))[:32],
+            "depth": str(payload.get("depth"))[:4],
+            "ms": payload.get("ms"),
+        })
+    except Exception as e:
+        logging.warning(f"create_step 로그 실패: {e}")
+    return {"ok": True}
+
+
+@app.post("/api/survey")
+async def api_survey(payload: dict):
+    """통화 직후 한 문항. 전시장에서 회수되는 유일한 주관 지표다."""
+    try:
+        db.log_event("survey", card_id=payload.get("cardId"), meta={
+            "q": str(payload.get("q"))[:40],
+            "value": payload.get("value"),
+            "context": str(payload.get("context"))[:16],
+        })
+    except Exception as e:
+        logging.warning(f"survey 로그 실패: {e}")
+    return {"ok": True}
 
 
 @app.get("/api/stats")

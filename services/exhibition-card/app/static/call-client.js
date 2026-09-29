@@ -4,12 +4,15 @@
  * 오디오가 두 갈래로 흐른다:
  *   Gemini Live 응답(24kHz) → 스피커
  *                           → 16kHz 리샘플 → Simli WebRTC → 립싱크 영상
+ * 버추얼(vrm) 카드는 Simli 대신 브라우저가 모델을 그린다 (vrm-avatar.js).
+ *   스피커로 가는 길목에 AnalyserNode를 두고 그 음량으로 입을 움직인다.
  * 얼굴이 아직 준비되지 않은 카드는 Simli 없이 음성만 흐른다.
  */
 window.AidolCall = (() => {
   let ws = null, micCtx = null, playCtx = null, processor = null, micStream = null;
   let simliWs = null, simliPc = null, simliBuffer = new Int16Array(0);
   let nextPlayTime = 0, activeSources = 0, muted = false, active = false;
+  let analyser = null, vrmView = null;
   let hooks = {};
 
   const SIMLI_CHUNK = 3200;
@@ -175,7 +178,7 @@ window.AidolCall = (() => {
     buf.copyToChannel(samples, 0);
     const src = playCtx.createBufferSource();
     src.buffer = buf;
-    src.connect(playCtx.destination);
+    src.connect(analyser || playCtx.destination);
     const at = Math.max(playCtx.currentTime, nextPlayTime);
     src.start(at);
     nextPlayTime = at + buf.duration;
@@ -191,6 +194,9 @@ window.AidolCall = (() => {
     selfEl = selfVideoEl;
     active = true;
     playCtx = new AudioContext({ sampleRate: 24000 });
+    analyser = playCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.connect(playCtx.destination);
     nextPlayTime = 0; activeSources = 0; muted = false;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -201,8 +207,17 @@ window.AidolCall = (() => {
       if (msg.type === 'connected') {
         // 화면을 먼저 연다. 마이크 권한 대기 때문에 로딩에 갇히지 않도록.
         hooks.onConnected && hooks.onConnected(msg);
-        if (msg.faceId) {
-          try { await initSimli(msg.faceId, videoEl); }
+        const av = msg.avatar || (msg.faceId ? { type: 'photo', faceId: msg.faceId } : null);
+        if (av && av.type === 'vrm') {
+          try {
+            vrmView = await AidolVRM.mount(videoEl.parentElement, av.url, analyser,
+              { colors: av.colors });
+            // 모델을 받는 사이 통화가 끊겼으면 바로 치운다
+            if (!active) { vrmView.dispose(); vrmView = null; }
+            else hooks.onVideo && hooks.onVideo();
+          } catch (err) { console.warn('VRM 로드 실패, 음성으로 진행:', err); }
+        } else if (av && av.faceId) {
+          try { await initSimli(av.faceId, videoEl); }
           catch (err) { console.warn('Simli 연결 실패, 음성으로 진행:', err); }
         }
         try {
@@ -234,11 +249,13 @@ window.AidolCall = (() => {
     if (simliWs) { simliWs.close(); simliWs = null; }
     pending = [];
     if (simliPc) { simliPc.close(); simliPc = null; }
+    if (vrmView) { vrmView.dispose(); vrmView = null; }
     if (processor) { processor.disconnect(); processor = null; }
     if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
     if (selfEl) { selfEl.srcObject = null; selfEl.style.display = 'none'; }
     if (micCtx) { micCtx.close(); micCtx = null; }
     if (playCtx) { playCtx.close(); playCtx = null; }
+    analyser = null;
     simliBuffer = new Int16Array(0);
     hooks.onEnd && hooks.onEnd();
   }
