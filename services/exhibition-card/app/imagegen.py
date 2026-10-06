@@ -102,6 +102,11 @@ def build(spec):
 def generate(spec):
     """JPEG 바이트를 돌려준다. 썸네일 저장소(700KB) 에 그대로 들어가는 크기로."""
     prompt, aspect = build(spec)
+    return to_jpeg(render(prompt, aspect), trim=spec.get("kind") == "virtual")
+
+
+def render(prompt, aspect):
+    """프롬프트 하나로 원본 이미지 바이트를 받는다. 공식 카드 발급(tools/seed_lineup.py)도 쓴다."""
     err = None
     for loc in random.sample(LOCATIONS, len(LOCATIONS)):
         try:
@@ -115,7 +120,7 @@ def generate(spec):
             )
             for part in (r.candidates[0].content.parts if r.candidates else []) or []:
                 if part.inline_data and part.inline_data.data:
-                    return to_jpeg(part.inline_data.data, trim=spec.get("kind") == "virtual")
+                    return part.inline_data.data
             # 안전 필터에 걸리면 이미지 없이 돌아온다. 다른 지역도 같으니 바로 멈춘다.
             raise RuntimeError("이미지를 만들지 못했어요. 프롬프트를 바꿔서 다시 해보세요.")
         except RuntimeError:

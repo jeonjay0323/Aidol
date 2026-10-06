@@ -84,6 +84,28 @@ static/            통화 클라이언트 · jsQR
 라벨 용지는 60×40mm 다. 사진은 세로 2:3 으로 뽑고 라벨도 40×60 세로로 그린 뒤, 인쇄할 때만 90° 눕힌다.
 연구 조건 A 는 직접 쓰는 칸을 숨긴다(고르기만).
 
+## 사이트 — 중간 보고용 프로토타입
+
+카드 화면(`/c/{id}`) 바깥에 다섯 페이지를 두고 상단 메뉴로 묶었다.
+
+| 주소 | 페이지 | 내용 |
+|---|---|---|
+| `/` | 소개 | 루키즈 소개 · 네 기능 · 공식 라인업 · 최근 만든 아이돌 |
+| `/make` | 01 제작 | 카드 화면의 만들기와 같은 흐름. 모든 칸을 연다(조건 C, `?depth=A` 로 바꿀 수 있다) |
+| `/print` | 02 인쇄 | 이 기기에서 만든 카드(localStorage `lukids.mine`)의 라벨 미리보기 · 인쇄, 번호로 찾기 |
+| `/gallery` | 03 전시 | `source=user` 카드 전체. 실물 · 버추얼 필터, 20초마다 새 카드를 받는다 |
+| `/call` | 04 통화 | 공식 아이돌 5명. `main.py` 의 `LINEUP` 이 이름으로 카드를 찾는다 |
+
+만들기 마크업과 스크립트는 `_create_screens.html` · `static/create.js` 로 빼서 두 곳이 같이 쓴다.
+카드 화면의 스타일은 `static/scan.css`, 사이트 틀은 `_site.html` · `static/site.css`.
+
+공식 아이돌 중 도하 · 린은 `tools/seed_lineup.py` 로 발급한다(사진 생성 → 공식 카드 → Simli 등록).
+사진은 로컬 `app/static/faces/` 에도 남으니 발급한 뒤 다시 배포해야 사진이 유지된다.
+
+```bash
+./.venv/bin/python tools/seed_lineup.py https://aidol-card-938904157102.asia-northeast3.run.app
+```
+
 ## 초대 경로
 
 관람객 기기를 통제할 수 없어 넷을 열어뒀다. 모두 같은 로비로 모인다.

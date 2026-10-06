@@ -271,6 +271,87 @@ async def printable_label(request: Request, card_id: str):
     card["image_path"] = card["photo_path"]
     return templates.TemplateResponse("label.html", {
         "request": request, "card": card, "qr_url": f"/qr/{card_id}.png",
+        "embed": "embed" in request.query_params,
+    })
+
+
+# ── 사이트 — 소개 · 제작 · 인쇄 · 전시 · 통화 ─────────────────
+# 통화 페이지에 세우는 공식 아이돌 5명. 로컬 SQLite 와 운영 Firestore 의 카드 id 가 달라서
+# 이름으로 찾는다. 공식 카드 발급은 tools/seed_lineup.py.
+LINEUP = [
+    {"name": "하루", "line": "차분하고 다정한 메인보컬. 조용한 밤에 통화하는 걸 좋아해요."},
+    {"name": "시온", "line": "무대 위에선 날카롭고, 통화에선 한없이 부드러운 댄서."},
+    {"name": "하늘", "line": "토끼 헤드폰을 쓴 버추얼 라이버. 리듬게임과 딸기 우유를 좋아해요."},
+    {"name": "도하", "line": "웃음이 많은 막내 래퍼. 오늘 하루가 어땠는지 꼭 물어봐요."},
+    {"name": "린",   "line": "몽환적인 음색의 보컬. 말수는 적지만 이야기를 끝까지 들어줘요."},
+]
+
+
+def public_card(c):
+    """목록 화면에 내려보내는 값. persona · owner_token · face_id 는 서버에만 둔다."""
+    tags = c.get("tags") or []
+    return {
+        "cardId": c["card_id"], "name": c["name"], "tags": tags,
+        "stats": c.get("stats") or {}, "image": c.get("image_path"),
+        "kind": "virtual" if c.get("avatar_type") == "vrm" or "버추얼" in tags[:1] else "real",
+        "avatar": c.get("avatar_type"), "faceStatus": c.get("face_status"),
+        "createdAt": c.get("created_at"),
+    }
+
+
+def lineup():
+    officials = {}
+    for c in db.list_cards(source="official"):
+        officials.setdefault(c["name"], c)   # 같은 이름이 둘이면 최신(목록 맨 앞)
+    out = []
+    for p in LINEUP:
+        c = officials.get(p["name"])
+        if c:
+            out.append({**public_card(c), "line": p["line"]})
+    return out
+
+
+def gallery_cards():
+    return [public_card(c) for c in db.list_cards(source="user")]
+
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("home.html", {
+        "request": request, "page": "home",
+        "lineup": lineup(), "recent": gallery_cards()[:6],
+    })
+
+
+@app.get("/make", response_class=HTMLResponse)
+async def make_page(request: Request):
+    return templates.TemplateResponse("make.html", {"request": request, "page": "make"})
+
+
+@app.get("/print", response_class=HTMLResponse)
+async def print_page(request: Request):
+    return templates.TemplateResponse("print.html", {"request": request, "page": "print"})
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+async def gallery_page(request: Request):
+    cards = gallery_cards()
+    return templates.TemplateResponse("gallery.html", {
+        "request": request, "page": "gallery",
+        "cards_json": json.dumps(cards, ensure_ascii=False),
+    })
+
+
+@app.get("/api/gallery")
+async def api_gallery():
+    """전시 페이지가 새로 만든 카드를 주기적으로 받아간다."""
+    return gallery_cards()
+
+
+@app.get("/call", response_class=HTMLResponse)
+async def call_page(request: Request):
+    return templates.TemplateResponse("lineup.html", {
+        "request": request, "page": "call", "lineup": lineup(),
     })
 
 

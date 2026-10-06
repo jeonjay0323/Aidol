@@ -1,0 +1,128 @@
+<!-- ══ 4. 내 아이돌 만들기 ══
+     실물 · 버추얼을 고르고, 조합 + 직접 쓴 프롬프트로 사진을 생성해 바로 인쇄한다.
+     Simli 등록은 하지 않는다 — 만든 카드는 음성 통화로 시작한다.
+     실물은 tools/image-generator(normal · epic) 프롬프트를 서버가 그대로 쓴다. -->
+<section class="screen" id="s-create">
+  <header><button class="back" aria-label="뒤로" onclick="CREATE_HOME()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
+  <div class="steps"><i class="on"></i><i></i><i></i><i></i></div>
+  <div class="q">어떤 아이돌을 만들까요?</div>
+  <div class="qsub">사진이 생성되면 바로 카드로 인쇄됩니다</div>
+
+  <div class="grades" id="kinds">
+    <button class="grade" data-kind="real" onclick="pickKind(this)">
+      <b>실물 아이돌</b>
+      <small>실제 사람처럼 찍은 화보 사진. 동물상이나 종족 컨셉을 골라 만들어요.</small>
+    </button>
+    <button class="grade" data-kind="virtual" onclick="pickKind(this)">
+      <b>버추얼 아이돌</b>
+      <small>애니메이션 일러스트로 그린 버추얼 캐릭터. 분위기와 머리색을 골라 만들어요.</small>
+    </button>
+  </div>
+
+  <div class="q" style="font-size:15px;margin-bottom:10px">성별</div>
+  <div class="seg" id="gender">
+    <button data-gender="f" onclick="pickGender(this)">여자</button>
+    <button data-gender="m" onclick="pickGender(this)">남자</button>
+  </div>
+
+  <p class="hint" id="create-hint" role="status" hidden></p>
+  <button class="cta" onclick="toLook()">다음</button>
+</section>
+
+<!-- ══ 4-2. 모습 ══ -->
+<section class="screen" id="s-create-look">
+  <header><button class="back" aria-label="뒤로" onclick="go('s-create')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
+  <div class="steps"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+
+  <div id="look-real">
+    <div class="q" style="font-size:15px;margin-bottom:10px">카드 종류</div>
+    <div class="seg" id="grade">
+      <button data-grade="normal" onclick="pickGrade(this)">일상 · 동물상</button>
+      <button data-grade="epic" onclick="pickGrade(this)">에픽 · 종족</button>
+    </div>
+  </div>
+
+  <div class="q" id="look-q">어떤 얼굴인가요?</div>
+  <div class="qsub" id="look-sub"></div>
+  <div class="opts" id="look-opts"></div>
+
+  <div class="field" id="hair-field" hidden>
+    <label>머리색</label>
+    <div class="opts" id="hair-opts" style="grid-template-columns:repeat(3,1fr)"></div>
+  </div>
+
+  <div class="field" id="prompt-field">
+    <label for="c-prompt">원하는 모습을 직접 써주세요 <span style="font-weight:600">(선택)</span></label>
+    <textarea id="c-prompt" rows="3" maxlength="300" oninput="syncPrompt()"
+      placeholder="예 · 은색 귀걸이, 앞머리 있는 단발, 별 모양 머리핀"></textarea>
+    <div class="ctxline"><span id="prompt-count">0</span> / 300자</div>
+  </div>
+
+  <p class="hint" id="look-hint" role="status" hidden></p>
+  <button class="cta" onclick="toName()">다음</button>
+</section>
+
+<!-- ══ 4-3. 이름 · 목소리 · 성격 ══ -->
+<section class="screen" id="s-create-name">
+  <header><button class="back" aria-label="뒤로" onclick="go('s-create-look')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
+  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="q">이름을 지어주세요</div>
+  <div class="qsub">카드와 통화 화면에 그대로 쓰입니다</div>
+
+  <div class="field">
+    <label for="c-name">이름</label>
+    <input id="c-name" type="text" maxlength="10" placeholder="예 · 하루"
+           autocomplete="off" enterkeyhint="done" oninput="syncReview()">
+  </div>
+
+  <div class="field">
+    <label>목소리</label>
+    <div class="opts" id="voice-opts"></div>
+  </div>
+
+  <div class="field" id="persona-field" hidden>
+    <label for="c-persona">어떤 성격인가요?</label>
+    <textarea id="c-persona" rows="4" maxlength="200" oninput="syncReview()"
+      placeholder="예 · 장난기 많고 말이 빠르다. 좋아하는 얘기가 나오면 끝도 없이 떠든다."></textarea>
+    <div class="ctxline"><span id="persona-count">0</span> / 200자</div>
+  </div>
+
+  <div class="review" id="review"></div>
+  <p class="hint" id="name-hint" role="status" hidden></p>
+  <button class="cta" onclick="toResult()">사진 만들기</button>
+  <div style="height:10px"></div>
+</section>
+
+<!-- ══ 4-4. 생성 결과 → 발급 → 인쇄 ══ -->
+<section class="screen" id="s-create-result">
+  <header><button class="back" aria-label="뒤로" onclick="backFromResult()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
+  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="q" id="result-q">사진을 만드는 중</div>
+  <div class="qsub" id="result-sub">20초쯤 걸려요</div>
+
+  <div class="gen-stage" id="gen-stage">
+    <img id="gen-img" alt="" hidden>
+    <div class="loading" id="gen-wait"><div class="spin"></div><p>그리는 중</p></div>
+  </div>
+
+  <p class="hint" id="result-hint" role="status" hidden></p>
+  <div id="result-pick">
+    <button class="cta" id="issue-btn" onclick="issueCard()" disabled>이 사진으로 카드 만들기</button>
+    <button class="ghost" id="regen-btn" onclick="generate()" disabled style="margin-top:10px">다시 만들기</button>
+  </div>
+  <div id="result-done" hidden>
+    <button class="cta" onclick="printCard()">카드 인쇄하기</button>
+    <div class="after">
+      <a class="act" href="#" onclick="location.href='/gallery?card=' + CREATE.cardId; return false">
+        <span><b>전시에서 보기</b><small>만든 아이돌이 전시 페이지에 올라갔어요</small></span>
+        <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
+      </a>
+      <a class="act" href="#" onclick="location.href='/c/' + CREATE.cardId; return false">
+        <span><b>통화하기</b><small>내 카드 화면에서 바로 전화를 걸어요</small></span>
+        <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
+      </a>
+    </div>
+  </div>
+  <div style="height:10px"></div>
+</section>
+

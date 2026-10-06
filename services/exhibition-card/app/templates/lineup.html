@@ -1,0 +1,89 @@
+{% extends "_site.html" %}
+{% block title %}아이돌 통화 · LUKIDS{% endblock %}
+{% block head %}
+<style>
+  .line{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+  @media (max-width:960px){ .line{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:640px){ .line{grid-template-columns:1fr 1fr;gap:10px} }
+
+  .idol{
+    display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;
+    background:var(--bg-elevated);border:1px solid var(--line-solid-alt);
+    transition:transform .18s,border-color .18s;
+  }
+  .idol:hover{transform:translateY(-3px);border-color:var(--primary-normal)}
+  .idol .ph{position:relative;aspect-ratio:3/4;background:var(--bg-elevated-alt);overflow:hidden}
+  .idol .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
+  .idol .ph::after{content:"";position:absolute;inset:auto 0 0 0;height:40%;
+    background:linear-gradient(to top,var(--bg-elevated),transparent)}
+  .idol .no{
+    position:absolute;top:10px;left:10px;z-index:1;
+    font-family:var(--brand);font-weight:700;font-size:12px;letter-spacing:.08em;color:#fff;
+    text-shadow:0 1px 4px rgba(0,0,0,.5);
+  }
+  .idol .mode{
+    position:absolute;top:10px;right:10px;z-index:1;display:flex;align-items:center;gap:5px;
+    padding:3px 8px;border-radius:var(--r-pill);background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+    font-family:var(--brand);font-weight:700;font-size:11px;line-height:14px;color:#fff;
+  }
+  .idol .mode i{width:6px;height:6px;border-radius:50%;background:var(--status-positive)}
+  .idol .mode.voice i{background:var(--status-caution)}
+  .idol .body{padding:2px 14px 16px;display:flex;flex-direction:column;flex:1;position:relative}
+  .idol .name{font-family:var(--brand);font-weight:700;font-size:22px;line-height:30px;color:var(--label-strong)}
+  .idol .tags{font-size:12px;line-height:16px;color:var(--primary-normal);margin-top:2px}
+  .idol p{font-size:13px;line-height:20px;color:var(--label-neutral);margin:10px 0 16px;word-break:keep-all}
+  .idol .site-btn{margin-top:auto;width:100%}
+  .idol .site-btn svg{width:16px;height:16px}
+
+  .how{margin-top:40px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .how div{border-top:1px solid var(--line-solid);padding-top:14px}
+  .how b{display:block;font-family:var(--brand);font-weight:700;font-size:14px;line-height:20px;margin-bottom:4px}
+  .how span{font-size:13px;line-height:20px;color:var(--label-alt);word-break:keep-all}
+  @media (max-width:640px){ .how{grid-template-columns:1fr} }
+</style>
+{% endblock %}
+
+{% block body %}
+<svg style="display:none" aria-hidden="true"><defs>
+  <g id="g-phone" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.2 3.5h3l1.5 3.8-1.9 1.4a12 12 0 0 0 5.5 5.5l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8A16.5 16.5 0 0 1 4.4 5.5a1.8 1.8 0 0 1 1.8-2Z"/></g>
+</defs></svg>
+
+<main class="site-main">
+  <div class="site-head">
+    <div class="site-step">04 · 아이돌 통화</div>
+    <h1>먼저 만나볼 다섯 명</h1>
+    <p>미리 준비된 공식 아이돌과 바로 통화할 수 있어요. 얼굴을 보며 영상으로, 아직 얼굴이 준비되지 않았다면 목소리로 이야기합니다.</p>
+  </div>
+
+  {% if lineup %}
+  <div class="line">
+    {% for c in lineup %}
+    <a class="idol" href="/c/{{ c.cardId }}">
+      <div class="ph">
+        {% if c.image %}<img src="{{ c.image }}" alt="{{ c.name }}">{% endif %}
+        <span class="no">{{ "%02d" | format(loop.index) }}</span>
+        {% if c.avatar == "vrm" %}<span class="mode"><i></i>3D 영상</span>
+        {% elif c.faceStatus == "ready" %}<span class="mode"><i></i>영상</span>
+        {% else %}<span class="mode voice"><i></i>음성</span>{% endif %}
+      </div>
+      <div class="body">
+        <div class="name">{{ c.name }}</div>
+        <div class="tags">{{ c.tags | join(" · ") }}</div>
+        <p>{{ c.line }}</p>
+        <span class="site-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-phone"/></svg>통화하기</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="site-empty">공식 아이돌 카드가 아직 없어요. <code>tools/seed_lineup.py</code> 로 발급합니다.</div>
+  {% endif %}
+
+  <div class="how">
+    <div><b>마이크만 있으면 돼요</b><span>폰에서는 HTTPS 주소로 열어야 마이크가 켜집니다.</span></div>
+    <div><b>짧게 말하고 기다려요</b><span>말을 멈추면 1초 뒤에 아이돌이 대답합니다.</span></div>
+    <div><b>여럿이 함께도 돼요</b><span>통화 화면의 멀티콜에서 다른 카드를 불러 같이 이야기할 수 있어요.</span></div>
+  </div>
+</main>
+{% endblock %}

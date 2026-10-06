@@ -1,0 +1,143 @@
+{% extends "_site.html" %}
+{% block title %}아이돌 인쇄 · LUKIDS{% endblock %}
+{% block head %}
+<style>
+  .pr{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:48px;align-items:start}
+  @media (max-width:860px){ .pr{grid-template-columns:1fr;gap:28px} }
+
+  .labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
+  @media (max-width:560px){ .labels{grid-template-columns:1fr} }
+  .lb{
+    background:var(--bg-elevated);border:1px solid var(--line-solid-alt);border-radius:var(--r);
+    padding:16px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
+  }
+  .lb.pick{border-color:var(--primary-normal)}
+  /* 40×60mm 라벨을 2배로 — label.html?embed 가 같은 크기로 그린다 */
+  .lb iframe{width:calc(40mm * 2);height:calc(60mm * 2);border:0;border-radius:2px;display:block;
+             background:var(--bg-elevated-alt)}
+  .lb .who{display:flex;flex-direction:column;height:100%;min-width:0;padding-top:4px}
+  .lb .name{font-family:var(--brand);font-weight:700;font-size:18px;line-height:26px;color:var(--label-strong)}
+  .lb .sub{font-size:12px;line-height:18px;color:var(--label-alt);margin-top:2px;word-break:keep-all}
+  .lb .id{font-size:12px;color:var(--label-assistive);margin-top:6px;font-variant-numeric:tabular-nums}
+  .lb .who .site-btn{margin-top:auto;width:100%}
+  .lb .who .rm{margin-top:6px;background:none;border:none;color:var(--label-assistive);font-size:12px;cursor:pointer;font-family:inherit}
+  @media (max-width:560px){
+    .lb{grid-template-columns:1fr;justify-items:center}
+    .lb .who{width:100%;text-align:center}
+  }
+
+  .spec{background:var(--bg-elevated);border:1px solid var(--line-solid-alt);border-radius:var(--r);padding:20px}
+  .spec h3{font-family:var(--brand);font-weight:700;font-size:15px;line-height:22px;margin-bottom:12px;color:var(--label-normal)}
+  .spec dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13px;line-height:20px}
+  .spec dt{color:var(--label-alt)}
+  .spec ol{margin:4px 0 0 18px;font-size:13px;line-height:22px;color:var(--label-neutral)}
+  .spec + .spec{margin-top:12px}
+  .find{display:flex;gap:6px}
+  .find input{
+    flex:1;min-width:0;padding:10px 12px;border-radius:var(--r);font-family:var(--brand);font-size:16px;
+    background:var(--fill-alt);border:1px solid var(--line-normal);color:var(--label-normal);
+    text-transform:uppercase;letter-spacing:.08em;
+  }
+  .find input:focus{outline:none;border-color:var(--label-normal)}
+  .find-msg{font-size:12px;color:var(--status-negative);margin-top:8px;min-height:16px}
+</style>
+{% endblock %}
+
+{% block body %}
+<main class="site-main">
+  <div class="site-head">
+    <div class="site-step">02 · 아이돌 인쇄</div>
+    <h1>내가 만든 아이돌을 카드로</h1>
+    <p>이 기기에서 만든 아이돌이 라벨로 준비돼 있어요. 인쇄한 카드의 QR 을 찍으면 언제든 다시 그 아이돌에게 전화할 수 있습니다.</p>
+  </div>
+
+  <div class="pr">
+    <div>
+      <div class="labels" id="labels"></div>
+      <div class="site-empty" id="empty" hidden>
+        이 기기에서 만든 아이돌이 아직 없어요.<br>만들기를 마치면 여기에 라벨이 준비됩니다.
+        <div><a class="site-btn" href="/make">아이돌 만들기</a></div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="spec">
+        <h3>카드 번호로 찾기</h3>
+        <form class="find" onsubmit="findCard(event)">
+          <input id="find" maxlength="8" placeholder="예 · KACJE0ZS" autocomplete="off" aria-label="카드 번호">
+          <button class="site-btn sm">찾기</button>
+        </form>
+        <div class="find-msg" id="find-msg" role="status"></div>
+      </div>
+      <div class="spec">
+        <h3>라벨 규격</h3>
+        <dl>
+          <dt>용지</dt><dd>60 × 40 mm 감열 라벨</dd>
+          <dt>디자인</dt><dd>40 × 60 mm 세로, 인쇄 시 90° 회전</dd>
+          <dt>QR</dt><dd>16 mm · 카드 화면 주소</dd>
+        </dl>
+      </div>
+      <div class="spec">
+        <h3>인쇄 순서</h3>
+        <ol>
+          <li>인쇄하기를 누르면 새 창에 라벨이 열려요</li>
+          <li>사진과 QR 이 뜨면 인쇄 창이 자동으로 떠요</li>
+          <li>용지 60 × 40 mm, 여백 없음으로 출력</li>
+        </ol>
+      </div>
+    </aside>
+  </div>
+</main>
+{% endblock %}
+
+{% block script %}
+<script>
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const want = (new URLSearchParams(location.search).get('card') || '').toUpperCase();
+  let extra = want ? [want] : [];   // 번호로 찾은 카드. 이 기기 목록에는 넣지 않는다
+
+  async function fetchCard(id){
+    const r = await fetch('/api/cards/' + encodeURIComponent(id));
+    return r.ok ? r.json() : null;
+  }
+
+  async function render(){
+    const ids = [...new Set([...extra, ...MINE.all()])];
+    const cards = (await Promise.all(ids.map(fetchCard))).filter(Boolean);
+    document.getElementById('empty').hidden = cards.length > 0;
+    document.getElementById('labels').innerHTML = cards.map(c => `
+      <div class="lb ${c.card_id === want ? 'pick' : ''}" id="lb-${c.card_id}">
+        <iframe src="/label/${c.card_id}?embed=1" title="${esc(c.name)} 라벨 미리보기" loading="lazy"></iframe>
+        <div class="who">
+          <div class="name">${esc(c.name)}</div>
+          <div class="sub">${esc((c.tags || []).join(' · '))}</div>
+          <div class="id">${c.card_id}</div>
+          <button class="site-btn" onclick="printLabel('${c.card_id}')">인쇄하기</button>
+          ${MINE.has(c.card_id) ? '' : `<button class="rm" onclick="dropExtra('${c.card_id}')">목록에서 빼기</button>`}
+        </div>
+      </div>`).join('');
+    if (want) document.getElementById('lb-' + want)?.scrollIntoView({ block:'center' });
+  }
+
+  function printLabel(id){
+    window.open(`/label/${id}?print=1`, '_blank');
+    fetch('/api/step', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ step:'print', depth:null, ms:null }) }).catch(()=>{});
+  }
+
+  async function findCard(e){
+    e.preventDefault();
+    const id = document.getElementById('find').value.trim().toUpperCase();
+    const msg = document.getElementById('find-msg');
+    msg.textContent = '';
+    if (!id) return;
+    if (!(await fetchCard(id))) { msg.textContent = '그 번호의 카드가 없어요.'; return; }
+    extra = [id, ...extra.filter(x => x !== id)];
+    document.getElementById('find').value = '';
+    render();
+  }
+  function dropExtra(id){ extra = extra.filter(x => x !== id); render(); }
+
+  render();
+</script>
+{% endblock %}

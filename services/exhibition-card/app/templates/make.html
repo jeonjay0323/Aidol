@@ -1,0 +1,84 @@
+{% extends "_site.html" %}
+{% block title %}아이돌 제작 · LUKIDS{% endblock %}
+{% block css %}<link rel="stylesheet" href="/static/scan.css?v=site-1">{% endblock %}
+{% block head %}
+<style>
+  /* 왼쪽은 설명, 오른쪽은 폰 너비의 만들기 흐름. 좁으면 위아래로 */
+  .make{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:56px;align-items:start}
+  .make .wrap{max-width:none;margin:0;padding:0 0 40px}
+  .make-side{position:sticky;top:56px}
+  .flow{list-style:none;counter-reset:f;margin-top:8px;border-top:1px solid var(--line-solid-alt)}
+  .flow li{
+    counter-increment:f;display:grid;grid-template-columns:36px 1fr;gap:4px 10px;
+    padding:16px 0;border-bottom:1px solid var(--line-solid-alt);
+  }
+  .flow li::before{
+    content:"0" counter(f);grid-row:span 2;
+    font-family:var(--brand);font-weight:700;font-size:13px;line-height:22px;color:var(--label-assistive);
+  }
+  .flow li.on::before{color:var(--primary-normal)}
+  .flow b{font-family:var(--brand);font-weight:700;font-size:15px;line-height:22px;color:var(--label-normal)}
+  .flow li:not(.on) b{color:var(--label-alt)}
+  .flow span{font-size:13px;line-height:20px;color:var(--label-alt)}
+  @media (max-width:900px){
+    .make{grid-template-columns:1fr;gap:0}
+    .make-side{position:static}
+    .make-side .flow{display:none}
+    .make .wrap{max-width:420px;margin:0 auto}
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<svg class="sr" aria-hidden="true" focusable="false"><defs>
+  <g id="g-plus" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></g>
+  <g id="g-chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></g>
+</defs></svg>
+
+<main class="site-main">
+  <div class="make">
+    <div class="make-side">
+      <div class="site-head">
+        <div class="site-step">01 · 아이돌 제작</div>
+        <h1>프롬프트로<br>내 아이돌을 만든다</h1>
+        <p>실물 화보처럼, 혹은 버추얼 캐릭터로. 고른 조합과 직접 쓴 문장이 그대로 생성 프롬프트가 됩니다.</p>
+      </div>
+      <ol class="flow" id="flow">
+        <li data-s="s-create"><b>종류 · 성별</b><span>실물 아이돌 또는 버추얼 아이돌</span></li>
+        <li data-s="s-create-look"><b>모습</b><span>얼굴상 · 종족 · 분위기 · 머리색과 직접 쓰는 프롬프트</span></li>
+        <li data-s="s-create-name"><b>이름 · 목소리 · 성격</b><span>통화할 때 그대로 쓰입니다</span></li>
+        <li data-s="s-create-result"><b>생성 · 발급</b><span>마음에 들 때까지 다시 뽑고, 고른 한 장으로 카드를 발급합니다</span></li>
+      </ol>
+    </div>
+    <div class="wrap">
+      {% include "_create_screens.html" %}
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block script %}
+<script>
+  const ORDER = ['s-create', 's-create-look', 's-create-name', 's-create-result'];
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    document.getElementById(id).classList.add('on');
+    const n = ORDER.indexOf(id);
+    document.querySelectorAll('#flow li').forEach((li, i) => li.classList.toggle('on', i <= n));
+    window.scrollTo(0, 0);
+  }
+  function pick(btn){
+    btn.parentElement.querySelectorAll('.opt').forEach(o => o.classList.remove('sel'));
+    btn.classList.add('sel');
+  }
+  const CREATE_HOME = () => { location.href = '/'; };
+</script>
+<script src="/static/create.js?v=site-1"></script>
+<script>
+  // 제작 페이지는 모든 칸을 연다(C). 연구 조건을 시험할 때만 ?depth=A|B|C 로 바꾼다.
+  // 전시장 카드 화면(/c/…)의 만들기는 지금처럼 서버가 조건을 배정한다.
+  const q = new URLSearchParams(location.search).get('depth');
+  CREATE.depth = ['A', 'B', 'C'].includes(q) ? q : 'C';
+  startCreate();
+</script>
+{% endblock %}

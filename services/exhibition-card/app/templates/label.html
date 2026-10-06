@@ -63,6 +63,12 @@
   .meta{color:#ddd;font-size:13px;text-align:center;line-height:1.8}
   .meta code{background:#222;padding:2px 7px;border-radius:4px;color:#8fd}
 
+  /* 인쇄 페이지의 미리보기(iframe). 라벨만 2배로 */
+  body.embed{background:transparent;padding:0;gap:0;overflow:hidden;align-items:flex-start}
+  body.embed .stage{transform:scale(2);transform-origin:top left}
+  body.embed .stage-space{height:calc(60mm * 2);width:calc(40mm * 2)}
+  body.embed .meta{display:none}
+
   @media print{
     @page{size:60mm 40mm;margin:0}
     html,body{width:60mm;height:40mm;background:#fff;padding:0;display:block;overflow:hidden}
@@ -74,7 +80,7 @@
   }
 </style>
 </head>
-<body>
+<body{% if embed %} class="embed"{% endif %}>
 
 <div class="stage-space">
 <div class="stage">
