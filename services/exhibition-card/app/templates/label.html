@@ -70,8 +70,14 @@
   body.embed .meta{display:none}
 
   .btns{display:flex;gap:10px;width:100%;max-width:360px}
+  .btns.col{flex-direction:column}
+  .btns .row{display:flex;gap:10px}
+  .btns .row .pbtn{flex:1;text-align:center;text-decoration:none;font-size:15px;padding:13px}
+  .mono{color:#ddd;font:500 15px "Apple SD Gothic Neo",sans-serif;display:flex;align-items:center;gap:8px;justify-content:center}
+  .mono input{width:20px;height:20px}
+  .how{color:#aaa;font:400 13px/1.6 "Apple SD Gothic Neo",sans-serif;text-align:center;word-break:keep-all}
   .pbtn{flex:1;padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
-        background:#ffd60a;color:#000;cursor:pointer}
+        background:linear-gradient(90deg,#d9d453,#e63bc0 55%,#8b3be6);color:#fff;cursor:pointer}
   .pbtn.ghost{background:#555;color:#fff}
   body.embed .btns{display:none}
 
@@ -94,7 +100,7 @@
   <div class="label">
     {% if card.image_path %}<img class="photo" src="{{ card.image_path }}" alt="">{% endif %}
     <div class="top">
-      <span class="chip">AIDOL</span>
+      <span class="chip">LUKIDS</span>
       <span class="serial">{{ card.card_id }}</span>
     </div>
     <div class="foot">
@@ -113,16 +119,41 @@
   라벨 40 × 60 mm → 용지 60 × 40 mm 가로로 인쇄
 </div>
 <!-- 인쇄 창이 자동으로 안 뜨는 기기(아이패드 등)와, 인쇄 뒤 원래 화면으로 돌아가기 -->
-<div class="btns">
-  <button class="pbtn" onclick="window.print()">인쇄하기</button>
+<div class="btns col">
+  <!-- 블루투스 라벨 프린터(Aiyin 앱)는 브라우저 인쇄가 안 된다 — 라벨 이미지를 앱으로 넘긴다 -->
+  <button class="pbtn" id="share-btn" onclick="shareLabel()">Aiyin 앱으로 보내기</button>
+  <label class="mono"><input type="checkbox" id="mono" onchange="prepare()"> 흑백 프린터용(감열지)</label>
+  <div class="row">
+    <a class="pbtn ghost" id="save-link" href="/label/{{ card.card_id }}.png" target="_blank">이미지만 열기</a>
+    <button class="pbtn ghost" onclick="window.print()">브라우저 인쇄</button>
+  </div>
   <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
+  <p class="how" id="how">공유 창에서 Aiyin 을 고르세요. 목록에 없으면 "이미지 저장" 후 Aiyin 앱에서 사진으로 불러와 60×40 라벨로 인쇄합니다.</p>
 </div>
 
 <script>
-  // 만들기 화면에서 ?print=1 로 열면 사진과 QR 이 다 뜬 뒤 인쇄 창을 띄운다
-  if (new URLSearchParams(location.search).has('print')) {
-    window.addEventListener('load', () => setTimeout(() => window.print(), 300));
+  // 라벨 이미지를 미리 받아 둔다. iOS 는 누른 순간에 바로 share() 해야 해서 기다릴 틈이 없다
+  const ID = {{ card.card_id | tojson }};
+  let file = null;
+  async function prepare(){
+    file = null;
+    const mono = document.getElementById('mono').checked;
+    const url = `/label/${ID}.png${mono ? '?mono=1' : ''}`;
+    document.getElementById('save-link').href = url;
+    try {
+      const blob = await fetch(url).then(r => r.blob());
+      file = new File([blob], `lukids-${ID}${mono ? '-mono' : ''}.png`, { type: 'image/png' });
+    } catch {}
   }
+  function shareLabel(){
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'LUKIDS 라벨' }).catch(() => {});
+    } else {
+      // 공유가 안 되는 브라우저(데스크톱 등) — 이미지를 새 창으로 열어 저장하게 한다
+      window.open(document.getElementById('save-link').href, '_blank');
+    }
+  }
+  if (!document.body.classList.contains('embed')) prepare();
 </script>
 </body>
 </html>

@@ -268,6 +268,29 @@ async def printable_card(request: Request, card_id: str):
     })
 
 
+@app.get("/label/{card_id}.png")
+async def label_png(request: Request, card_id: str, mono: bool = False):
+    """라벨 이미지 — 라벨 프린터 앱(Aiyin 등)에 넘긴다. /label/{id} 보다 먼저 등록해야 한다."""
+    from . import label_png as L
+    card = card_or_404(card_id)
+    path = card.get("photo_path") or ""
+    if path.startswith("/thumb/"):
+        photo = db.get_thumb(card_id)
+    elif path.startswith("/static/"):
+        f = HERE / path.split("?")[0].lstrip("/")
+        photo = f.read_bytes() if f.exists() else None
+    else:
+        photo = None
+    png = await asyncio.to_thread(L.render, photo, card["name"], card.get("tags"), card_id,
+                                  f"{base_url(request)}/c/{card_id}", mono)
+    try:
+        db.log_event("label_image", card_id=card_id, meta={"mono": mono})
+    except Exception as e:
+        logging.warning(f"label_image 로그 실패: {e}")
+    return Response(png, media_type="image/png", headers={
+        "Content-Disposition": f'inline; filename="lukids-{card_id}{"-mono" if mono else ""}.png"'})
+
+
 @app.get("/label/{card_id}", response_class=HTMLResponse)
 async def printable_label(request: Request, card_id: str):
     """만들기 화면에서 나온 카드용 60×40mm 라벨. 세로로 디자인하고 인쇄할 때 눕힌다."""
