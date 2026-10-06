@@ -90,11 +90,11 @@ def main():
             print(f"  건너뜀 (이미 있음) {name}")
             continue
         p = IDOLS[name]
-        base = ROOT / "app" / "static" / "expr" / SLUGS[name] / "base.jpg"
-        if base.exists():
+        face_img = ROOT / "app" / "static" / "expr" / SLUGS[name] / "base.jpg"
+        if face_img.exists():
             # 표정 세트와 같은 얼굴이어야 한다 — 새로 뽑지 않고 기본 표정 사진을 쓴다
             print(f"  {name} 표정 세트의 기본 사진 사용")
-            raw = base.read_bytes()
+            raw = face_img.read_bytes()
         else:
             print(f"  {name} 사진 생성 중…")
             raw = make_photo(p)
