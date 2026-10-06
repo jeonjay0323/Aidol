@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=grad-1">
+<link rel="stylesheet" href="/static/scan.css?v=sub-2">
 </head>
 <body>
 
@@ -214,6 +214,8 @@
       <div class="vcall-name">{{ card.name }}</div>
       <div class="vcall-time" id="vt-solo" role="timer">연결 중…</div>
       <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <!-- 아이돌이 하는 말 자막 (Gemini 출력 자막) -->
+      <div class="vsub" id="vsub" aria-live="polite"></div>
     </div>
     <div class="vcall-acts">
       <button class="vbtn on" id="spk-btn" onclick="toggleSpeaker(this)" aria-pressed="true">
@@ -543,13 +545,19 @@
   function startCall(){
     document.getElementById('load-msg').textContent = CARD.name + '에게 거는 중';
     go('s-load');
+    Sub.reset();
     AidolCall.start(CARD.card_id, document.getElementById('avatar'), {
       onConnected(msg){
-        document.getElementById('c-solo').classList.toggle('voice', msg.mode !== 'video');
+        const voice = msg.mode !== 'video';
+        document.getElementById('c-solo').classList.toggle('voice', voice);
+        // 내 얼굴은 늘 보인다 — 음성 통화면 같은 화면을 전화 화면 구석으로 옮긴다
+        const me = document.getElementById('self-solo');
+        (voice ? document.getElementById('vcall') : document.getElementById('feed-solo')).appendChild(me);
         openCall('c-solo');
         setCaption('', msg.mode === 'video' ? '연결 중…' : '음성으로 연결 중…');
       },
       onVideo(){ document.getElementById('feed-ph').style.display = 'none'; },
+      onSelfVideo(){ document.getElementById('self-solo').classList.add('on'); },
       onMicReady(){ setCaption('안녕, 와줘서 고마워.', '말을 걸어보세요'); },
       onMicDenied(){
         setCaption('', '마이크 권한을 허용해야 대화할 수 있어요');
@@ -558,18 +566,35 @@
       onSpeaking(on){
         document.getElementById('feed-solo').classList.toggle('talking', on);
         document.getElementById('vcall').classList.toggle('talking', on);
-        if(on) setCaption('', '말하는 중…');
       },
-      onUserSpeaking(on){ if(on){ setCaption('', '듣고 있어요…'); Face.listen(); } },
-      onText(text){ Face.hear(text); },
+      onUserSpeaking(on){ if(on){ setCaption('', '듣고 있어요…'); Face.listen(); Sub.reset(); } },
+      onText(text){ Face.hear(text); Sub.add(text); },
       onTurnEnd(){ Face.settle(); },
       onError(e){
         document.getElementById('load-msg').textContent = '연결 실패: ' + e;
         setTimeout(()=>go('s-card'), 2500);
       },
       onEnd(){ endCall(); },
-    });
+    }, document.getElementById('selfcam'));
   }
+
+  /* ───────── 자막 ─────────
+     아이돌 말을 한 턴 동안 이어 붙여 보여준다. 내가 말을 시작하면 지운다.
+     음성 통화는 사진 아래(#vsub), 영상 통화는 화면 아래 캡션에 같은 글을 쓴다. */
+  const Sub = (() => {
+    let turn = '';
+    const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    function draw(){
+      const el = document.getElementById('vsub');
+      el.textContent = turn;
+      el.classList.toggle('on', !!turn);
+      if (turn) document.getElementById('cap-solo').innerHTML = esc(turn);
+    }
+    return {
+      add(text){ turn += text; draw(); },
+      reset(){ turn = ''; draw(); },
+    };
+  })();
 
   // 로비에 초대 가능한 카드를 띄운다. 전시에서는 카드를 스캔해 넣지만,
   // 벽에 놓인 카드를 직접 고를 수도 있어야 한다.

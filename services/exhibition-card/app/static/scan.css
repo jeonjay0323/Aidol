@@ -547,3 +547,20 @@
   .cta:hover{filter:brightness(1.06)}
   .cta:active{transform:scale(.985)}
   .cta:disabled{opacity:.35;box-shadow:none}
+
+  /* 통화 중 내 얼굴 — 음성 통화 화면에서는 오른쪽 위 작은 창 */
+  .vcall .self{position:absolute;top:calc(20px + env(safe-area-inset-top));right:20px;bottom:auto;z-index:3;
+    width:112px;border-radius:14px;border:2px solid rgba(255,255,255,.25);background:#222;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);overflow:hidden}
+  .vcall .self video{border-radius:0}
+  @media (min-width:700px){ .vcall .self{width:150px} }
+
+  /* 자막 — 아이돌이 하는 말. 최근 세 줄만 보이게 아래부터 자른다 */
+  .vsub{margin:14px auto 0;max-width:560px;min-height:0;padding:0 8px;
+    font-size:19px;line-height:28px;font-weight:600;color:#fff;text-align:center;word-break:keep-all;
+    text-shadow:0 1px 8px rgba(0,0,0,.6);
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;
+    opacity:0;transition:opacity .2s}
+  .vsub.on{opacity:1;background:rgba(0,0,0,.35);border-radius:12px;padding:10px 16px}
+  @media (min-width:700px){ .vsub{font-size:22px;line-height:32px} }
+  .vcall-acts{margin-top:16px}
