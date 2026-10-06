@@ -15,21 +15,14 @@ function rememberMine(id){
    실물: gen/idol.py(아이돌 생성기) 의 분위기 · 이종족 키를 그대로 서버에 넘긴다.
    버추얼: imagegen.py MOODS / HAIR 의 키. 조립은 서버가 한다. */
 
-// 실물 — app/gen/idol.py (아이돌 생성기 사본) 의 키. 일상은 분위기, 에픽은 이종족
-const VIBES = {
-  f: [ { k:'cute and bubbly',   label:'발랄',     note:'통통 튀는 에너지' },
-       { k:'cool and chic',     label:'시크',     note:'차갑고 도도하게' },
-       { k:'innocent and pure', label:'청순',     note:'맑고 깨끗하게' },
-       { k:'bold girl-crush',   label:'걸크러시', note:'당당하고 강렬하게' },
-       { k:'dreamy and soft',   label:'몽환',     note:'부드럽고 아련하게' },
-       { k:'playful tomboy',    label:'보이시',   note:'장난기 있는 털털함' } ],
-  m: [ { k:'boyish and bright', label:'청량',     note:'밝은 소년미' },
-       { k:'cool and chic',     label:'시크',     note:'차갑고 도도하게' },
-       { k:'soft and gentle',   label:'다정',     note:'부드럽고 따뜻하게' },
-       { k:'dreamy and soft',   label:'몽환',     note:'아련한 분위기' },
-       { k:'charismatic and intense', label:'카리스마', note:'강렬한 눈빛' },
-       { k:'playful puppy-like', label:'댕댕',    note:'장난스러운 강아지상' } ],
-};
+// 실물 — app/gen/idol.py(아이돌 생성기). 일상은 동물상(얼굴형 뉘앙스), 에픽은 이종족
+const PRESETS = [
+  { k:'cat',  label:'고양이상', note:'도도한 눈매'   },
+  { k:'dog',  label:'강아지상', note:'순하고 다정한 눈' },
+  { k:'wolf', label:'늑대상',   note:'날카롭고 강렬하게' },
+  { k:'fox',  label:'여우상',   note:'가늘고 긴 눈매' },
+  { k:'deer', label:'사슴상',   note:'크고 맑은 눈' },
+];
 const SPECIES = [
   { k:'mermaid',   label:'인어',     note:'진주빛 비늘 · 지느러미 귀' },
   { k:'fairy',     label:'요정',     note:'투명한 날개 · 뾰족귀' },
@@ -61,6 +54,12 @@ const VOICES = {
        { k:'Fenrir', label:'유쾌한' },    { k:'Orus', label:'감성적인' } ],
   f: [ { k:'Leda', label:'맑고 또렷한' }, { k:'Zephyr', label:'들뜨고 밝은' } ],
 };
+// 누르면 그 목소리로 짧은 인사를 들려준다 (tools/voice_samples.py 로 녹음, 통화와 같은 목소리)
+let voiceAudio = null;
+function playVoice(k){
+  try { if (voiceAudio) voiceAudio.pause(); voiceAudio = new Audio(`/static/voices/${k}.wav`); voiceAudio.play().catch(() => {}); } catch {}
+}
+const voiceLabel = () => ((VOICES[CREATE.gender] || []).find(v => v.k === CREATE.voice) || {}).label || '—';
 
 const CREATE = { kind:null, gender:null, grade:'normal', look:null, hair:null, prompt:'',
                  voice:null, name:'', persona:'', image:null, tries:0, cardId:null,
@@ -68,6 +67,29 @@ const CREATE = { kind:null, gender:null, grade:'normal', look:null, hair:null, p
 
 // A조건은 이름도 안 짓는다. 고르는 노동만 남기려면 이름이 자동이어야 한다.
 const AUTO_NAMES = ['하루','시온','유나','재이','린','도하','서우','노아'];
+const NAME_POOL = {
+  f: ['유나','서아','하린','지유','루아','채이','다온','새봄','아린','은채','소이','예나','리아','나린','하율'],
+  m: ['도하','시우','이안','준','태오','하람','유찬','재이','서진','로운','지호','온유','해찬','라온','건우'],
+};
+let autoName = '';
+function randomName(){
+  const pool = NAME_POOL[CREATE.gender] || NAME_POOL.f;
+  let n; do { n = pool[Math.floor(Math.random() * pool.length)]; } while (n === autoName && pool.length > 1);
+  return n;
+}
+function placeCaret(){
+  // 입력칸 글자 끝에 깜빡이는 커서를 그려 '고칠 수 있다'를 보여준다. 누르면 진짜 커서로 바뀐다
+  const el = document.getElementById('c-name'), c = document.getElementById('fake-caret');
+  if (!el || !c) return;
+  const cs = getComputedStyle(el), cv = placeCaret.cv || (placeCaret.cv = document.createElement('canvas'));
+  const g = cv.getContext('2d'); g.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  c.style.left = (parseFloat(cs.paddingLeft) + g.measureText(el.value || '').width + 2) + 'px';
+  c.hidden = document.activeElement === el;
+}
+function rerollName(){
+  const el = document.getElementById('c-name');
+  autoName = el.value = randomName(); syncReview(); placeCaret();
+}
 
 function logStep(step){
   fetch('/api/step', { method:'POST', headers:{'Content-Type':'application/json'},
@@ -108,7 +130,6 @@ function pickGender(btn){
   btn.classList.add('sel');
   CREATE.gender = btn.dataset.gender;
   CREATE.voice = null;              // 목소리 풀이 성별마다 다르다
-  CREATE.look = null;               // 분위기 목록도 성별마다 다르다
   hint('create-hint', '');
 }
 function pickGrade(btn){
@@ -119,7 +140,7 @@ function pickGrade(btn){
 
 function lookPool(){
   if (CREATE.kind === 'virtual') return MOODS;
-  return CREATE.grade === 'epic' ? SPECIES : VIBES[CREATE.gender || 'f'];
+  return CREATE.grade === 'epic' ? SPECIES : PRESETS;
 }
 
 function renderLook(){
@@ -129,7 +150,7 @@ function renderLook(){
   document.querySelectorAll('#grade button')
     .forEach(b => b.classList.toggle('sel', b.dataset.grade === CREATE.grade));
   document.getElementById('look-q').textContent =
-    virtual ? '어떤 분위기인가요?' : epic ? '어떤 종족인가요?' : '어떤 분위기인가요?';
+    virtual ? '어떤 분위기인가요?' : epic ? '어떤 종족인가요?' : '어떤 얼굴인가요?';
   document.getElementById('look-sub').textContent =
     virtual ? '표정 · 조명 · 배경이 함께 정해집니다'
     : epic ? '종족마다 귀 · 눈 · 표식과 배경이 함께 정해집니다'
@@ -187,8 +208,8 @@ function toName(){
   VOICES[CREATE.gender].forEach(v => {
     const b = document.createElement('button');
     b.className = 'opt two' + (CREATE.voice === v.k ? ' sel' : '');
-    b.innerHTML = `<b>${v.label}</b><small>${v.k}</small>`;
-    b.onclick = () => { pick(b); CREATE.voice = v.k; hint('name-hint', ''); syncReview(); };
+    b.innerHTML = `<b>${v.label}</b><small class="play">▶ 들어보기</small>`;
+    b.onclick = () => { pick(b); CREATE.voice = v.k; hint('name-hint', ''); syncReview(); playVoice(v.k); };
     box.appendChild(b);
   });
   // A조건은 이름도 성격도 받지 않는다 — 고르는 노동만 남긴다
@@ -199,6 +220,14 @@ function toName(){
     return toResult();
   }
   document.getElementById('persona-field').hidden = CREATE.depth !== 'C';
+  // 이름은 매번 무작위로 미리 넣어 둔다 — 비어 있거나 자동으로 넣은 그대로면 새로
+  const nm = document.getElementById('c-name');
+  if (!nm.value.trim() || nm.value === autoName) { autoName = nm.value = randomName(); }
+  if (!nm.dataset.caret) {
+    nm.dataset.caret = '1';
+    ['focus','blur','input'].forEach(ev => nm.addEventListener(ev, placeCaret));
+  }
+  setTimeout(placeCaret, 0);
   syncReview();
   logStep('name');
   go('s-create-name');
@@ -221,10 +250,10 @@ function syncReview(){
     ['이름',   CREATE.name || '—'],
     ['종류',   virtual ? '버추얼' : epic ? '실물 · 에픽' : '실물 · 일상'],
     ['성별',   CREATE.gender === 'f' ? '여자' : '남자'],
-    [virtual || !epic ? '분위기' : '종족', lookLabel()],
+    [virtual ? '분위기' : epic ? '종족' : '얼굴상', lookLabel()],
     ...(virtual ? [['머리색', hairLabel()]] : []),
     ...(CREATE.prompt ? [['직접 쓴 모습', CREATE.prompt]] : []),
-    ['목소리', CREATE.voice || '—'],
+    ['목소리', voiceLabel()],
     ...(CREATE.depth === 'C' ? [['성격', CREATE.persona || '—']] : []),
   ];
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -289,7 +318,7 @@ function buildPersona(){
   const virtual = CREATE.kind === 'virtual';
   const who = virtual ? '버추얼 아이돌' : '아이돌 연습생';
   const look = virtual ? `${lookLabel()} 분위기에 ${hairLabel()} 머리`
-             : CREATE.grade === 'epic' ? `${lookLabel()} 컨셉` : `${lookLabel()} 분위기`;
+             : CREATE.grade === 'epic' ? `${lookLabel()} 컨셉` : `${lookLabel()} 얼굴`;
   return [
     `너는 ${who} '${CREATE.name}'이야. ${CREATE.gender === 'f' ? '여자' : '남자'}야.`,
     `외모: ${look}.`,

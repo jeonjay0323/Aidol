@@ -564,3 +564,54 @@
   .vsub.on{opacity:1;background:rgba(0,0,0,.35);border-radius:12px;padding:10px 16px}
   @media (min-width:700px){ .vsub{font-size:22px;line-height:32px} }
   .vcall-acts{margin-top:16px}
+
+  /* ══ 2026-10-07 버튼 · 칸 통일 ══
+     모든 누르는 것은 같은 모서리(14px) · 같은 높이 계열(주요 52px). 그라데이션은 주요 버튼만. */
+  :root{ --rb:14px; }
+  .cta{min-height:52px;padding:13px 20px;border-radius:var(--rb);font-size:17px;gap:10px;
+       box-shadow:0 6px 18px rgba(230,59,192,.18)}
+  .cta::after{width:16px;height:16px}
+  .ghost,.act,.grade,.gen-stage,.review,.note,.field input,.field textarea,.cust-stage,.hint,.caution{border-radius:var(--rb)}
+  .ghost{min-height:52px;padding:13px 20px;font-size:15px;margin-top:10px}
+  .act{padding:15px 16px}
+  .opt{border-radius:12px;min-height:52px}
+  .seg{border-radius:var(--rb);padding:4px}
+  .seg button{border-radius:10px;min-height:44px}
+  .back{border-radius:12px;width:36px;height:36px}
+  .grade.kind .ex{border-radius:10px}
+
+  /* ══ 단계 — 번호 동그라미 + 이름, 지난 단계는 체크 ══ */
+  ol.steps{list-style:none;display:flex;gap:0;margin:2px 0 22px;padding:0;counter-reset:st}
+  ol.steps li{flex:1;position:relative;counter-increment:st;display:flex;flex-direction:column;align-items:center;gap:7px;
+    font-size:12px;line-height:16px;font-weight:700;color:var(--label-assistive);text-align:center;word-break:keep-all}
+  ol.steps li::before{content:counter(st);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+    font:700 14px var(--brand);background:var(--fill-alt);border:1.5px solid var(--line-normal);color:var(--label-alt);
+    position:relative;z-index:1;transition:all .25s}
+  /* 동그라미 사이 선 */
+  ol.steps li:not(:last-child)::after{content:"";position:absolute;top:15px;left:calc(50% + 19px);right:calc(-50% + 19px);
+    height:2px;border-radius:1px;background:var(--line-normal)}
+  /* 지난 단계 */
+  ol.steps.s2 li:nth-child(-n+1),ol.steps.s3 li:nth-child(-n+2),ol.steps.s4 li:nth-child(-n+3){color:var(--label-neutral)}
+  ol.steps.s2 li:nth-child(-n+1)::before,ol.steps.s3 li:nth-child(-n+2)::before,ol.steps.s4 li:nth-child(-n+3)::before{
+    content:"✓";background:var(--label-normal);border-color:var(--label-normal);color:#000}
+  ol.steps.s2 li:nth-child(-n+1)::after,ol.steps.s3 li:nth-child(-n+2)::after,ol.steps.s4 li:nth-child(-n+3)::after{
+    background:linear-gradient(90deg,#d9d453,#e63bc0)}
+  /* 지금 단계 */
+  ol.steps.s1 li:nth-child(1),ol.steps.s2 li:nth-child(2),ol.steps.s3 li:nth-child(3),ol.steps.s4 li:nth-child(4){color:var(--label-strong)}
+  ol.steps.s1 li:nth-child(1)::before,ol.steps.s2 li:nth-child(2)::before,ol.steps.s3 li:nth-child(3)::before,ol.steps.s4 li:nth-child(4)::before{
+    background:linear-gradient(135deg,#d9d453,#e63bc0 60%,#8b3be6);border-color:transparent;color:#fff;
+    box-shadow:0 0 0 4px rgba(230,59,192,.18)}
+
+  /* ══ 이름 — 미리 넣은 이름 끝에 깜빡이는 커서, 옆에 다시 뽑기 ══ */
+  .namebox{position:relative}
+  .namebox input{padding-right:52px;font-size:20px !important;font-family:var(--brand) !important}
+  .fake-caret{position:absolute;top:50%;width:2px;height:24px;margin-top:-12px;background:var(--primary-normal);
+    border-radius:1px;animation:blink 1s steps(1) infinite;pointer-events:none}
+  .fake-caret[hidden]{display:none}
+  @keyframes blink{50%{opacity:0}}
+  .reroll{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:10px;
+    border:none;background:var(--fill-normal);color:var(--label-normal);display:grid;place-items:center;cursor:pointer}
+  .reroll svg{width:18px;height:18px}
+
+  /* 목소리 — 누르면 들려준다 */
+  .opt.two small.play{color:var(--primary-normal);font-weight:700}

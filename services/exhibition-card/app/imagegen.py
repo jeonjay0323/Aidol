@@ -78,11 +78,12 @@ def virtual_prompt(gender, mood, hair, add):
 
 # ── 실물 ─────────────────────────────────────────────────
 # 2026-10-07 부터 ~/claude/idol-photos 의 아이돌 생성기 프롬프트(gen/idol.py)를 쓴다.
-# 일상 = 분위기(vibe) 하나를 고르고, 에픽 = 이종족(race) 하나를 고른다. 얼굴 · 머리 · 화장은 매번 무작위.
+# 일상 = 동물상(얼굴 뉘앙스), 에픽 = 이종족(race). 머리 · 화장 · 분위기는 매번 무작위.
 def real_prompt(gender, grade, look, add, rng):
     if grade == "epic":
         return I.build_prompt(gender, rng, race=look, add=add), LABEL_ASPECT
-    return I.build_prompt(gender, rng, vibe=look, add=add), LABEL_ASPECT
+    # 일상 = 동물상. normal.py 의 얼굴 설명을 아이돌 생성기 프롬프트에 뉘앙스로 넣는다
+    return I.build_prompt(gender, rng, add=add, face_type=N.PRESETS[look][1]), LABEL_ASPECT
 
 
 def build(spec):
@@ -94,9 +95,9 @@ def build(spec):
     if spec.get("kind") == "virtual":
         return virtual_prompt(gender, spec.get("mood"), spec.get("hair"), add), LABEL_ASPECT
     grade, look = spec.get("grade"), spec.get("look")
-    pool = I.RACE_KEYS if grade == "epic" else I.VIBES[gender]
+    pool = I.RACE_KEYS if grade == "epic" else N.PRESETS
     if look not in pool:
-        raise ValueError("분위기나 종족을 골라주세요")
+        raise ValueError("얼굴상이나 종족을 골라주세요")
     return real_prompt(gender, grade, look, add, random.Random())
 
 

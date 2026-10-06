@@ -4,7 +4,7 @@
      실물은 tools/image-generator(normal · epic) 프롬프트를 서버가 그대로 쓴다. -->
 <section class="screen" id="s-create">
   <header><button class="back" aria-label="뒤로" onclick="CREATE_HOME()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i></i><i></i><i></i></div>
+  <ol class="steps s1" aria-label="4단계 중 1단계"><li>종류</li><li>모습</li><li>이름 · 목소리</li><li>사진</li></ol>
   <div class="q">어떤 아이돌을 만들까요?</div>
   <div class="qsub">사진이 생성되면 바로 카드로 인쇄됩니다</div>
 
@@ -35,7 +35,7 @@
 <!-- ══ 4-2. 모습 ══ -->
 <section class="screen" id="s-create-look">
   <header><button class="back" aria-label="뒤로" onclick="go('s-create')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+  <ol class="steps s2" aria-label="4단계 중 2단계"><li>종류</li><li>모습</li><li>이름 · 목소리</li><li>사진</li></ol>
 
   <div id="look-real">
     <div class="q" style="font-size:15px;margin-bottom:10px">카드 종류</div>
@@ -68,14 +68,20 @@
 <!-- ══ 4-3. 이름 · 목소리 · 성격 ══ -->
 <section class="screen" id="s-create-name">
   <header><button class="back" aria-label="뒤로" onclick="go('s-create-look')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+  <ol class="steps s3" aria-label="4단계 중 3단계"><li>종류</li><li>모습</li><li>이름 · 목소리</li><li>사진</li></ol>
   <div class="q">이름을 지어주세요</div>
   <div class="qsub">카드와 통화 화면에 그대로 쓰입니다</div>
 
   <div class="field">
     <label for="c-name">이름</label>
+    <div class="namebox" id="namebox">
     <input id="c-name" type="text" maxlength="10" placeholder="예 · 하루"
            autocomplete="off" enterkeyhint="done" oninput="syncReview()">
+    <span class="fake-caret" id="fake-caret" aria-hidden="true"></span>
+    <button type="button" class="reroll" onclick="rerollName()" aria-label="다른 이름">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4M4 4v4h4M4 13a8 8 0 0 0 14.9 4M20 20v-4h-4"/></svg></button>
+    </div>
+    <div class="ctxline" style="text-align:left">눌러서 마음대로 바꿀 수 있어요</div>
   </div>
 
   <div class="field">
@@ -99,7 +105,7 @@
 <!-- ══ 4-4. 생성 결과 → 발급 → 인쇄 ══ -->
 <section class="screen" id="s-create-result">
   <header><button class="back" aria-label="뒤로" onclick="backFromResult()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <ol class="steps s4" aria-label="4단계 중 4단계"><li>종류</li><li>모습</li><li>이름 · 목소리</li><li>사진</li></ol>
   <div class="q" id="result-q">사진을 만드는 중</div>
   <div class="qsub" id="result-sub">20초쯤 걸려요</div>
 

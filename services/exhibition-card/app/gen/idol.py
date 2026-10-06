@@ -290,7 +290,8 @@ VIBES = {
 RACE_KEYS = ["mermaid", "fairy", "gumiho", "elf", "angel", "cat", "rabbit", "tiger", "vampire", "dragon", "butterfly"]
 
 
-def build_prompt(gender, rng, vibe=None, race=None, add=None):
+def build_prompt(gender, rng, vibe=None, race=None, add=None, face_type=None):
+    """face_type — 만들기 화면의 동물상 설명(normal.py PRESETS). 얼굴 느낌의 뉘앙스로만 쓴다."""
     g = "m" if gender == "m" else "f"
     d = D[g]
     she, her, Her = ("he", "his", "His") if g == "m" else ("she", "her", "Her")
@@ -327,7 +328,7 @@ def build_prompt(gender, rng, vibe=None, race=None, add=None):
                     f"living animal fur and skin as in macro wildlife photography — short dense natural hairs, natural sheen, real anatomy "
                     f"and translucency — NOT plush, NOT faux fur, NOT a stuffed toy, NOT felt. Animal-eared species have no human ears. ")
     if g == "m":
-        arch = R.choice(d["archetype"])
+        arch = face_type or R.choice(d["archetype"])
         head = ("High-end K-pop boy-group idol concept photo of a fictional Korean male idol with top-tier idol VISUALS — the 'visual center' "
                 "of a famous boy group, an extremely handsome FLOWER-BOY (kkonminam) — breathtakingly pretty, delicate, almost androgynous "
                 f"beauty like the most beautiful visual members of top K-pop boy groups, with a subtle hint of {arch} so his face is his own "
@@ -341,6 +342,7 @@ def build_prompt(gender, rng, vibe=None, race=None, add=None):
         head = ("High-end K-pop girl-group idol concept photo of a fictional Korean female idol with top-tier idol VISUALS — the 'visual "
                 "center' of a famous girl group, strikingly beautiful, flawless doll-like features, tiny face, perfect proportions, star "
                 f"aura, clearly an adult woman in her early twenties, {vibe} vibe. "
+                + (f"FACE TYPE (a light nuance only — beauty comes first, her face stays her own): {face_type} " if face_type else "") +
                 "Professionally styled by an idol hair and makeup team, glossy salon-perfect hair, polished camera-ready idol makeup. ")
         face_txt = f"FACE: {face}, {eyes}, {nose}, {mark}. "
     prompt = (head +
