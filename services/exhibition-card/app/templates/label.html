@@ -33,7 +33,8 @@
   }
 
   /* 화면에서만 확대 */
-  .stage{transform:scale(var(--s,2));transform-origin:top left}
+  /* 크기를 라벨로 묶어야 한다 — 안 묶으면 부모 너비만큼 늘어난 채로 확대돼 옆 버튼을 덮는다 */
+  .stage{width:var(--w);height:var(--h);transform:scale(var(--s,2));transform-origin:top left}
   .stage-space{height:calc(60mm * var(--s,2));width:calc(40mm * var(--s,2))}
 
   .label{
