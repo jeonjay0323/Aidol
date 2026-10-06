@@ -142,6 +142,7 @@
   <!-- 블루투스로 바로 (Bluefy 등 Web Bluetooth 되는 브라우저). 설정은 /printer 에서 맞춘다 -->
   <button class="pbtn" id="bt-btn" onclick="btPrint()" hidden>블루투스로 바로 인쇄</button>
   <p class="how" id="bt-msg" hidden></p>
+  <a class="pbtn ghost" id="bt-setup" href="/printer" target="_blank" hidden style="text-align:center;text-decoration:none">프린터 설정 · 통로 찾기</a>
   <button class="pbtn" id="share-btn" onclick="shareLabel()">Aiyin 앱으로 보내기</button>
   <label class="mono"><input type="checkbox" id="mono" onchange="prepare()"> 흑백 프린터용(감열지)</label>
   <div class="row">
@@ -180,6 +181,7 @@
   // 블루투스가 되는 브라우저면 바로 인쇄를 맨 위로, 앱 공유는 보조로
   if (window.LukidsBT && LukidsBT.supported()) {
     document.getElementById('bt-btn').hidden = false;
+    document.getElementById('bt-setup').hidden = false;
     document.getElementById('share-btn').classList.add('ghost');
   }
   async function btPrint(){
