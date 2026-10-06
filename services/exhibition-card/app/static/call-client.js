@@ -11,7 +11,7 @@
 window.AidolCall = (() => {
   let ws = null, micCtx = null, playCtx = null, processor = null, micStream = null;
   let simliWs = null, simliPc = null, simliBuffer = new Int16Array(0);
-  let nextPlayTime = 0, activeSources = 0, muted = false, active = false;
+  let nextPlayTime = 0, activeSources = 0, muted = false, active = false, outGain = null;
   let analyser = null, vrmView = null;
   let hooks = {};
 
@@ -152,7 +152,8 @@ window.AidolCall = (() => {
         count++;
         clearTimeout(timer);
         timer = setTimeout(() => {
-          if (count >= MIN_CHUNKS) ws.send(JSON.stringify({ type: 'activity_end' }));
+          // 침묵을 기다리는 사이 통화가 끊겼을 수 있다
+          if (count >= MIN_CHUNKS && ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'activity_end' }));
           state = 'silent'; count = 0;
           hooks.onUserSpeaking && hooks.onUserSpeaking(false);
         }, SILENCE_MS);
@@ -196,7 +197,10 @@ window.AidolCall = (() => {
     playCtx = new AudioContext({ sampleRate: 24000 });
     analyser = playCtx.createAnalyser();
     analyser.fftSize = 1024;
-    analyser.connect(playCtx.destination);
+    // 스피커 버튼용 음량. 브라우저는 수화기/스피커를 고를 수 없어 크게·작게로 대신한다
+    outGain = playCtx.createGain();
+    outGain.gain.value = 1;
+    analyser.connect(outGain).connect(playCtx.destination);
     nextPlayTime = 0; activeSources = 0; muted = false;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -255,12 +259,20 @@ window.AidolCall = (() => {
     if (selfEl) { selfEl.srcObject = null; selfEl.style.display = 'none'; }
     if (micCtx) { micCtx.close(); micCtx = null; }
     if (playCtx) { playCtx.close(); playCtx = null; }
-    analyser = null;
+    analyser = null; outGain = null;
     simliBuffer = new Int16Array(0);
     hooks.onEnd && hooks.onEnd();
   }
 
   function toggleMute() { muted = !muted; return muted; }
+
+  // 스피커 켬(기본) = 원래 크기, 끔 = 귀에 대고 들을 만한 크기. 끔이면 true
+  function toggleSpeaker() {
+    if (!outGain) return false;
+    const quiet = outGain.gain.value >= 1;
+    outGain.gain.value = quiet ? 0.3 : 1;
+    return quiet;
+  }
 
   function toggleCam() {
     if (!micStream) return true;
@@ -295,5 +307,5 @@ window.AidolCall = (() => {
     return buf;
   }
 
-  return { start, end, toggleMute, toggleCam };
+  return { start, end, toggleMute, toggleCam, toggleSpeaker };
 })();

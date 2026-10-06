@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=ring-2">
+<link rel="stylesheet" href="/static/scan.css?v=voice-1">
 </head>
 <body>
 
@@ -192,6 +192,28 @@
       안녕, 와줘서 고마워.<br><em>말을 걸어보세요</em>
     </div>
   </div>
+  <!-- 음성 통화 — 전화 앱처럼 이름 · 파형 · 스피커 · 끊기만 -->
+  <div class="vcall" id="vcall">
+    <div class="vcall-bg"{% if card.image_path %} style="background-image:url('{{ card.image_path }}')"{% endif %}></div>
+    <div class="vcall-top">
+      <div class="vcall-app"><i></i>LUKIDS 음성통화</div>
+      <div class="vcall-face">
+        <span class="wave w1"></span><span class="wave w2"></span><span class="wave w3"></span>
+        {% if card.image_path %}<img src="{{ card.image_path }}" alt="">{% endif %}
+      </div>
+      <div class="vcall-name">{{ card.name }}</div>
+      <div class="vcall-time" id="vt-solo" role="timer">연결 중…</div>
+      <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="vcall-acts">
+      <button class="vbtn on" id="spk-btn" onclick="toggleSpeaker(this)" aria-pressed="true">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4Z" fill="currentColor"/><path class="sw" d="M15.5 8.8a4.5 4.5 0 0 1 0 6.4M18 6.3a8 8 0 0 1 0 11.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>스피커</button>
+      <button class="vbtn" onclick="toggleMic(this)" aria-pressed="false">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-mic"/></svg></span>음소거</button>
+      <button class="vbtn end" onclick="endCall()" aria-label="통화 끊기">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 13.6c4.9-4.3 12.1-4.3 17 0l-1.9 2.6-3.4-1.2v-2.4a12 12 0 0 0-6.4 0V15l-3.4 1.2Z" fill="currentColor"/></svg></span>끊기</button>
+    </div>
+  </div>
   <div class="call-bar">
     <button class="cbtn" onclick="toggleMic(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-mic"/></svg>마이크</button>
     <button class="cbtn" onclick="toggleCam(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-cam"/></svg>카메라</button>
@@ -241,7 +263,7 @@
 </script>
 <script src="/static/jsQR.js"></script>
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
-<script src="/static/call-client.js?v=haneul-3"></script>
+<script src="/static/call-client.js?v=voice-1"></script>
 <script src="/static/ring.js?v=ring-1"></script>
 <script src="/static/create.js?v=ring-1"></script>
 <script src="/static/room-client.js?v=haneul-3"></script>
@@ -413,8 +435,11 @@
   /* ───────── 통화 ───────── */
   let timer = null, seconds = 0, current = null;
 
+  let micDenied = false;
   function openCall(id){
     current = id;
+    micDenied = false;
+    document.getElementById('vt-solo').textContent = '연결 중…';
     // 통화는 .screen 위에 덮이므로 아래 화면(로딩 포함)을 반드시 정리한다
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
     document.getElementById(id).classList.add('on');
@@ -426,6 +451,7 @@
       const m = String(Math.floor(seconds/60)).padStart(2,'0');
       const s = String(seconds%60).padStart(2,'0');
       el.textContent = `${m}:${s}`;
+      if (id === 'c-solo' && !micDenied) document.getElementById('vt-solo').textContent = `${m}:${s}`;
     },1000);
   }
   function endCall(){
@@ -501,14 +527,19 @@
     go('s-load');
     AidolCall.start(CARD.card_id, document.getElementById('avatar'), {
       onConnected(msg){
+        document.getElementById('c-solo').classList.toggle('voice', msg.mode !== 'video');
         openCall('c-solo');
         setCaption('', msg.mode === 'video' ? '연결 중…' : '음성으로 연결 중…');
       },
       onVideo(){ document.getElementById('feed-ph').style.display = 'none'; },
       onMicReady(){ setCaption('안녕, 와줘서 고마워.', '말을 걸어보세요'); },
-      onMicDenied(){ setCaption('', '마이크 권한을 허용해야 대화할 수 있어요'); },
+      onMicDenied(){
+        setCaption('', '마이크 권한을 허용해야 대화할 수 있어요');
+        micDenied = true; document.getElementById('vt-solo').textContent = '마이크를 허용해 주세요';
+      },
       onSpeaking(on){
         document.getElementById('feed-solo').classList.toggle('talking', on);
+        document.getElementById('vcall').classList.toggle('talking', on);
         if(on) setCaption('', '말하는 중…');
       },
       onUserSpeaking(on){ if(on) setCaption('', '듣고 있어요…'); },
@@ -658,8 +689,14 @@
     document.getElementById('self-solo').style.opacity = '';
   }
 
+  function toggleSpeaker(btn){
+    const quiet = AidolCall.toggleSpeaker();
+    btn.classList.toggle('on', !quiet);
+    btn.setAttribute('aria-pressed', quiet ? 'false' : 'true');
+  }
   function toggleMic(btn){
     const off = (current === 'c-multi') ? AidolRoom.toggleMute() : AidolCall.toggleMute();
+    if (btn.classList.contains('vbtn')) btn.classList.toggle('on', off);
     btn.querySelector('use').setAttribute('href', off ? '#g-mic-off' : '#g-mic');
     btn.setAttribute('aria-pressed', off ? 'true' : 'false');
   }
