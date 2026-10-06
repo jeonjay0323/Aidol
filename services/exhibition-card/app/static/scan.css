@@ -506,3 +506,18 @@
   body.demo .joinbar{display:none !important}
   /* 아이패드에서 카드 화면이 너무 좁지 않게 */
   @media (min-width:700px){ body.demo .wrap{max-width:540px} }
+
+  /* 표정 세트가 있는 아이돌 — 사진을 크게, 표정은 겹친 사진 사이로 부드럽게 바뀐다 */
+  .vcall.expr .vcall-top{display:flex;flex-direction:column;align-items:center;flex:1;min-height:0}
+  .vcall-portrait{position:relative;flex:1;min-height:0;width:100%;max-width:min(520px,calc((100svh - 330px) * 2 / 3));
+    margin:22px auto 18px;border-radius:24px;overflow:hidden;background:#1b1c1e;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);transition:box-shadow .3s,transform .3s}
+  .vcall-portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 18%;
+    opacity:0;transition:opacity .35s ease}
+  .vcall-portrait img.on{opacity:1}
+  .vcall.expr.talking .vcall-portrait{box-shadow:0 0 0 3px var(--primary-normal),0 20px 60px rgba(0,0,0,.5);
+    animation:speakBob 1.2s ease-in-out infinite}
+  @keyframes speakBob{50%{transform:translateY(-3px) scale(1.006)}}
+  .vcall.expr .vcall-name{font-size:30px;line-height:38px}
+  .vcall.expr .eq{margin-top:12px}
+  .call.voice .vcall.expr{padding-top:calc(28px + env(safe-area-inset-top));padding-bottom:calc(32px + env(safe-area-inset-bottom))}

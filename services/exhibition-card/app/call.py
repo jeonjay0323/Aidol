@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google.genai import types
 
-from . import db
+from . import db, expr
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -34,6 +34,8 @@ def avatar_of(card):
     photo: Simli 얼굴이 준비된 경우 — 클라이언트가 Simli WebRTC에 붙는다
     vrm:   모델 파일 URL — 클라이언트가 three-vrm으로 직접 그린다
     """
+    if expr.of(card):
+        return None   # 표정 세트가 있으면 큰 사진 + 표정 전환으로 (app/expr.py)
     if card["face_status"] != "ready":
         return None
     if card.get("avatar_type") == "vrm":
@@ -101,6 +103,8 @@ async def call(websocket: WebSocket, card_id: str):
         realtime_input_config=types.RealtimeInputConfig(
             automatic_activity_detection=types.AutomaticActivityDetection(disabled=True)
         ),
+        # 아이돌이 하는 말을 글자로도 받는다 — 화면이 말에 맞춰 표정을 고른다
+        output_audio_transcription=types.AudioTranscriptionConfig(),
     )
 
     try:
@@ -142,6 +146,9 @@ async def call(websocket: WebSocket, card_id: str):
                                     "data": base64.b64encode(response.data).decode(),
                                 }))
                             sc = getattr(response, "server_content", None)
+                            tr = getattr(sc, "output_transcription", None) if sc else None
+                            if tr and getattr(tr, "text", None):
+                                await websocket.send_text(json.dumps({"type": "text", "text": tr.text}))
                             if sc and getattr(sc, "turn_complete", False):
                                 nonlocal turns
                                 turns += 1

@@ -24,7 +24,7 @@ HERE = Path(__file__).parent
 # call · room · db 가 import 될 때 GCP_PROJECT 를 읽는다. 그보다 먼저 .env 를 올린다.
 load_dotenv(HERE.parent / ".env")
 
-from . import call, db, imagegen, room, simli  # noqa: E402
+from . import call, db, expr, imagegen, room, simli  # noqa: E402
 
 # 카드 QR에 박히는 주소. 전시 배포 시 고정 도메인으로 바꾼다.
 BASE_URL = os.getenv("BASE_URL", "").rstrip("/")
@@ -249,6 +249,10 @@ async def scan_landing(request: Request, card_id: str):
         logging.warning(f"scan 로그 실패: {e}")
     card.pop("persona", None)
     card.pop("owner_token", None)
+    ex = expr.of(card)
+    if ex:
+        # 표정 세트가 있는 공식 아이돌은 기본 표정 사진으로 보이고, 통화는 표정 전환 화면으로 간다
+        card["image_path"], card["expr"], card["face_status"] = ex["base"], ex, "expr"
     return templates.TemplateResponse("scan.html", {
         "request": request, "card": card, "card_json": json.dumps(card, ensure_ascii=False),
     })
@@ -290,9 +294,11 @@ LINEUP = [
 def public_card(c):
     """목록 화면에 내려보내는 값. persona · owner_token · face_id 는 서버에만 둔다."""
     tags = c.get("tags") or []
+    ex = expr.of(c)
     return {
         "cardId": c["card_id"], "name": c["name"], "tags": tags,
-        "stats": c.get("stats") or {}, "image": c.get("image_path"),
+        "stats": c.get("stats") or {}, "image": ex["base"] if ex else c.get("image_path"),
+        "expr": bool(ex),
         "kind": "virtual" if c.get("avatar_type") == "vrm" or "버추얼" in tags[:1] else "real",
         "avatar": c.get("avatar_type"), "faceStatus": c.get("face_status"),
         "createdAt": c.get("created_at"),

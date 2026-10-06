@@ -235,8 +235,11 @@ window.AidolCall = (() => {
         const bytes = fromBase64(msg.data);
         schedule(bytes);
         sendToSimli(bytes);
+      } else if (msg.type === 'text') {
+        hooks.onText && hooks.onText(msg.text);
       } else if (msg.type === 'turn_complete') {
         flushSimli();
+        hooks.onTurnEnd && hooks.onTurnEnd();
       } else if (msg.type === 'error') {
         hooks.onError && hooks.onError(msg.data);
       }

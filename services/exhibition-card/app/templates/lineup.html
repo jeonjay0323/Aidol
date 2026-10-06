@@ -53,7 +53,7 @@
   <div class="site-head">
     <div class="site-step">04 · 아이돌 통화</div>
     <h1>먼저 만나볼 다섯 명</h1>
-    <p>미리 준비된 공식 아이돌과 바로 통화할 수 있어요. 얼굴을 보며 영상으로, 아직 얼굴이 준비되지 않았다면 목소리로 이야기합니다.</p>
+    <p>미리 준비된 공식 아이돌과 바로 통화할 수 있어요. 이야기에 따라 웃고, 놀라고, 고민하는 표정을 보며 목소리로 이야기합니다.</p>
   </div>
 
   {% if lineup %}
@@ -63,7 +63,8 @@
       <div class="ph">
         {% if c.image %}<img src="{{ c.image }}" alt="{{ c.name }}">{% endif %}
         <span class="no">{{ "%02d" | format(loop.index) }}</span>
-        {% if c.avatar == "vrm" %}<span class="mode"><i></i>3D 영상</span>
+        {% if c.expr %}<span class="mode"><i></i>통화 가능</span>
+        {% elif c.avatar == "vrm" %}<span class="mode"><i></i>3D 영상</span>
         {% elif c.faceStatus == "ready" %}<span class="mode"><i></i>영상</span>
         {% else %}<span class="mode voice"><i></i>음성</span>{% endif %}
       </div>

@@ -106,6 +106,15 @@ static/            통화 클라이언트 · jsQR
 ./.venv/bin/python tools/seed_lineup.py https://aidol-card-938904157102.asia-northeast3.run.app
 ```
 
+### 표정 바뀌는 통화 — 공식 아이돌
+
+`app/static/expr/<slug>/` 에 기본 사진(base)과 표정 5장(laugh · surprised · thinking · shy · sad)을 두면
+그 공식 아이돌은 모든 화면에서 기본 사진으로 보이고, 통화는 큰 사진의 음성 통화가 된다(Simli · VRM 대신).
+Gemini Live 의 출력 자막(`output_audio_transcription`)을 브라우저로 보내고, 아이돌이 하는 말에
+"ㅋㅋ/신났" → 웃음, "헐/진짜?" → 놀람 같은 낱말이 나오면 그 표정으로 바꾼다. 말을 마치면 2.5초 뒤 기본으로.
+사진은 배포에 실리는 파일이라 운영 DB 는 그대로다. 표정 사진은 `tools/make_expressions.py <slug>` —
+기본 사진을 기준으로 얼굴만 바꿔 그린다. 하늘은 3D 대신 2D 일러스트로 바뀌었다(기존 VRM 카드 KACJE0ZS 그대로).
+
 ### 시연 모드 — `/demo`
 
 아이패드 시연용 첫 화면. "아이돌 만들기"와 "아이돌과 통화하기" 두 개만 크게 보인다.

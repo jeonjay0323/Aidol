@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=demo-2">
+<link rel="stylesheet" href="/static/scan.css?v=expr-1">
 </head>
 <body>
 
@@ -56,7 +56,9 @@
   </div>
   <h1>{{ card.name }}</h1>
   <div class="tags">{{ card.tags | join(" · ") }}</div>
-  {% if card.face_status == "ready" %}
+  {% if card.expr %}
+  <div class="status"><span class="dot"></span>지금 통화할 수 있어요</div>
+  {% elif card.face_status == "ready" %}
   <div class="status"><span class="dot"></span>지금 영상통화할 수 있어요</div>
   {% elif card.face_status == "processing" %}
   <div class="status wait"><span class="dot"></span>얼굴을 만드는 중 · 목소리로는 지금 통화할 수 있어요</div>
@@ -67,10 +69,11 @@
   <div class="actions">
     <button class="act primary" onclick="startCall()">
       <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-{{ 'video' if card.face_status == 'ready' else 'phone' }}"/></svg></span>
-      <span><b>{{ "영상통화 걸기" if card.face_status == "ready" else "음성통화 걸기" }}</b><small>{{ "얼굴 보고 이야기한다" if card.face_status == "ready" else "목소리로 이야기한다" }}</small></span>
+      {% if card.expr %}<span><b>전화 걸기</b><small>표정을 보며 이야기한다</small></span>
+      {% else %}<span><b>{{ "영상통화 걸기" if card.face_status == "ready" else "음성통화 걸기" }}</b><small>{{ "얼굴 보고 이야기한다" if card.face_status == "ready" else "목소리로 이야기한다" }}</small></span>{% endif %}
       <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
-    {% if card.avatar_type == "vrm" %}
+    {% if card.avatar_type == "vrm" and not card.expr %}
     <button class="act" onclick="openCustom()">
       <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg></span>
       <span><b>꾸미기</b><small>머리색 · 옷 · 말투를 내 취향대로</small></span>
@@ -193,14 +196,21 @@
     </div>
   </div>
   <!-- 음성 통화 — 전화 앱처럼 이름 · 파형 · 스피커 · 끊기만 -->
-  <div class="vcall" id="vcall">
+  <div class="vcall{% if card.expr %} expr{% endif %}" id="vcall">
     <div class="vcall-bg"{% if card.image_path %} style="background-image:url('{{ card.image_path }}')"{% endif %}></div>
     <div class="vcall-top">
       <div class="vcall-app"><i></i>LUKIDS 음성통화</div>
+      {% if card.expr %}
+      <!-- 표정 세트 — 겹쳐 두고 고른 것만 보인다(app/expr.py) -->
+      <div class="vcall-portrait" id="portrait">
+        {% for f, src in card.expr.items() %}<img src="{{ src }}" data-f="{{ f }}" alt=""{% if f == "base" %} class="on"{% endif %}>{% endfor %}
+      </div>
+      {% else %}
       <div class="vcall-face">
         <span class="wave w1"></span><span class="wave w2"></span><span class="wave w3"></span>
         {% if card.image_path %}<img src="{{ card.image_path }}" alt="">{% endif %}
       </div>
+      {% endif %}
       <div class="vcall-name">{{ card.name }}</div>
       <div class="vcall-time" id="vt-solo" role="timer">연결 중…</div>
       <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -263,7 +273,7 @@
 </script>
 <script src="/static/jsQR.js"></script>
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
-<script src="/static/call-client.js?v=voice-1"></script>
+<script src="/static/call-client.js?v=expr-1"></script>
 <script src="/static/ring.js?v=demo-1"></script>
 <script src="/static/create.js?v=demo-1"></script>
 <script src="/static/room-client.js?v=haneul-3"></script>
@@ -550,7 +560,9 @@
         document.getElementById('vcall').classList.toggle('talking', on);
         if(on) setCaption('', '말하는 중…');
       },
-      onUserSpeaking(on){ if(on) setCaption('', '듣고 있어요…'); },
+      onUserSpeaking(on){ if(on){ setCaption('', '듣고 있어요…'); Face.listen(); } },
+      onText(text){ Face.hear(text); },
+      onTurnEnd(){ Face.settle(); },
       onError(e){
         document.getElementById('load-msg').textContent = '연결 실패: ' + e;
         setTimeout(()=>go('s-card'), 2500);
@@ -696,6 +708,39 @@
     document.getElementById('cap-solo').innerHTML = '안녕, 와줘서 고마워.<br><em>말을 걸어보세요</em>';
     document.getElementById('self-solo').style.opacity = '';
   }
+
+  /* ───────── 표정 ─────────
+     아이돌이 하는 말(글자)을 쌓아 보다가 낱말이 걸리면 그 표정으로 바꾼다.
+     말을 마치면 잠시 뒤 기본 표정으로, 내가 말하는 동안에도 기본 표정(듣는 얼굴). */
+  const Face = (() => {
+    const RULES = [
+      ['laugh',     /ㅋ|ㅎㅎ|하하|히히|헤헤|푸하|웃기|웃겨|웃었|재밌|재미있|신난|신나|신났|즐거|행복|최고/],
+      ['surprised', /헐|진짜\?|정말\?|진짜로\?|우와|와[!~ ]|어머|깜짝|대박|세상에|놀랐|놀라|어떻게 그런/],
+      ['sad',       /속상|힘들|슬프|슬퍼|아팠|아프|우울|괜찮아\?|미안|외로|걱정/],
+      ['shy',       /고마워|고마운|부끄|쑥스|칭찬|설레|좋아해|사랑|예쁘다고|귀엽다고/],
+      ['thinking',  /음\.\.|음…|흠|글쎄|생각해|고민|어떻게 하지|뭐였더라|그러니까/],
+    ];
+    let turn = '', current = 'base', back = null;
+    const el = () => document.getElementById('portrait');
+    function show(f){
+      const p = el();
+      if (!p || f === current || !p.querySelector(`[data-f="${f}"]`)) return;
+      current = f;
+      p.querySelectorAll('img').forEach(i => i.classList.toggle('on', i.dataset.f === f));
+    }
+    return {
+      hear(text){
+        clearTimeout(back);
+        turn += text;
+        // 최근 말 위주로 — 앞에서 웃다가 걱정하는 말로 넘어가면 표정도 따라간다
+        const tail = turn.slice(-40);
+        const hit = RULES.find(([, re]) => re.test(tail));
+        if (hit) show(hit[0]);
+      },
+      settle(){ turn = ''; clearTimeout(back); back = setTimeout(() => show('base'), 2500); },
+      listen(){ turn = ''; clearTimeout(back); show('base'); },
+    };
+  })();
 
   function toggleSpeaker(btn){
     const quiet = AidolCall.toggleSpeaker();
