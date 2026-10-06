@@ -164,7 +164,7 @@
     background:rgba(232,214,187,.07);border:1.5px solid transparent;
     color:var(--paper);font-size:14px;font-weight:700;text-align:center;
   }
-  .opt.sel{border-color:var(--accent);background:rgba(216,69,47,.14)}
+  .opt.sel{border-color:var(--accent);background:rgba(255,214,10,.12)}
   .cta{
     width:100%;padding:16px;border-radius:var(--r);border:none;cursor:pointer;
     background:var(--paper);color:var(--ink);font-size:15px;font-weight:900;font-family:inherit;
@@ -295,7 +295,7 @@
     text-align:left;padding:16px;border-radius:var(--r);cursor:pointer;font-family:inherit;
     background:var(--bg-2);border:1.5px solid rgba(232,214,187,.11);color:var(--paper);
   }
-  .grade.sel{border-color:var(--accent);background:rgba(216,69,47,.12)}
+  .grade.sel{border-color:var(--accent);background:rgba(255,214,10,.10)}
   .grade b{display:block;font-size:15.5px;font-weight:800;margin-bottom:4px}
   .grade small{display:block;font-size:12.5px;color:var(--dim);font-weight:600;line-height:1.65}
 
@@ -429,7 +429,7 @@
             font-size:13px;letter-spacing:.06em;color:rgba(255,255,255,.75)}
   .ring-app i{width:7px;height:7px;border-radius:50%;background:var(--primary-normal);display:block}
   .ring-face{width:132px;height:132px;margin:36px auto 22px;border-radius:50%;overflow:hidden;
-             background:#2a2b2e;box-shadow:0 0 0 0 rgba(107,224,22,.5);animation:ringPulse 1.6s ease-out infinite}
+             background:#2a2b2e;box-shadow:0 0 0 0 rgba(255,214,10,.5);animation:ringPulse 1.6s ease-out infinite}
   .ring-face img{width:100%;height:100%;object-fit:cover;object-position:50% 18%}
   @keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}100%{box-shadow:0 0 0 34px rgba(255,255,255,0)}}
   .ring-name{font-family:var(--brand);font-weight:700;font-size:36px;line-height:46px;letter-spacing:-.02em}
@@ -521,3 +521,29 @@
   .vcall.expr .vcall-name{font-size:30px;line-height:38px}
   .vcall.expr .eq{margin-top:12px}
   .call.voice .vcall.expr{padding-top:calc(28px + env(safe-area-inset-top));padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+
+  /* 만들기 — 종류를 예시 사진으로 고른다 */
+  .kinds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+  .grade.kind{padding:8px 8px 14px;display:flex;flex-direction:column;text-align:center}
+  .grade.kind .ex{display:block;aspect-ratio:3/4;border-radius:var(--r);overflow:hidden;margin-bottom:12px;background:var(--bg-elevated-alt)}
+  .grade.kind .ex img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;transition:transform .25s}
+  .grade.kind.sel .ex img{transform:scale(1.04)}
+  .grade.kind.sel{box-shadow:0 0 0 1px var(--accent)}
+
+  /* ── 주요 버튼(다음 · 사진 만들기 · 카드 만들기 · 인쇄) — 옐로우 → 핑크 → 보라 그라데이션 ──
+     2026-10-07 시안: 흰 굵은 글씨 + 반짝이(네 갈래 별) */
+  .cta{
+    position:relative;display:flex;align-items:center;justify-content:center;gap:14px;
+    min-height:64px;padding:16px 24px;border-radius:18px;border:none;
+    background:linear-gradient(90deg,#d9d453 0%,#e3709a 30%,#e63bc0 55%,#b43bd8 78%,#8b3be6 100%);
+    color:#fff;font-family:var(--brand);font-weight:700;font-size:20px;letter-spacing:-.01em;
+    box-shadow:0 10px 30px rgba(230,59,192,.25);transition:transform .12s,filter .15s;
+  }
+  .cta::after{
+    content:"";width:22px;height:22px;flex:none;background:currentColor;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0c.8 6.5 5.5 11.2 12 12-6.5.8-11.2 5.5-12 12-.8-6.5-5.5-11.2-12-12C6.5 11.2 11.2 6.5 12 0Z'/%3E%3C/svg%3E") center/contain no-repeat;
+            mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0c.8 6.5 5.5 11.2 12 12-6.5.8-11.2 5.5-12 12-.8-6.5-5.5-11.2-12-12C6.5 11.2 11.2 6.5 12 0Z'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+  .cta:hover{filter:brightness(1.06)}
+  .cta:active{transform:scale(.985)}
+  .cta:disabled{opacity:.35;box-shadow:none}

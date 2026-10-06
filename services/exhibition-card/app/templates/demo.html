@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
 <title>LUKIDS</title>
 <style>
   /* 시연용 첫 화면 — 아이패드 한 장에 두 가지 일만 보인다. 메뉴 없음.
@@ -38,6 +38,7 @@
   .tile .pics{position:absolute;inset:0;z-index:-1;display:grid;grid-template-columns:repeat(3,1fr)}
   .tile .pics img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
   .tile .pics.one{grid-template-columns:1fr}
+  .tile .pics.two-ex{grid-template-columns:1fr 1fr}
   .tile::after{content:"";position:absolute;inset:0;z-index:-1;
     background:linear-gradient(to top,rgba(0,0,0,.92) 18%,rgba(0,0,0,.35) 60%,rgba(0,0,0,.1))}
   .tile .n{font-family:var(--brand);font-weight:700;font-size:16px;color:var(--primary-normal);letter-spacing:.08em}
@@ -48,6 +49,8 @@
     padding:16px 26px;border-radius:999px;background:var(--primary-normal);color:#000;
     font-family:var(--brand);font-weight:700;font-size:19px;
   }
+  .tile.make .go{background:linear-gradient(90deg,#d9d453 0%,#e3709a 30%,#e63bc0 55%,#b43bd8 78%,#8b3be6 100%);color:#fff;
+    box-shadow:0 10px 30px rgba(230,59,192,.3)}
   .tile.call .go{background:#fff}
   .tile .go svg{width:20px;height:20px}
 
@@ -75,17 +78,17 @@
 
   <div class="two">
     <a class="tile make" href="/make">
-      <div class="pics one">{% if made %}<img src="{{ made }}" alt="">{% endif %}</div>
-      <span class="n">01</span>
-      <b>아이돌 만들기</b>
-      <p>실물 또는 버추얼. 원하는 모습을 고르고 적으면 사진이 나오고, 카드로 인쇄해 가져가요.</p>
+      <div class="pics two-ex"><img src="/static/examples/real.jpg" alt=""><img src="/static/examples/virtual.jpg" alt=""></div>
+      <span class="n">01 · 아이돌 제작</span>
+      <b>나만의 아이돌을<br>만들어보세요!</b>
+      <p>실제 인물처럼 혹은 버추얼 캐릭터로! 내가 고른 조합과 쓴 문장이 나만의 아이돌이 돼요.</p>
       <span class="go">만들기 시작
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </a>
     <a class="tile call" href="/call">
       <div class="pics">{% for c in lineup[:3] %}{% if c.image %}<img src="{{ c.image }}" alt="">{% endif %}{% endfor %}</div>
-      <span class="n">02</span>
-      <b>아이돌과 통화하기</b>
+      <span class="n">02 · 아이돌 통화</span>
+      <b>아이돌과<br>통화하기</b>
       <p>미리 준비된 공식 아이돌 {{ lineup | length }}명. 골라서 전화를 걸면 목소리로 대답해요.</p>
       <span class="go">통화하러 가기
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.2 3.5h3l1.5 3.8-1.9 1.4a12 12 0 0 0 5.5 5.5l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8A16.5 16.5 0 0 1 4.4 5.5a1.8 1.8 0 0 1 1.8-2Z"/></svg></span>

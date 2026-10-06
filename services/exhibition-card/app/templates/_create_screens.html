@@ -8,14 +8,17 @@
   <div class="q">어떤 아이돌을 만들까요?</div>
   <div class="qsub">사진이 생성되면 바로 카드로 인쇄됩니다</div>
 
-  <div class="grades" id="kinds">
-    <button class="grade" data-kind="real" onclick="pickKind(this)">
+  <!-- 종류 — 예시 사진을 보고 고른다 (static/examples) -->
+  <div class="kinds" id="kinds">
+    <button class="grade kind" data-kind="real" onclick="pickKind(this)">
+      <span class="ex"><img src="/static/examples/real.jpg" alt="실물 아이돌 예시"></span>
       <b>실물 아이돌</b>
-      <small>실제 사람처럼 찍은 화보 사진. 동물상이나 종족 컨셉을 골라 만들어요.</small>
+      <small>실제 인물처럼 찍은 화보 사진</small>
     </button>
-    <button class="grade" data-kind="virtual" onclick="pickKind(this)">
+    <button class="grade kind" data-kind="virtual" onclick="pickKind(this)">
+      <span class="ex"><img src="/static/examples/virtual.jpg" alt="버추얼 아이돌 예시"></span>
       <b>버추얼 아이돌</b>
-      <small>애니메이션 일러스트로 그린 버추얼 캐릭터. 분위기와 머리색을 골라 만들어요.</small>
+      <small>애니메이션 일러스트 캐릭터</small>
     </button>
   </div>
 

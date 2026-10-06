@@ -17,6 +17,8 @@
 :root{
   /* ── Atomic ── */
   --green-50:#429e00; --green-55:#58cf04; --green-60:#6be016;
+  /* 메인 컬러 — 2026-10-07 초록에서 옐로우로 */
+  --yellow-50:#e6b800; --yellow-55:#f5c800; --yellow-60:#ffd60a;
   --cn-5:#0f0f10;  --cn-7:#141415;  --cn-15:#1b1c1e; --cn-17:#212225;
   --cn-22:#2e2f33; --cn-23:#333438; --cn-25:#37383c; --cn-40:#5a5c63;
   --cn-50:#70737c; --cn-70:#989ba2; --cn-80:#aeb0b6; --cn-90:#c2c4c8;
@@ -40,10 +42,10 @@
   --line-normal:#70737c52;             /* Line/Normal/Normal */
   --fill-normal:#70737c38;             /* Fill/Normal */
   --fill-alt:#70737c1f;                /* Fill/Alternative */
-  --primary-normal:var(--green-60);    /* Primary/Normal */
-  --primary-strong:var(--green-55);
-  --primary-heavy:var(--green-50);
-  --accent-fg:var(--green-60);         /* 작은 글씨용 */
+  --primary-normal:var(--yellow-60);   /* Primary/Normal */
+  --primary-strong:var(--yellow-55);
+  --primary-heavy:var(--yellow-50);
+  --accent-fg:var(--yellow-60);         /* 작은 글씨용 */
   --status-positive:var(--status-green-60);
   --status-caution:var(--orange-60);
   --status-negative:var(--red-60);

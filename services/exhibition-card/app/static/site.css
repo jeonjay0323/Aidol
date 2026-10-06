@@ -111,7 +111,7 @@ body.site{
   font-family:var(--brand);font-weight:700;font-size:11px;line-height:14px;letter-spacing:.04em;
   background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);
 }
-.site-card .ph .kind.v{background:rgba(107,224,22,.9);color:#000}
+.site-card .ph .kind.v{background:rgba(255,214,10,.92);color:#000}
 .site-card .body{padding:12px 13px 14px}
 .site-card .name{font-family:var(--brand);font-weight:700;font-size:17px;line-height:24px;color:var(--label-strong)}
 .site-card .tags{
