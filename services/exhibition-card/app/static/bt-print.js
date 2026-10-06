@@ -20,7 +20,7 @@ window.LukidsBT = (() => {
     '0000ffe0-0000-1000-8000-00805f9b34fb',
     '0000ff80-0000-1000-8000-00805f9b34fb',
   ];
-  const DEFAULTS = { char: '', lang: 'tspl', dpi: 203, w: 60, h: 40, gap: 2, direction: 1, density: 8,
+  const DEFAULTS = { char: '', bmode: 4, lang: 'tspl', dpi: 203, w: 60, h: 40, gap: 2, direction: 1, density: 8,
                      invert: false, chunk: 180, delay: 20 };
   const KEY = 'lukids.printer';
   let settings = { ...DEFAULTS };
@@ -28,7 +28,8 @@ window.LukidsBT = (() => {
 
   let device = null, ch = null, writable = [];
   // 데이터를 받는 통로로 흔한 것들(앞이 우선). 6DAA 같은 ISSC 의 다른 쓰기 특성은 인쇄를 안 받는다
-  const PREFER = ['49535343-8841', '00002af1', '0000ff02', '0000fff2', '0000ff82', '0000ff12', '0000ff11', '0000fec7'];
+  // FF02 = 이 계열(Aimo · Quyin OEM, labelife 문서)의 BLE 인쇄 통로. 실물 DPP-Ai01W 에도 있다
+  const PREFER = ['0000ff02', '49535343-8841', '00002af1', '0000fff2', '0000ff82', '0000ff12', '0000ff11', '0000fec7'];
   const logs = [];
   // 아이패드 화면의 로그를 서버에도 남긴다 — 실물 프린터 문제를 원격으로 보기 위해 (Cloud Run 로그 'btlog')
   const sid = Math.random().toString(36).slice(2, 8);
@@ -76,8 +77,10 @@ window.LukidsBT = (() => {
     const n = settings.chunk;
     for (let i = 0; i < bytes.length; i += n) {
       const part = bytes.slice(i, i + n);
-      if (ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(part);
-      else await ch.writeValue(part);
+      const withResp = ch.properties.write && (settings.resp ?? ch.uuid.toLowerCase().startsWith('0000ff02'));
+      if (withResp || !ch.properties.writeWithoutResponse) {
+        await (ch.writeValueWithResponse ? ch.writeValueWithResponse(part) : ch.writeValue(part));
+      } else await ch.writeValueWithoutResponse(part);
       if (settings.delay) await sleep(settings.delay);
     }
   }
@@ -88,6 +91,24 @@ window.LukidsBT = (() => {
     const out = new Uint8Array(len); let o = 0;
     for (const p of parts) { out.set(p, o); o += p.length; }
     return out;
+  }
+
+  /* LZO1X-1 — 압축하지 않고 리터럴로만 싸서 끝 표시를 붙인다. 펌웨어의 일반 LZO 해제기가 그대로 푼다.
+     thermal-label/labelife packages/core/src/lzo.ts (MIT, Mannes Brak) 를 옮김 */
+  function lzo(input) {
+    const N = input.length, EOS = [0x11, 0x00, 0x00];
+    if (N === 0) return new Uint8Array(EOS);
+    if (N <= 238) { const o = new Uint8Array(N + 4); o[0] = N + 17; o.set(input, 1); o.set(EOS, N + 1); return o; }
+    const t = N - 18, zeros = Math.floor((t - 1) / 255), nz = t - zeros * 255;
+    const o = new Uint8Array(2 + zeros + N + 3); let i = 0;
+    o[i++] = 0; for (let z = 0; z < zeros; z++) o[i++] = 0; o[i++] = nz;
+    o.set(input, i); o.set(EOS, i + N); return o;
+  }
+  const u32 = (v) => new Uint8Array([v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]);
+  function lzoChunked4(raw, size = 4096) {     // BITMAP 모드 4 — 4KiB 마다 [u32 길이][LZO], 끝에 0
+    const parts = [];
+    for (let o = 0; o < raw.length; o += size) { const c = lzo(raw.subarray(o, o + size)); parts.push(u32(c.length), c); }
+    parts.push(u32(0)); return concat(parts);
   }
 
   // 이미지 → 1비트 줄 단위 바이트 (1 = 검정)
@@ -110,13 +131,17 @@ window.LukidsBT = (() => {
   }
 
   function tspl({ wb, h, bits }) {
-    const s = settings;
-    // TSPL 비트맵은 0 이 검정이다 — 뒤집어 보낸다 (invert 로 되돌릴 수 있다)
-    const data = s.invert ? bits : bits.map(b => b ^ 0xff);
+    const s = settings, mode = Number(s.bmode);
+    // 이 계열 펌웨어는 1 = 검정(labelife). 표준 TSPL(0 = 검정)이면 '흑백 뒤집기'를 켠다
+    const raw = s.invert ? bits.map(b => b ^ 0xff) : bits;
+    let body;
+    if (mode === 4) body = [ascii(`BITMAP 0,0,${wb},${h},4,`), lzoChunked4(raw)];
+    else if (mode === 3) { const c = lzo(raw); body = [ascii(`BITMAP 0,0,${wb},${h},3,${c.length},`), c]; }
+    else body = [ascii(`BITMAP 0,0,${wb},${h},0,`), raw];
     return concat([
-      ascii(`SIZE ${s.w} mm,${s.h} mm\r\nGAP ${s.gap} mm,0 mm\r\nDIRECTION ${s.direction},0\r\n` +
-            `DENSITY ${s.density}\r\nCLS\r\nBITMAP 0,0,${wb},${h},0,`),
-      data, ascii('\r\nPRINT 1,1\r\n'),
+      ascii(`\r\nDENSITY ${s.density}\r\nREFERENCE 0,0\r\nOFFSET 0 mm\r\nSIZE ${s.w} mm,${s.h} mm\r\n` +
+            `GAP ${s.gap} mm,0 mm\r\nDIRECTION ${s.direction},0\r\nCLS\r\n`),
+      ...body, ascii('\r\nPRINT 1,1\r\n'),
     ]);
   }
 
@@ -141,7 +166,7 @@ window.LukidsBT = (() => {
     const s = settings;
     const url = `/label/${encodeURIComponent(cardId)}.png?mono=1&dpi=${s.dpi}`;
     const bm = await bitmap(url);
-    log(`이미지 ${bm.w}×${bm.h} (${s.dpi}dpi) · ${s.lang.toUpperCase()}`);
+    log(`이미지 ${bm.w}×${bm.h} (${s.dpi}dpi) · ${s.lang.toUpperCase()} · BITMAP ${s.bmode} · 통로 ${ch.uuid.slice(4, 8)}`);
     const bytes = s.lang === 'escpos' ? escpos(bm) : tspl(bm);
     log(`보내는 중 ${bytes.length} 바이트`);
     await send(bytes);

@@ -46,7 +46,7 @@
         <button class="site-btn line" onclick="doProbe('escpos')">통로 찾기 (ESC/POS)</button>
       </div>
       <p class="tip">Aiyin 앱이 켜져 있으면 프린터를 잡고 있어서 연결이 안 될 수 있어요. 앱을 완전히 끄고 다시 해보세요.
-        아무것도 안 나오면 오른쪽에서 "언어"를 ESC/POS 로 바꿔 보고, 하얗게만 나오면 "흑백 뒤집기"를 바꾸세요.</p>
+        아무것도 안 나오면 "비트맵 방식"을 4 → 3 → 0 순서로 바꿔 보세요. 그래도 안 되면 "통로 찾기". 색이 반대로 나오면 "흑백 뒤집기".</p>
     </div>
 
     <div class="box">
@@ -55,6 +55,8 @@
         <select id="char"><option value="">자동</option></select></div>
       <div class="row"><label for="lang">언어</label>
         <select id="lang"><option value="tspl">TSPL (라벨 프린터 대부분)</option><option value="escpos">ESC/POS (영수증식)</option></select></div>
+      <div class="row"><label for="bmode">비트맵 방식</label>
+        <select id="bmode"><option value="4">4 · 나눠 압축 (이 계열 기본)</option><option value="3">3 · 통째 압축</option><option value="0">0 · 압축 없음 (표준)</option></select></div>
       <div class="row"><label for="dpi">해상도</label>
         <select id="dpi"><option value="203">203 dpi (8점/mm)</option><option value="300">300 dpi (12점/mm)</option></select></div>
       <div class="row"><label for="w">라벨 가로 mm</label><input id="w" type="number" min="20" max="110"></div>
@@ -79,10 +81,10 @@
 {% endblock %}
 
 {% block script %}
-<script src="/static/bt-print.js?v=bt-3"></script>
+<script src="/static/bt-print.js?v=bt-4"></script>
 <script>
-  const F = ['char','lang','dpi','w','h','gap','direction','density','invert','chunk','delay'];
-  const NUM = ['dpi','w','h','gap','direction','density','chunk','delay'];
+  const F = ['char','bmode','lang','dpi','w','h','gap','direction','density','invert','chunk','delay'];
+  const NUM = ['bmode','dpi','w','h','gap','direction','density','chunk','delay'];
   function fill(){ F.forEach(k => document.getElementById(k).value = String(LukidsBT.settings[k])); }
   F.forEach(k => document.getElementById(k).onchange = e => {
     let v = e.target.value;
