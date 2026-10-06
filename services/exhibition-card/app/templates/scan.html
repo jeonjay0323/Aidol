@@ -413,6 +413,14 @@
                          transform:rotate(-45deg) translateY(6px)}
   .sw input[type=color]{position:absolute;inset:0;opacity:0;cursor:pointer}
   .sw button.pick{background:conic-gradient(#f66,#fc6,#6f9,#6cf,#c6f,#f66)}
+  /* 만들기 — 생성 결과. 라벨(40×60mm)과 같은 2:3. 버튼이 첫 화면에 남게 높이를 묶는다 */
+  .gen-stage{position:relative;aspect-ratio:2/3;width:min(100%,calc(56vh * 2 / 3));margin:0 auto 16px;
+             border-radius:var(--r);background:var(--bg-2);overflow:hidden;display:grid;place-items:center}
+  .gen-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+  .gen-stage .loading{padding:0}
+  .gen-stage .loading[hidden]{display:none}
+  .opt.hair{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 8px}
+  .opt.hair i{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(232,214,187,.25)}
 </style>
 </head>
 <body>
@@ -541,25 +549,24 @@
   <div style="height:10px"></div>
 </section>
 
-<!-- ══ 4. 내 아이돌 만들기 ══ -->
 <!-- ══ 4. 내 아이돌 만들기 ══
-     3단계로 받는 값이 곧 이미지 생성기(tools/image-generator)의 축이다.
-     normal → PRESETS(동물상 5종) · epic → SPECIES(종족 6종).
-     실제 생성 호출은 generateImage() 한 곳에만 붙이면 된다. -->
+     실물 · 버추얼을 고르고, 조합 + 직접 쓴 프롬프트로 사진을 생성해 바로 인쇄한다.
+     Simli 등록은 하지 않는다 — 만든 카드는 음성 통화로 시작한다.
+     실물은 tools/image-generator(normal · epic) 프롬프트를 서버가 그대로 쓴다. -->
 <section class="screen" id="s-create">
   <header><button class="back" aria-label="뒤로" onclick="go('s-card')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i></i><i></i></div>
-  <div class="q">어떤 카드를 만들까요?</div>
-  <div class="qsub">고른 조합으로 얼굴이 생성되고 카드가 인쇄되어 나옵니다</div>
+  <div class="steps"><i class="on"></i><i></i><i></i><i></i></div>
+  <div class="q">어떤 아이돌을 만들까요?</div>
+  <div class="qsub">사진이 생성되면 바로 카드로 인쇄됩니다</div>
 
-  <div class="grades" id="grades">
-    <button class="grade" data-grade="normal" onclick="pickGrade(this)">
-      <b>일상 카드</b>
-      <small>동물상을 골라 만드는 담백한 프로필. 평상복 차림에 화보 같은 사진.</small>
+  <div class="grades" id="kinds">
+    <button class="grade" data-kind="real" onclick="pickKind(this)">
+      <b>실물 아이돌</b>
+      <small>실제 사람처럼 찍은 화보 사진. 동물상이나 종족 컨셉을 골라 만들어요.</small>
     </button>
-    <button class="grade" data-grade="epic" onclick="pickGrade(this)">
-      <b>에픽 카드</b>
-      <small>구미호 · 묘인 · 천사 같은 종족으로 만드는 코스프레 컨셉. 필름룩.</small>
+    <button class="grade" data-kind="virtual" onclick="pickKind(this)">
+      <b>버추얼 아이돌</b>
+      <small>애니메이션 일러스트로 그린 버추얼 캐릭터. 분위기와 머리색을 골라 만들어요.</small>
     </button>
   </div>
 
@@ -573,23 +580,43 @@
   <button class="cta" onclick="toLook()">다음</button>
 </section>
 
-<!-- ══ 4-2. 얼굴상 / 종족 ══ -->
+<!-- ══ 4-2. 모습 ══ -->
 <section class="screen" id="s-create-look">
   <header><button class="back" aria-label="뒤로" onclick="go('s-create')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="steps"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+
+  <div id="look-real">
+    <div class="q" style="font-size:15px;margin-bottom:10px">카드 종류</div>
+    <div class="seg" id="grade">
+      <button data-grade="normal" onclick="pickGrade(this)">일상 · 동물상</button>
+      <button data-grade="epic" onclick="pickGrade(this)">에픽 · 종족</button>
+    </div>
+  </div>
+
   <div class="q" id="look-q">어떤 얼굴인가요?</div>
   <div class="qsub" id="look-sub"></div>
-
   <div class="opts" id="look-opts"></div>
-  <p class="caution" id="look-caution" hidden></p>
+
+  <div class="field" id="hair-field" hidden>
+    <label>머리색</label>
+    <div class="opts" id="hair-opts" style="grid-template-columns:repeat(3,1fr)"></div>
+  </div>
+
+  <div class="field" id="prompt-field">
+    <label for="c-prompt">원하는 모습을 직접 써주세요 <span style="font-weight:600">(선택)</span></label>
+    <textarea id="c-prompt" rows="3" maxlength="300" oninput="syncPrompt()"
+      placeholder="예 · 은색 귀걸이, 앞머리 있는 단발, 별 모양 머리핀"></textarea>
+    <div class="ctxline"><span id="prompt-count">0</span> / 300자</div>
+  </div>
+
   <p class="hint" id="look-hint" role="status" hidden></p>
   <button class="cta" onclick="toName()">다음</button>
 </section>
 
-<!-- ══ 4-3. 이름 · 목소리 · 확인 ══ -->
+<!-- ══ 4-3. 이름 · 목소리 · 성격 ══ -->
 <section class="screen" id="s-create-name">
   <header><button class="back" aria-label="뒤로" onclick="go('s-create-look')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
   <div class="q">이름을 지어주세요</div>
   <div class="qsub">카드와 통화 화면에 그대로 쓰입니다</div>
 
@@ -613,7 +640,31 @@
 
   <div class="review" id="review"></div>
   <p class="hint" id="name-hint" role="status" hidden></p>
-  <button class="cta" onclick="submitCreate()">이 조합으로 만들기</button>
+  <button class="cta" onclick="toResult()">사진 만들기</button>
+  <div style="height:10px"></div>
+</section>
+
+<!-- ══ 4-4. 생성 결과 → 발급 → 인쇄 ══ -->
+<section class="screen" id="s-create-result">
+  <header><button class="back" aria-label="뒤로" onclick="backFromResult()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
+  <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="q" id="result-q">사진을 만드는 중</div>
+  <div class="qsub" id="result-sub">20초쯤 걸려요</div>
+
+  <div class="gen-stage" id="gen-stage">
+    <img id="gen-img" alt="" hidden>
+    <div class="loading" id="gen-wait"><div class="spin"></div><p>그리는 중</p></div>
+  </div>
+
+  <p class="hint" id="result-hint" role="status" hidden></p>
+  <div id="result-pick">
+    <button class="cta" id="issue-btn" onclick="issueCard()" disabled>이 사진으로 카드 만들기</button>
+    <button class="ghost" id="regen-btn" onclick="generate()" disabled style="margin-top:10px">다시 만들기</button>
+  </div>
+  <div id="result-done" hidden>
+    <button class="cta" onclick="printCard()">카드 인쇄하기</button>
+    <button class="ghost" onclick="location.href='/c/' + CREATE.cardId" style="margin-top:10px">내 카드 열기</button>
+  </div>
   <div style="height:10px"></div>
 </section>
 
@@ -745,8 +796,8 @@
   }
 
   /* ───────── 카드 만들기 ─────────
-     여기서 모으는 값이 그대로 tools/image-generator 의 축이 된다.
-     normal.py PRESETS / epic.py SPECIES 의 키를 그대로 쓴다. */
+     실물: normal.py PRESETS / epic.py SPECIES 의 키를 그대로 서버에 넘긴다.
+     버추얼: imagegen.py MOODS / HAIR 의 키. 조립은 서버가 한다. */
 
   const PRESETS = [
     { k:'cat',  label:'고양이상', mood:'시크'  },
@@ -755,28 +806,35 @@
     { k:'fox',  label:'여우상',   mood:'무드'  },
     { k:'deer', label:'사슴상',   mood:'몽환'  },
   ];
-  // face 는 epic.py 가 종족마다 기본으로 물려주는 동물상이다
   const SPECIES = [
-    { k:'ninetail', label:'구미호', face:'fox',  note:'여우 귀 · 금색 눈'   },
-    { k:'cat',      label:'묘인',   face:'cat',  note:'고양이 귀 · 수염점'  },
-    { k:'devil',    label:'악마',   face:'fox',  note:'램혼 · 진홍 눈'      },
-    { k:'angel',    label:'천사',   face:'deer', note:'광륜 · 백금 눈'      },
-    { k:'fairy',    label:'요정',   face:'dog',  note:'뾰족귀 · 연두 눈'    },
-    { k:'mermaid',  label:'인어',   face:'deer', note:'지느러미 귀 · 비늘'  },
+    { k:'ninetail', label:'구미호', note:'여우 귀 · 금색 눈'   },
+    { k:'cat',      label:'묘인',   note:'고양이 귀 · 수염점'  },
+    { k:'devil',    label:'악마',   note:'램혼 · 진홍 눈'      },
+    { k:'angel',    label:'천사',   note:'광륜 · 백금 눈'      },
+    { k:'fairy',    label:'요정',   note:'뾰족귀 · 연두 눈'    },
+    { k:'mermaid',  label:'인어',   note:'지느러미 귀 · 비늘'  },
   ];
-  // docs/features 에 적힌 매핑만 쓴다. 여자 목소리는 아직 하루(Leda) 하나뿐.
+  const MOODS = [
+    { k:'fresh',  label:'청량', note:'맑은 하늘 · 활짝 웃음' },
+    { k:'dreamy', label:'몽환', note:'반짝이 · 옅은 미소'    },
+    { k:'dark',   label:'다크', note:'네온 · 날카로운 눈빛'  },
+    { k:'cute',   label:'큐트', note:'윙크 · 발랄한 포즈'    },
+    { k:'chic',   label:'시크', note:'차분 · 미니멀'         },
+  ];
+  const HAIRS = [
+    { k:'pink',   label:'핑크',   c:'#F4A7C0' }, { k:'lilac', label:'라일락', c:'#B9A6F2' },
+    { k:'sky',    label:'하늘',   c:'#9CC9F5' }, { k:'blonde', label:'금발',  c:'#E8C77A' },
+    { k:'black',  label:'흑발',   c:'#2E2A33' }, { k:'silver', label:'은발',  c:'#E4E4EC' },
+  ];
+  // docs/features 에 적힌 매핑. Zephyr 는 하늘 카드가 쓰는 들뜬 톤.
   const VOICES = {
     m: [ { k:'Puck', label:'밝고 활기찬' }, { k:'Charon', label:'차분하고 낮은' },
          { k:'Fenrir', label:'유쾌한' },    { k:'Orus', label:'감성적인' } ],
-    f: [ { k:'Leda', label:'맑고 또렷한' } ],
-  };
-  // image-generator README 가 적어둔 레퍼런스 구멍. 결과 품질이 달라져서 미리 알린다.
-  const REF_GAPS = {
-    'normal:f:wolf': '여자 늑대상 얼굴 레퍼런스가 아직 없어서, 얼굴은 텍스트 지정으로 만들어집니다.',
-    'epic:m':        '남자 코스프레 레퍼런스(cosplay_boy)가 아직 없어서, 의상은 텍스트 지정으로 만들어집니다.',
+    f: [ { k:'Leda', label:'맑고 또렷한' }, { k:'Zephyr', label:'들뜨고 밝은' } ],
   };
 
-  const CREATE = { grade:null, gender:null, look:null, voice:null, name:'', persona:'',
+  const CREATE = { kind:null, gender:null, grade:'normal', look:null, hair:null, prompt:'',
+                   voice:null, name:'', persona:'', image:null, tries:0, cardId:null,
                    depth:null, startedAt:0 };
 
   // A조건은 이름도 안 짓는다. 고르는 노동만 남기려면 이름이 자동이어야 한다.
@@ -809,11 +867,11 @@
     el.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
 
-  function pickGrade(btn){
-    document.querySelectorAll('#grades .grade').forEach(b => b.classList.remove('sel'));
+  function pickKind(btn){
+    document.querySelectorAll('#kinds .grade').forEach(b => b.classList.remove('sel'));
     btn.classList.add('sel');
-    CREATE.grade = btn.dataset.grade;
-    CREATE.look = null;               // 등급이 바뀌면 고른 얼굴상·종족은 뜻을 잃는다
+    CREATE.kind = btn.dataset.kind;
+    CREATE.look = null;               // 실물과 버추얼은 고르는 축이 다르다
     hint('create-hint', '');
   }
   function pickGender(btn){
@@ -823,44 +881,77 @@
     CREATE.voice = null;              // 목소리 풀이 성별마다 다르다
     hint('create-hint', '');
   }
+  function pickGrade(btn){
+    CREATE.grade = btn.dataset.grade;
+    CREATE.look = null;               // 등급이 바뀌면 고른 얼굴상·종족은 뜻을 잃는다
+    renderLook();
+  }
 
-  function toLook(){
-    if (!CREATE.grade || !CREATE.gender) {
-      return hint('create-hint', '카드 종류와 성별을 모두 골라주세요.');
-    }
-    const epic = CREATE.grade === 'epic';
-    const pool = epic ? SPECIES : PRESETS;
-    document.getElementById('look-q').textContent = epic ? '어떤 종족인가요?' : '어떤 얼굴인가요?';
-    document.getElementById('look-sub').textContent = epic
-      ? '종족마다 귀 · 눈 · 표식과 배경이 함께 정해집니다'
+  function lookPool(){
+    if (CREATE.kind === 'virtual') return MOODS;
+    return CREATE.grade === 'epic' ? SPECIES : PRESETS;
+  }
+
+  function renderLook(){
+    const virtual = CREATE.kind === 'virtual', epic = CREATE.grade === 'epic';
+    document.getElementById('look-real').hidden = virtual;
+    document.getElementById('hair-field').hidden = !virtual;
+    document.querySelectorAll('#grade button')
+      .forEach(b => b.classList.toggle('sel', b.dataset.grade === CREATE.grade));
+    document.getElementById('look-q').textContent =
+      virtual ? '어떤 분위기인가요?' : epic ? '어떤 종족인가요?' : '어떤 얼굴인가요?';
+    document.getElementById('look-sub').textContent =
+      virtual ? '표정 · 조명 · 배경이 함께 정해집니다'
+      : epic ? '종족마다 귀 · 눈 · 표식과 배경이 함께 정해집니다'
       : '동물상이 얼굴 생김새와 표정을 정합니다';
 
     const box = document.getElementById('look-opts');
     box.innerHTML = '';
-    pool.forEach(o => {
+    lookPool().forEach(o => {
       const b = document.createElement('button');
       b.className = 'opt two' + (CREATE.look === o.k ? ' sel' : '');
-      b.dataset.k = o.k;
-      b.innerHTML = `<b>${o.label}</b><small>${epic ? o.note : o.mood}</small>`;
-      b.onclick = () => { pick(b); CREATE.look = o.k; hint('look-hint', ''); showGap(); };
+      b.innerHTML = `<b>${o.label}</b><small>${o.note || o.mood}</small>`;
+      b.onclick = () => { pick(b); CREATE.look = o.k; hint('look-hint', ''); };
       box.appendChild(b);
     });
-    showGap();
+
+    const hb = document.getElementById('hair-opts');
+    hb.innerHTML = '';
+    HAIRS.forEach(h => {
+      const b = document.createElement('button');
+      b.className = 'opt hair' + (CREATE.hair === h.k ? ' sel' : '');
+      b.innerHTML = `<i style="background:${h.c}"></i>${h.label}`;
+      b.onclick = () => { pick(b); CREATE.hair = h.k; hint('look-hint', ''); };
+      hb.appendChild(b);
+    });
+  }
+
+  function toLook(){
+    if (!CREATE.kind || !CREATE.gender) {
+      return hint('create-hint', '아이돌 종류와 성별을 모두 골라주세요.');
+    }
+    // A조건은 고르기만 한다 — 직접 쓰는 칸을 열면 조건이 섞인다
+    document.getElementById('prompt-field').hidden = CREATE.depth === 'A';
+    renderLook();
     logStep('look');
     go('s-create-look');
   }
 
-  function showGap(){
-    const el = document.getElementById('look-caution');
-    const msg = REF_GAPS[`${CREATE.grade}:${CREATE.gender}:${CREATE.look}`]
-             || REF_GAPS[`${CREATE.grade}:${CREATE.gender}`];
-    if (msg) { el.textContent = msg; el.hidden = false; } else { el.hidden = true; }
+  function syncPrompt(){
+    const el = document.getElementById('c-prompt');
+    CREATE.prompt = el.value.trim();
+    document.getElementById('prompt-count').textContent = el.value.length;
   }
 
   function toName(){
+    const virtual = CREATE.kind === 'virtual';
     if (!CREATE.look) {
-      return hint('look-hint', CREATE.grade === 'epic' ? '종족을 골라주세요.' : '얼굴상을 골라주세요.');
+      return hint('look-hint', virtual ? '분위기를 골라주세요.'
+                  : CREATE.grade === 'epic' ? '종족을 골라주세요.' : '얼굴상을 골라주세요.');
     }
+    if (virtual && !CREATE.hair) return hint('look-hint', '머리색을 골라주세요.');
+    if (CREATE.depth === 'A') CREATE.prompt = '';
+
     const box = document.getElementById('voice-opts');
     box.innerHTML = '';
     VOICES[CREATE.gender].forEach(v => {
@@ -870,15 +961,12 @@
       b.onclick = () => { pick(b); CREATE.voice = v.k; hint('name-hint', ''); syncReview(); };
       box.appendChild(b);
     });
-    if (VOICES[CREATE.gender].length === 1) {   // 고를 게 하나뿐이면 골라준다
-      box.firstChild.classList.add('sel');
-      CREATE.voice = VOICES[CREATE.gender][0].k;
-    }
     // A조건은 이름도 성격도 받지 않는다 — 고르는 노동만 남긴다
     if (CREATE.depth === 'A') {
       CREATE.name = AUTO_NAMES[Math.floor(Math.random() * AUTO_NAMES.length)];
+      CREATE.voice = VOICES[CREATE.gender][0].k;
       logStep('skip-name');
-      return submitCreate();
+      return toResult();
     }
     document.getElementById('persona-field').hidden = CREATE.depth !== 'C';
     syncReview();
@@ -887,72 +975,148 @@
   }
 
   function lookLabel(){
-    const pool = CREATE.grade === 'epic' ? SPECIES : PRESETS;
-    return (pool.find(o => o.k === CREATE.look) || {}).label || '—';
+    return (lookPool().find(o => o.k === CREATE.look) || {}).label || '—';
+  }
+  function hairLabel(){
+    return (HAIRS.find(h => h.k === CREATE.hair) || {}).label || '—';
   }
 
   function syncReview(){
-    CREATE.name = document.getElementById('c-name').value.trim();
+    if (CREATE.depth !== 'A') CREATE.name = document.getElementById('c-name').value.trim();
     const pv = document.getElementById('c-persona');
-    if (pv) {
-      CREATE.persona = pv.value.trim();
-      document.getElementById('persona-count').textContent = pv.value.length;
-    }
-    const epic = CREATE.grade === 'epic';
-    const face = epic ? (SPECIES.find(o => o.k === CREATE.look) || {}).face : CREATE.look;
-    const faceLabel = (PRESETS.find(o => o.k === face) || {}).label || '—';
+    CREATE.persona = CREATE.depth === 'C' ? pv.value.trim() : '';
+    document.getElementById('persona-count').textContent = pv.value.length;
+    const virtual = CREATE.kind === 'virtual', epic = CREATE.grade === 'epic';
     const rows = [
       ['이름',   CREATE.name || '—'],
-      ['카드',   epic ? '에픽' : '일상'],
+      ['종류',   virtual ? '버추얼' : epic ? '실물 · 에픽' : '실물 · 일상'],
       ['성별',   CREATE.gender === 'f' ? '여자' : '남자'],
-      [epic ? '종족' : '얼굴상', lookLabel() + (epic ? ` · 얼굴은 ${faceLabel}` : '')],
+      [virtual ? '분위기' : epic ? '종족' : '얼굴상', lookLabel()],
+      ...(virtual ? [['머리색', hairLabel()]] : []),
+      ...(CREATE.prompt ? [['직접 쓴 모습', CREATE.prompt]] : []),
       ['목소리', CREATE.voice || '—'],
       ...(CREATE.depth === 'C' ? [['성격', CREATE.persona || '—']] : []),
-      ['비율',   epic ? '3:4' : '4:3 · 3:4'],
     ];
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     document.getElementById('review').innerHTML =
-      rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+      rows.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('');
   }
 
-  /* 이미지 생성기에 넘길 값. normal.py / epic.py 인자와 1:1 로 맞춰둔다. */
-  function buildSpec(){
-    const epic = CREATE.grade === 'epic';
-    return {
-      generator: epic ? 'epic.py' : 'normal.py',
-      gender: CREATE.gender,
-      ...(epic ? { species: CREATE.look } : { preset: CREATE.look, mode: 'editorial' }),
-      name: CREATE.name,
-      voice: CREATE.voice,
-      persona: CREATE.persona || null,
-      depth: CREATE.depth,                       // 연구 조건 — 로그에 그대로 실린다
-      elapsedMs: Date.now() - CREATE.startedAt,  // 투입 시간(소진 효과 통제변수)
-    };
-  }
-
-  // TODO: 이미지 생성 프롬프트 연결 지점.
-  // 여기서 buildSpec() 을 서버로 보내고, 돌아온 이미지를 POST /api/cards 에
-  // multipart 로 실어 보내면 카드 발급 + Simli 얼굴 등록까지 이어진다.
-  async function generateImage(spec){
-    throw new Error('아직 연결되지 않음');
-  }
-
-  async function submitCreate(){
+  function toResult(){
     syncReview();
     if (!CREATE.name)  return hint('name-hint', '이름을 입력해주세요.');
     if (!CREATE.voice) return hint('name-hint', '목소리를 골라주세요.');
+    CREATE.image = null; CREATE.tries = 0; CREATE.cardId = null;
+    document.getElementById('result-pick').hidden = false;
+    document.getElementById('result-done').hidden = true;
+    go('s-create-result');
+    generate();
+  }
 
-    const spec = buildSpec();
-    console.log('[create] spec', spec);
-    document.getElementById('load-msg').textContent = CREATE.name + '을(를) 만드는 중';
-    go('s-load');
+  function backFromResult(){
+    if (CREATE.cardId) return go('s-card');
+    go(CREATE.depth === 'A' ? 's-create-look' : 's-create-name');
+  }
+
+  function setBusy(busy){
+    document.getElementById('gen-wait').hidden = !busy;
+    document.getElementById('gen-img').hidden = busy || !CREATE.image;
+    document.getElementById('issue-btn').disabled = busy || !CREATE.image;
+    document.getElementById('regen-btn').disabled = busy;
+  }
+
+  async function generate(){
+    CREATE.tries += 1;
+    hint('result-hint', '');
+    document.getElementById('result-q').textContent = CREATE.name + '을(를) 그리는 중';
+    document.getElementById('result-sub').textContent = '20초쯤 걸려요';
+    setBusy(true);
+    logStep('generate');
     try {
-      await generateImage(spec);
+      const r = await fetch('/api/generate', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ kind:CREATE.kind, gender:CREATE.gender, grade:CREATE.grade,
+                               look:CREATE.look, mood:CREATE.look, hair:CREATE.hair,
+                               prompt:CREATE.prompt, depth:CREATE.depth, try:CREATE.tries }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || '생성 실패');
+      CREATE.image = j.image;
+      document.getElementById('gen-img').src = j.image;
+      document.getElementById('result-q').textContent = '이 모습 어때요?';
+      document.getElementById('result-sub').textContent = '마음에 안 들면 다시 만들 수 있어요';
     } catch (e) {
-      // 생성기가 아직 안 붙었다는 걸 숨기지 않는다
-      hint('name-hint', '이미지 생성이 아직 연결되지 않았습니다. 고른 조합: '
-           + JSON.stringify(spec));
-      go('s-create-name');
+      document.getElementById('result-q').textContent = '사진을 만들지 못했어요';
+      document.getElementById('result-sub').textContent = '';
+      hint('result-hint', e.message);
     }
+    setBusy(false);
+  }
+
+  // 통화 페르소나. tools/virtual_card.py 프리셋과 같은 틀로 맞춘다.
+  function buildPersona(){
+    const virtual = CREATE.kind === 'virtual';
+    const who = virtual ? '버추얼 아이돌' : '아이돌 연습생';
+    const look = virtual ? `${lookLabel()} 분위기에 ${hairLabel()} 머리`
+               : CREATE.grade === 'epic' ? `${lookLabel()} 컨셉` : `${lookLabel()} 얼굴`;
+    return [
+      `너는 ${who} '${CREATE.name}'이야. ${CREATE.gender === 'f' ? '여자' : '남자'}야.`,
+      `외모: ${look}.`,
+      CREATE.prompt ? `생김새: ${CREATE.prompt}` : '',
+      CREATE.persona ? `성격: ${CREATE.persona}` : '밝고 다정하고, 상대 이야기에 리액션이 커.',
+      '너를 만든 사람과 지금 처음 영상통화를 하는 중이야. 한 번에 한두 문장으로 짧게 말하고, '
+      + '질문을 하나씩 던져서 대화를 이어가. 너 자신이 AI라는 말은 먼저 꺼내지 마.',
+    ].filter(Boolean).join('\n');
+  }
+
+  function buildTags(){
+    if (CREATE.kind === 'virtual') return ['버추얼', lookLabel(), hairLabel() + ' 머리'];
+    return [CREATE.grade === 'epic' ? '에픽' : '일상', lookLabel()];
+  }
+
+  // 카드 하단 게이지. 8칸 중 3~8칸.
+  function rollStats(){
+    const s = {};
+    ['보컬', '댄스', '비주얼', '매력'].forEach(k => { s[k] = 3 + Math.floor(Math.random() * 6); });
+    return s;
+  }
+
+  async function issueCard(){
+    if (!CREATE.image) return;
+    document.getElementById('issue-btn').disabled = true;
+    document.getElementById('regen-btn').disabled = true;
+    hint('result-hint', '');
+    try {
+      const blob = await fetch(CREATE.image).then(r => r.blob());
+      const fd = new FormData();
+      fd.append('name', CREATE.name);
+      fd.append('persona', buildPersona());
+      fd.append('voice', CREATE.voice);
+      fd.append('tags', JSON.stringify(buildTags()));
+      fd.append('stats', JSON.stringify(rollStats()));
+      fd.append('source', 'user');
+      fd.append('register_face', 'false');
+      fd.append('image', blob, 'card.jpg');
+      const r = await fetch('/api/cards', { method:'POST', body:fd });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || '발급 실패');
+      CREATE.cardId = j.cardId;
+      logStep('issued');
+      document.getElementById('result-q').textContent = CREATE.name + ' 카드가 나왔어요';
+      document.getElementById('result-sub').textContent = '카드 번호 ' + j.cardId;
+      document.getElementById('result-pick').hidden = true;
+      document.getElementById('result-done').hidden = false;
+    } catch (e) {
+      hint('result-hint', '카드를 만들지 못했어요. ' + e.message);
+      document.getElementById('issue-btn').disabled = false;
+      document.getElementById('regen-btn').disabled = false;
+    }
+  }
+
+  // 인쇄용 카드 페이지를 새 창으로 열면 사진이 다 뜬 뒤 인쇄 창이 뜬다.
+  // 발급 직후 자동으로 열지 않는 건, await 뒤의 window.open 을 사파리가 팝업으로 막기 때문.
+  function printCard(){
+    window.open(`/label/${CREATE.cardId}?print=1`, '_blank');
   }
 
   /* ───────── 꾸미기 (버추얼 카드) ─────────

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from google.cloud import firestore
 
-PROJECT = os.getenv("GCP_PROJECT", "aidol-505503")
+PROJECT = os.getenv("GCP_PROJECT", "project-d4a769de-d13f-4a6a-a22")
 COLLECTION = "cards"
 
 ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32 — 0/O, 1/I 혼동 제거

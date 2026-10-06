@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ card.name }} — AIDOL LABEL</title>
+<style>
+  /* 만들기 화면에서 나온 카드용 라벨. 디자인은 세로 40×60mm,
+     용지는 가로 60×40mm 라 인쇄할 때만 90° 돌린다. */
+  :root{
+    --paper:#e8d6bb;
+    --ink:#2b1d14;
+    --w:40mm;
+    --h:60mm;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#3a3a3a;
+    font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:24px;
+    padding:40px 20px;
+  }
+
+  /* 화면에서만 확대 */
+  .stage{transform:scale(3);transform-origin:top center}
+  .stage-space{height:calc(60mm * 3)}
+
+  .label{
+    width:var(--w);height:var(--h);position:relative;overflow:hidden;
+    background:var(--ink);
+  }
+  .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+
+  .top{
+    position:absolute;top:1.6mm;left:1.6mm;right:1.6mm;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .chip{
+    background:var(--ink);color:var(--paper);border-radius:.8mm;
+    padding:.5mm 1.2mm;font-size:2mm;font-weight:900;letter-spacing:.2mm;
+  }
+  .serial{font-size:1.6mm;font-weight:700;letter-spacing:.2mm;color:#fff;
+          text-shadow:0 0 .6mm rgba(0,0,0,.7)}
+
+  /* 하단 — 이름과 QR. 사진 위로 어둡게 깔아 어떤 사진이든 읽히게 */
+  .foot{
+    position:absolute;left:0;right:0;bottom:0;padding:6mm 1.6mm 1.6mm;
+    display:flex;align-items:flex-end;gap:1.4mm;
+    background:linear-gradient(to top,rgba(20,13,8,.85) 0%,rgba(20,13,8,.55) 60%,transparent 100%);
+  }
+  .who{flex:1;min-width:0}
+  .name{
+    font-size:6.4mm;font-weight:900;color:var(--paper);line-height:1;letter-spacing:-.25mm;
+    -webkit-text-stroke:.6mm var(--ink);paint-order:stroke fill;
+    white-space:nowrap;overflow:hidden;text-overflow:clip;
+  }
+  .tags{margin-top:.9mm;font-size:1.7mm;font-weight:700;color:var(--paper);opacity:.85;
+        white-space:nowrap;overflow:hidden}
+  /* 66자 주소 = 버전5 · 37모듈 + 여백 4. 16mm 면 모듈당 0.39mm */
+  .qr{width:16mm;flex:none;background:#fff;border-radius:.6mm;padding:.4mm}
+  .qr img{width:100%;display:block;image-rendering:pixelated}
+
+  .meta{color:#ddd;font-size:13px;text-align:center;line-height:1.8}
+  .meta code{background:#222;padding:2px 7px;border-radius:4px;color:#8fd}
+
+  @media print{
+    @page{size:60mm 40mm;margin:0}
+    html,body{width:60mm;height:40mm;background:#fff;padding:0;display:block;overflow:hidden}
+    .stage-space{height:auto}
+    .meta{display:none}
+    /* 세로 라벨을 가로 용지에 눕힌다. 카드 윗면이 용지 왼쪽으로 간다 */
+    .stage{width:40mm;transform:translateY(40mm) rotate(-90deg);transform-origin:top left}
+    .label{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-space">
+<div class="stage">
+  <div class="label">
+    {% if card.image_path %}<img class="photo" src="{{ card.image_path }}" alt="">{% endif %}
+    <div class="top">
+      <span class="chip">AIDOL</span>
+      <span class="serial">{{ card.card_id }}</span>
+    </div>
+    <div class="foot">
+      <div class="who">
+        <div class="name">{{ card.name }}</div>
+        <div class="tags">{{ card.tags | join(" · ") }}</div>
+      </div>
+      <div class="qr"><img src="{{ qr_url }}" alt="스캔용 QR"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="meta">
+  {{ card.name }} · {{ card.card_id }}<br>
+  라벨 40 × 60 mm → 용지 60 × 40 mm 가로로 인쇄
+</div>
+
+<script>
+  // 만들기 화면에서 ?print=1 로 열면 사진과 QR 이 다 뜬 뒤 인쇄 창을 띄운다
+  if (new URLSearchParams(location.search).has('print')) {
+    window.addEventListener('load', () => setTimeout(() => window.print(), 300));
+  }
+</script>
+</body>
+</html>

@@ -22,7 +22,7 @@ from google.genai import types
 from . import call, db
 
 load_dotenv(Path(__file__).parent.parent / ".env")
-GCP_PROJECT = os.getenv("GCP_PROJECT", "project-8f215caa-065e-4ffe-ac9")
+GCP_PROJECT = os.getenv("GCP_PROJECT", "project-d4a769de-d13f-4a6a-a22")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
 
