@@ -396,6 +396,12 @@ async def call_page(request: Request):
     })
 
 
+@app.get("/station", response_class=HTMLResponse)
+async def station_page(request: Request):
+    """인쇄 대기 화면 — 프린터가 연결된 노트북에 띄워 두면 새 카드 라벨을 자동으로 뽑는다."""
+    return templates.TemplateResponse("station.html", {"request": request, "base": base_url(request)})
+
+
 @app.post("/api/btlog")
 async def api_btlog(request: Request):
     """블루투스 인쇄 로그(bt-print.js). 실물 프린터 문제를 원격으로 보려고 서버 로그에 남긴다."""
