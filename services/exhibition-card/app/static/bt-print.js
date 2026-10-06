@@ -27,6 +27,7 @@ window.LukidsBT = (() => {
   try { Object.assign(settings, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
 
   let device = null, ch = null, writable = [];
+  let credits = null, mtu = null;   // 프린터가 FF03 으로 알려준다 (연결 직후 01 07 · 02 f4 00 을 받음)
   // 데이터를 받는 통로로 흔한 것들(앞이 우선). 6DAA 같은 ISSC 의 다른 쓰기 특성은 인쇄를 안 받는다
   // FF02 = 이 계열(Aimo · Quyin OEM, labelife 문서)의 BLE 인쇄 통로. 실물 DPP-Ai01W 에도 있다
   const PREFER = ['0000ff02', '49535343-8841', '00002af1', '0000fff2', '0000ff82', '0000ff12', '0000ff11', '0000fec7'];
@@ -45,6 +46,7 @@ window.LukidsBT = (() => {
     if (ch && device && device.gatt.connected) return device.name;
     device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: SERVICES });
     log(`선택: ${device.name || '(이름 없음)'}`);
+    credits = null; mtu = null;
     device.addEventListener('gattserverdisconnected', () => { ch = null; log('연결 끊김'); });
     const server = await device.gatt.connect();
     const services = await server.getPrimaryServices();
@@ -64,6 +66,10 @@ window.LukidsBT = (() => {
               const hex = [...b].slice(0, 40).map(x => x.toString(16).padStart(2, '0')).join(' ');
               const txt = String.fromCharCode(...b.slice(0, 60)).replace(/[^\x20-\x7e]/g, '.');
               log(`응답 ${c.uuid.slice(0, 8)} ← ${hex} | ${txt}`);
+              if (full(c.uuid).startsWith('0000ff03')) {
+                if (b[0] === 0x01 && b.length >= 2) credits = (credits || 0) + b[1];
+                if (b[0] === 0x02 && b.length >= 3) mtu = b[1] | (b[2] << 8);
+              }
             });
           } catch (e) { log(`알림 실패 ${c.uuid.slice(0, 8)}: ${String(e)}`); }
         }
@@ -87,14 +93,25 @@ window.LukidsBT = (() => {
   const full = (u) => { u = String(u).toLowerCase(); return u.length === 4 ? `0000${u}-0000-1000-8000-00805f9b34fb` : u; };
 
   async function send(bytes) {
-    const n = settings.chunk;
+    // FF02 로 보낼 때 프린터가 묶음 허락(credits)을 줬다면 그만큼만 보내고 다음 허락을 기다린다
+    const flow = credits !== null && full(ch.uuid).startsWith('0000ff02');
+    const n = Math.min(settings.chunk, flow && mtu ? mtu : 512);
+    if (flow) log(`흐름 제어: 허락 ${credits} · 묶음 ${n}바이트`);
     for (let i = 0; i < bytes.length; i += n) {
+      if (flow) {
+        const t0 = Date.now();
+        while (credits <= 0) {
+          if (Date.now() - t0 > 4000) { log(`허락을 4초 기다렸지만 안 와서 계속 보냄 (${i}/${bytes.length})`); credits = 1; break; }
+          await sleep(10);
+        }
+        credits--;
+      }
       const part = bytes.slice(i, i + n);
       const withResp = ch.properties.write && (settings.resp ?? full(ch.uuid).startsWith('0000ff02'));
       if (withResp || !ch.properties.writeWithoutResponse) {
         await (ch.writeValueWithResponse ? ch.writeValueWithResponse(part) : ch.writeValue(part));
       } else await ch.writeValueWithoutResponse(part);
-      if (settings.delay) await sleep(settings.delay);
+      if (settings.delay && !flow) await sleep(settings.delay);
     }
   }
 
@@ -219,24 +236,24 @@ window.LukidsBT = (() => {
   async function selftest(onstep) { return once(() => _selftest(onstep)); }
   async function _selftest(onstep) {
     if (!ch || !device || !device.gatt.connected) await connect();
-    const order = writable.slice().sort((a, b) => {
-      const r = (c) => { const i = PREFER.findIndex(k => full(c.uuid).startsWith(k)); return i < 0 ? 99 : i; };
-      return r(a) - r(b);
-    });
-    const jobs = [];
-    for (const c of order) jobs.push([c, 'TSPL', ascii('\r\nSELFTEST\r\n')]);
-    for (const c of order) jobs.push([c, 'ESC', new Uint8Array([0x1b, 0x40, 0x12, 0x54])]);
+    // 다른 통로에 보내면 연결이 끊겨서(07:48 로그) 인쇄 통로 FF02 에만 보낸다
+    const c = writable.find(x => full(x.uuid).startsWith('0000ff02')) || ch;
+    ch = c;
+    const s = settings;
+    const jobs = [
+      ['TSPL 자가진단', ascii('\r\nSELFTEST\r\n')],
+      ['ESC/POS 자가진단', new Uint8Array([0x1b, 0x40, 0x12, 0x54])],
+      ['ESC/POS 글자', concat([new Uint8Array([0x1b, 0x40]), ascii('LUKIDS TEST 3\n\n\n\n'), new Uint8Array([0x0c])])],
+      ['TSPL 글자 라벨', ascii(`\r\nSIZE ${s.w} mm,${s.h} mm\r\nGAP ${s.gap} mm,0 mm\r\nCLS\r\nTEXT 40,80,"5",0,1,1,"4 TSPL"\r\nPRINT 1,1\r\n`)],
+      ['TSPL 종이 밀기', ascii('\r\nFORMFEED\r\n')],
+    ];
     for (let i = 0; i < jobs.length; i++) {
-      const [c, kind, bytes] = jobs[i];
-      const label = `${i + 1}. ${kind} → ${full(c.uuid).slice(4, 8)}`;
+      const [label, bytes] = jobs[i];
       onstep && onstep(i + 1, jobs.length, label);
-      log(`자가진단 ${label}`);
-      try {
-        ch = c;
-        await (c.properties.write && c.writeValueWithResponse ? c.writeValueWithResponse(bytes)
-               : c.properties.writeWithoutResponse ? c.writeValueWithoutResponse(bytes) : c.writeValue(bytes));
-      } catch (e) { log(`  실패: ${String(e)}`); }
-      await sleep(8000);
+      log(`자가진단 ${i + 1}. ${label} → ${full(c.uuid).slice(4, 8)}`);
+      try { await send(bytes); } catch (e) { log(`  실패: ${String(e)}`); }
+      await sleep(7000);
+      if (!device.gatt.connected) { log('연결이 끊겨서 멈춤'); break; }
     }
     log('자가진단 끝');
   }
