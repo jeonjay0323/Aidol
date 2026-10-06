@@ -139,6 +139,14 @@ Gemini Live 의 출력 자막(`output_audio_transcription`)을 브라우저로 �
 `GET /label/{id}.png` 가 라벨을 300dpi 이미지(용지 방향 60×40mm, 709×472)로 그리고(`app/label_png.py`),
 라벨 페이지의 "Aiyin 앱으로 보내기"가 아이패드 공유 시트로 넘긴다. 흑백 감열 프린터면 `?mono=1`(디더링).
 
+### 블루투스로 바로 인쇄 (Web Bluetooth)
+
+아이패드 사파리는 Web Bluetooth 가 없어서 Bluefy 앱에서 연다. `static/bt-print.js` 가 프린터를 고르고
+`/label/{id}.png?mono=1&dpi=203`(480×320, 60×40mm)을 1비트 비트맵으로 바꿔 TSPL(기본) 또는 ESC/POS 로 보낸다.
+Aiyin 계열은 ISSC 투명 UART(`49535343-fe7d-…`)로 받는다. 기종마다 달라서 `/printer` 에서
+언어 · 해상도 · 크기 · 간격 · 방향 · 진하기 · 흑백 뒤집기를 바꿔 가며 시험 인쇄하고, 맞춘 값은 localStorage 에 남아
+라벨 화면의 "블루투스로 바로 인쇄"가 그대로 쓴다. 실제 프린터로는 아직 확인하지 못했다(2026-10-07).
+
 ## 초대 경로
 
 관람객 기기를 통제할 수 없어 넷을 열어뒀다. 모두 같은 로비로 모인다.

@@ -14,11 +14,18 @@ import segno
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 FONTS = Path(__file__).parent / "static" / "fonts"
-DPI = 300
-MM = DPI / 25.4
-W, H = round(40 * MM), round(60 * MM)          # 세로 디자인 472 × 709
+DPI = 300                                        # 앱 공유용. 블루투스 직접 인쇄는 프린터 해상도(대개 203)
 PAPER = (255, 255, 255)                          # label.html --paper
 INK = (0, 0, 0)                                  # --ink
+
+
+MM = W = H = None
+
+
+def _set_dpi(dpi):
+    global MM, W, H
+    MM = dpi / 25.4
+    W, H = round(40 * MM), round(60 * MM)        # 세로 디자인 (300dpi 472 × 709, 203dpi 320 × 480)
 
 
 def font(weight, px):
@@ -51,7 +58,8 @@ def fit_text(draw, text, weight, px, max_w):
     return font(weight, px)
 
 
-def render(photo_bytes, name, tags, card_id, scan_url, mono=False):
+def render(photo_bytes, name, tags, card_id, scan_url, mono=False, dpi=DPI):
+    _set_dpi(dpi)
     label = Image.new("RGB", (W, H), INK)
     if photo_bytes:
         photo = Image.open(io.BytesIO(photo_bytes)).convert("RGB")
@@ -107,5 +115,5 @@ def render(photo_bytes, name, tags, card_id, scan_url, mono=False):
         g = g.point(lambda v: round(255 * (v / 255) ** 0.65))   # 감열지는 어둡게 나와서 중간톤을 밝힌다
         out = g.convert("1")                                     # 플로이드-스타인버그 디더링
     buf = io.BytesIO()
-    out.save(buf, "PNG", dpi=(DPI, DPI))
+    out.save(buf, "PNG", dpi=(dpi, dpi))
     return buf.getvalue()

@@ -269,7 +269,7 @@ async def printable_card(request: Request, card_id: str):
 
 
 @app.get("/label/{card_id}.png")
-async def label_png(request: Request, card_id: str, mono: bool = False):
+async def label_png(request: Request, card_id: str, mono: bool = False, dpi: int = 300):
     """라벨 이미지 — 라벨 프린터 앱(Aiyin 등)에 넘긴다. /label/{id} 보다 먼저 등록해야 한다."""
     from . import label_png as L
     card = card_or_404(card_id)
@@ -282,9 +282,9 @@ async def label_png(request: Request, card_id: str, mono: bool = False):
     else:
         photo = None
     png = await asyncio.to_thread(L.render, photo, card["name"], card.get("tags"), card_id,
-                                  f"{base_url(request)}/c/{card_id}", mono)
+                                  f"{base_url(request)}/c/{card_id}", mono, max(150, min(dpi, 600)))
     try:
-        db.log_event("label_image", card_id=card_id, meta={"mono": mono})
+        db.log_event("label_image", card_id=card_id, meta={"mono": mono, "dpi": dpi})
     except Exception as e:
         logging.warning(f"label_image 로그 실패: {e}")
     return Response(png, media_type="image/png", headers={
@@ -394,6 +394,14 @@ async def call_page(request: Request):
     return templates.TemplateResponse("lineup.html", {
         "request": request, "page": "call", "lineup": lineup(),
     })
+
+
+@app.get("/printer", response_class=HTMLResponse)
+async def printer_page(request: Request):
+    """블루투스 라벨 프린터 연결 · 설정 · 시험 인쇄 (static/bt-print.js)."""
+    made = gallery_cards()
+    sample = made[0]["cardId"] if made else next((c["cardId"] for c in lineup()), "")
+    return templates.TemplateResponse("printer.html", {"request": request, "page": "print", "sample": sample})
 
 
 @app.get("/admin", response_class=HTMLResponse)

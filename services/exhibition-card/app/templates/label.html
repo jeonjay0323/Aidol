@@ -138,6 +138,9 @@
 <!-- 인쇄 창이 자동으로 안 뜨는 기기(아이패드 등)와, 인쇄 뒤 원래 화면으로 돌아가기 -->
 <div class="btns col">
   <!-- 블루투스 라벨 프린터(Aiyin 앱)는 브라우저 인쇄가 안 된다 — 라벨 이미지를 앱으로 넘긴다 -->
+  <!-- 블루투스로 바로 (Bluefy 등 Web Bluetooth 되는 브라우저). 설정은 /printer 에서 맞춘다 -->
+  <button class="pbtn" id="bt-btn" onclick="btPrint()" hidden>블루투스로 바로 인쇄</button>
+  <p class="how" id="bt-msg" hidden></p>
   <button class="pbtn" id="share-btn" onclick="shareLabel()">Aiyin 앱으로 보내기</button>
   <label class="mono"><input type="checkbox" id="mono" onchange="prepare()"> 흑백 프린터용(감열지)</label>
   <div class="row">
@@ -149,6 +152,7 @@
 </div>
 </section>
 
+<script src="/static/bt-print.js?v=bt-1"></script>
 <script>
   // 라벨 이미지를 미리 받아 둔다. iOS 는 누른 순간에 바로 share() 해야 해서 기다릴 틈이 없다
   const ID = {{ card.card_id | tojson }};
@@ -172,6 +176,20 @@
     }
   }
   if (!document.body.classList.contains('embed')) prepare();
+  // 블루투스가 되는 브라우저면 바로 인쇄를 맨 위로, 앱 공유는 보조로
+  if (window.LukidsBT && LukidsBT.supported()) {
+    document.getElementById('bt-btn').hidden = false;
+    document.getElementById('share-btn').classList.add('ghost');
+  }
+  async function btPrint(){
+    const msg = document.getElementById('bt-msg'), b = document.getElementById('bt-btn');
+    msg.hidden = false; msg.textContent = '프린터에 연결하는 중…'; b.disabled = true;
+    try {
+      await LukidsBT.printCard(ID);
+      msg.textContent = '보냈어요. 라벨이 안 나오면 /printer 에서 설정을 맞춰 주세요.';
+    } catch (e) { msg.textContent = '인쇄 실패: ' + e.message; }
+    b.disabled = false;
+  }
   // 미리보기는 버튼까지 한 화면에 들어오게 화면 높이에 맞춘다 (60mm ≈ 227px)
   function fitPreview(){
     // 라벨 40×60mm ≈ 151×227px. 넓으면 왼쪽 칸 높이에, 좁으면(세로로 쌓임) 화면 너비에 맞춘다
