@@ -179,7 +179,10 @@
   }
   if (!document.body.classList.contains('embed')) prepare();
   // 블루투스가 되는 브라우저면 바로 인쇄를 맨 위로, 앱 공유는 보조로
-  if (window.LukidsBT && LukidsBT.supported()) {
+  // 2026-10-07: DPP-Ai01W 는 FF02 로 받기는 하지만 TSPL · ESC/POS 를 실행하지 않는다(자체 명령으로 추정).
+  // 시연에서 헷갈리지 않게 블루투스 버튼은 /printer 에서 '되는 설정'을 찾은 기기에서만 보인다.
+  let btOk = false; try { btOk = localStorage.getItem('lukids.bt-ok') === '1'; } catch {}
+  if (btOk && window.LukidsBT && LukidsBT.supported()) {
     document.getElementById('bt-btn').hidden = false;
     document.getElementById('bt-setup').hidden = false;
     document.getElementById('share-btn').classList.add('ghost');

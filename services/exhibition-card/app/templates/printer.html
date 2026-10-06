@@ -72,6 +72,9 @@
       <div class="row"><label for="chunk">묶음 크기</label><input id="chunk" type="number" min="20" max="512"></div>
       <div class="row"><label for="delay">묶음 간격 ms</label><input id="delay" type="number" min="0" max="200"></div>
       <button class="site-btn line sm" onclick="LukidsBT.reset(); fill()">기본값으로</button>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:14px;font-size:14px">
+        <input type="checkbox" id="bt-ok" onchange="try{localStorage.setItem('lukids.bt-ok', this.checked?'1':'0')}catch{}">
+        라벨이 제대로 나왔어요 — 라벨 화면에 "블루투스로 바로 인쇄" 버튼 보이기</label>
     </div>
   </div>
 
@@ -94,6 +97,7 @@
     LukidsBT.save({ [k]: v });
   });
   fill();
+  try { document.getElementById('bt-ok').checked = localStorage.getItem('lukids.bt-ok') === '1'; } catch {}
   const logEl = document.getElementById('log');
   LukidsBT.onlog = m => { logEl.textContent += m + '\n'; logEl.scrollTop = 1e9; };
   if (!LukidsBT.supported()) {
