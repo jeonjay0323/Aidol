@@ -3,10 +3,12 @@
  *
  * 마이크는 하나지만 아바타는 여럿이다. 서버가 매 턴 화자를 정해 알려주므로,
  * 응답 오디오에 실린 cardId를 보고 해당 아바타의 Simli 세션으로만 흘려보낸다.
+ * 버추얼(vrm) 멤버는 재생 음량으로 입을 움직이되, 지금 말하는 멤버만 움직인다.
  */
 window.AidolRoom = (() => {
   let ws = null, micCtx = null, playCtx = null, processor = null, micStream = null;
-  let members = {};           // cardId -> {pc, ws, buffer, videoEl}
+  let members = {};           // cardId -> {pc, ws, buffer, videoEl} | {vrm}
+  let analyser = null, speaking = null;   // speaking: 지금 재생 중인 오디오의 cardId
   let nextPlayTime = 0, activeSources = 0, muted = false, active = false;
   let hooks = {};
   const SIMLI_CHUNK = 3200;
@@ -148,18 +150,21 @@ window.AidolRoom = (() => {
     const buf = playCtx.createBuffer(1, samples.length, 24000);
     buf.copyToChannel(samples, 0);
     const src = playCtx.createBufferSource();
-    src.buffer = buf; src.connect(playCtx.destination);
+    src.buffer = buf; src.connect(analyser || playCtx.destination);
     const at = Math.max(playCtx.currentTime, nextPlayTime);
     src.start(at);
     nextPlayTime = at + buf.duration;
-    src.onended = () => { activeSources--; };
+    src.onended = () => { if (--activeSources === 0) speaking = null; };
   }
 
   /* ── 공개 API ── */
   async function start(cardIds, getVideoEl, cb = {}) {
     hooks = cb; active = true;
     playCtx = new AudioContext({ sampleRate: 24000 });
-    nextPlayTime = 0; activeSources = 0; muted = false; members = {};
+    analyser = playCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.connect(playCtx.destination);
+    nextPlayTime = 0; activeSources = 0; muted = false; members = {}; speaking = null;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws/room`);
@@ -170,6 +175,18 @@ window.AidolRoom = (() => {
       if (msg.type === 'joined') {
         hooks.onJoined && hooks.onJoined(msg.members);
         for (const m of msg.members) {
+          if (m.avatar && m.avatar.type === 'vrm') {
+            try {
+              const el = getVideoEl(m.cardId);
+              const vrm = await AidolVRM.mount(el.parentElement, m.avatar.url,
+                () => (speaking === m.cardId ? analyser : null),
+                { colors: m.avatar.colors });
+              if (!active) { vrm.dispose(); continue; }
+              members[m.cardId] = { vrm };
+              hooks.onVideo && hooks.onVideo(m.cardId);
+            } catch (err) { console.warn('VRM 실패', m.name, err); }
+            continue;
+          }
           if (!m.faceId) continue;
           try { await initSimli(m.cardId, m.faceId, getVideoEl(m.cardId)); }
           catch (err) { console.warn('Simli 실패', m.name, err); }
@@ -180,6 +197,7 @@ window.AidolRoom = (() => {
         hooks.onTurn && hooks.onTurn(msg.cardId);
       } else if (msg.type === 'audio') {
         const bytes = fromBase64(msg.data);
+        speaking = msg.cardId;
         schedule(bytes);
         toSimli(msg.cardId, bytes);
       } else if (msg.type === 'turn_complete') {
@@ -201,12 +219,15 @@ window.AidolRoom = (() => {
     if (!active && !ws && !playCtx) return;
     active = false;
     if (ws) { ws.close(); ws = null; }
-    Object.values(members).forEach(m => { m.ws && m.ws.close(); m.pc && m.pc.close(); });
+    Object.values(members).forEach(m => {
+      m.ws && m.ws.close(); m.pc && m.pc.close(); m.vrm && m.vrm.dispose();
+    });
     members = {};
     if (processor) { processor.disconnect(); processor = null; }
     if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
     if (micCtx) { micCtx.close(); micCtx = null; }
     if (playCtx) { playCtx.close(); playCtx = null; }
+    analyser = null; speaking = null;
     hooks.onEnd && hooks.onEnd();
   }
 

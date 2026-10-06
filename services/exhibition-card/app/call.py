@@ -20,12 +20,49 @@ from . import db
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-GCP_PROJECT = os.getenv("GCP_PROJECT", "project-8f215caa-065e-4ffe-ac9")
+GCP_PROJECT = os.getenv("GCP_PROJECT", "project-d4a769de-d13f-4a6a-a22")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
 
 log = logging.getLogger("call")
 router = APIRouter()
+
+
+def avatar_of(card):
+    """영상으로 보여줄 아바타. 없으면 None(음성 통화).
+
+    photo: Simli 얼굴이 준비된 경우 — 클라이언트가 Simli WebRTC에 붙는다
+    vrm:   모델 파일 URL — 클라이언트가 three-vrm으로 직접 그린다
+    """
+    if card["face_status"] != "ready":
+        return None
+    if card.get("avatar_type") == "vrm":
+        if not card.get("model_path"):
+            return None
+        return {"type": "vrm", "url": card["model_path"],
+                "colors": (card.get("custom") or {}).get("colors", {})}
+    return {"type": "photo", "faceId": card["face_id"]} if card.get("face_id") else None
+
+
+SPEECH = {
+    "casual": "반말로 친구처럼 편하게 말해.",
+    "polite": "존댓말로 다정하게 말해.",
+}
+
+
+def persona_of(card):
+    """카드 페르소나에 주인이 꾸민 말투 · 호칭 · 한 줄 설정을 덧붙인다."""
+    c = card.get("custom") or {}
+    extra = []
+    if c.get("speech") in SPEECH:
+        extra.append(SPEECH[c["speech"]])
+    if c.get("callme"):
+        extra.append(f"상대를 '{c['callme']}'(이)라고 불러.")
+    if c.get("note"):
+        extra.append(f"주인이 정해준 설정: {c['note']}")
+    if not extra:
+        return card["persona"]
+    return card["persona"] + "\n\n" + "\n".join(extra)
 
 
 @router.websocket("/ws/call/{card_id}")
@@ -42,17 +79,19 @@ async def call(websocket: WebSocket, card_id: str):
     import time, uuid
     session_id = uuid.uuid4().hex[:12]
     started = time.time()
-    mode = "video" if card["face_status"] == "ready" else "voice"
+    avatar = avatar_of(card)
+    mode = "video" if avatar else "voice"
     turns = 0
     try:
-        db.log_event("call_start", card_id=card_id, session_id=session_id, meta={"mode": mode})
+        db.log_event("call_start", card_id=card_id, session_id=session_id,
+                     meta={"mode": mode, "avatar": card.get("avatar_type", "photo")})
     except Exception as e:
         log.warning(f"call_start 로그 실패: {e}")
 
     client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
     config = types.LiveConnectConfig(
         response_modalities=["AUDIO"],
-        system_instruction=card["persona"],
+        system_instruction=persona_of(card),
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(
                 prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=card["voice"])
@@ -69,8 +108,9 @@ async def call(websocket: WebSocket, card_id: str):
             await websocket.send_text(json.dumps({
                 "type": "connected",
                 "name": card["name"],
-                "faceId": card["face_id"] if card["face_status"] == "ready" else None,
-                "mode": "video" if card["face_status"] == "ready" else "voice",
+                "faceId": avatar.get("faceId") if avatar else None,
+                "avatar": avatar,
+                "mode": mode,
             }))
 
             async def from_client():

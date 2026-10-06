@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from google.cloud import firestore
 
-PROJECT = os.getenv("GCP_PROJECT", "aidol-505503")
+PROJECT = os.getenv("GCP_PROJECT", "project-d4a769de-d13f-4a6a-a22")
 COLLECTION = "cards"
 
 ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32 — 0/O, 1/I 혼동 제거
@@ -42,6 +42,15 @@ def init():
     client()
 
 
+def _with_thumb(d):
+    """꾸민 모습을 찍어둔 카드는 화면용 이미지를 그것으로 바꾼다.
+    인쇄용 카드는 실물과 같아야 하므로 원래 이미지를 photo_path로 남긴다."""
+    d["photo_path"] = d.get("image_path")
+    if d.get("thumb_v"):
+        d["image_path"] = f"/thumb/{d['card_id']}.jpg?v={d['thumb_v']}"
+    return d
+
+
 def _doc_to_dict(doc):
     if doc is None or not doc.exists:
         return None
@@ -49,12 +58,18 @@ def _doc_to_dict(doc):
     d["card_id"] = doc.id
     d.setdefault("tags", [])
     d.setdefault("stats", {})
-    return d
+    d.setdefault("avatar_type", "photo")
+    d.setdefault("model_path", None)
+    d.setdefault("custom", {})
+    return _with_thumb(d)
 
 
 def create_card(name, persona, voice="Puck", tags=None, stats=None,
-                image_path=None, source="user", face_id=None, owner_token=None):
+                image_path=None, source="user", face_id=None, owner_token=None,
+                avatar_type="photo", model_path=None):
     card_id = new_card_id()
+    # vrm 카드는 브라우저가 모델을 바로 그리므로 등록 대기가 없다
+    ready = bool(face_id) or (avatar_type == "vrm" and bool(model_path))
     while col().document(card_id).get().exists:
         card_id = new_card_id()
 
@@ -67,10 +82,12 @@ def create_card(name, persona, voice="Puck", tags=None, stats=None,
         "image_path": image_path,
         "source": source,
         "face_id": face_id,
-        "face_status": "ready" if face_id else "none",
+        "face_status": "ready" if ready else "none",
+        "avatar_type": avatar_type,
+        "model_path": model_path,
         "owner_token": owner_token or secrets.token_urlsafe(16),
         "created_at": now(),
-        "ready_at": now() if face_id else None,
+        "ready_at": now() if ready else None,
     })
     return card_id
 
@@ -102,6 +119,32 @@ def set_face(card_id, face_id=None, face_status=None):
             patch["ready_at"] = now()
     if patch:
         col().document(card_id).update(patch)
+
+
+def set_media(card_id, image_path=None, model_path=None):
+    patch = {}
+    if image_path is not None:
+        patch["image_path"] = image_path
+    if model_path is not None:
+        patch["model_path"] = model_path
+    if patch:
+        col().document(card_id).update(patch)
+
+
+def set_custom(card_id, custom):
+    col().document(card_id).update({"custom": custom})
+
+
+def set_thumb(card_id, data):
+    """이미지는 카드 문서와 따로 둔다. 목록 조회마다 이미지가 딸려오지 않게."""
+    import time
+    client().collection("thumbs").document(card_id).set({"data": data})
+    col().document(card_id).update({"thumb_v": int(time.time())})
+
+
+def get_thumb(card_id):
+    doc = client().collection("thumbs").document(card_id).get()
+    return doc.to_dict()["data"] if doc.exists else None
 
 
 def pending_faces():
