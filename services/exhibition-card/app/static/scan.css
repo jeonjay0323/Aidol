@@ -416,3 +416,43 @@
   .after{display:flex;flex-direction:column;gap:10px;margin-top:12px}
   a.act{text-decoration:none}
   .kicker.home{margin-left:auto;text-decoration:none}
+
+  /* ── 걸려오는 전화 (ring.js) ── */
+  .ring{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;justify-content:space-between;
+        background:#0b0b0c;color:#fff;animation:in .3s ease;
+        padding:calc(64px + env(safe-area-inset-top)) 24px calc(56px + env(safe-area-inset-bottom))}
+  .ring-bg{position:absolute;inset:-40px;background-size:cover;background-position:center 20%;
+           filter:blur(28px) brightness(.45) saturate(1.2);transform:scale(1.1)}
+  .ring-top,.ring-acts{position:relative}
+  .ring-top{text-align:center}
+  .ring-app{display:inline-flex;align-items:center;gap:6px;font-family:var(--brand);font-weight:500;
+            font-size:13px;letter-spacing:.06em;color:rgba(255,255,255,.75)}
+  .ring-app i{width:7px;height:7px;border-radius:50%;background:var(--primary-normal);display:block}
+  .ring-face{width:132px;height:132px;margin:36px auto 22px;border-radius:50%;overflow:hidden;
+             background:#2a2b2e;box-shadow:0 0 0 0 rgba(107,224,22,.5);animation:ringPulse 1.6s ease-out infinite}
+  .ring-face img{width:100%;height:100%;object-fit:cover;object-position:50% 18%}
+  @keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}100%{box-shadow:0 0 0 34px rgba(255,255,255,0)}}
+  .ring-name{font-family:var(--brand);font-weight:700;font-size:36px;line-height:46px;letter-spacing:-.02em}
+  .ring-sub{font-size:16px;color:rgba(255,255,255,.7);margin-top:6px}
+  .ring-acts{display:flex;justify-content:space-around;max-width:360px;width:100%;margin:0 auto}
+  .ring-btn{display:flex;flex-direction:column;align-items:center;gap:10px;background:none;border:none;
+            color:#fff;font-family:var(--body);font-size:14px;cursor:pointer}
+  .ring-btn span{width:72px;height:72px;border-radius:50%;display:grid;place-items:center}
+  .ring-btn svg{width:32px;height:32px}
+  .ring-btn.no span{background:#ff4b4b}
+  .ring-btn.yes span{background:#22c55e;animation:ringShake 1.1s ease-in-out infinite}
+  @keyframes ringShake{0%,60%,100%{transform:none}70%{transform:rotate(-12deg)}80%{transform:rotate(12deg)}90%{transform:rotate(-8deg)}}
+
+  /* 다른 페이지에서 받기를 누르고 넘어왔는데 브라우저가 소리를 막았을 때 */
+  .tap-answer{position:fixed;inset:0;z-index:50;background:#0b0b0c;color:#fff;display:flex;flex-direction:column;
+              align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;border:none;
+              font-family:var(--body);cursor:pointer;width:100%}
+  .tap-answer b{font-family:var(--brand);font-size:26px;line-height:34px}
+  .tap-answer span{font-size:15px;color:rgba(255,255,255,.7)}
+
+  /* 음성 통화 — 영상이 없으면 카드 사진을 깔아 누구와 통화 중인지 보이게 한다.
+     Simli 영상 · VRM 캔버스는 이 위를 덮는다 */
+  .feed.has-photo{background:var(--photo) center 20%/cover no-repeat}
+  .feed.has-photo::before{content:"";position:absolute;inset:0;
+    background:linear-gradient(to bottom,rgba(0,0,0,.05) 50%,rgba(0,0,0,.55));z-index:0}
+  .feed.has-photo .ph{align-self:flex-end;margin-bottom:22px;color:rgba(255,255,255,.85)}

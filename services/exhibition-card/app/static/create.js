@@ -323,6 +323,8 @@ async function issueCard(){
     document.getElementById('result-sub').textContent = '카드 번호 ' + j.cardId;
     document.getElementById('result-pick').hidden = true;
     document.getElementById('result-done').hidden = false;
+    // 카드를 받아 든 순간, 방금 만든 아이돌이 먼저 전화를 건다
+    setTimeout(() => ringFromIdol(j.cardId), RING_DELAY);
   } catch (e) {
     hint('result-hint', '카드를 만들지 못했어요. ' + e.message);
     document.getElementById('issue-btn').disabled = false;
@@ -336,3 +338,22 @@ function printCard(){
   window.open(`/label/${CREATE.cardId}?print=1`, '_blank');
 }
 
+
+/* ───────── 아이돌이 먼저 거는 전화 ─────────
+   기획의 핵심 훅 — 고르는 게 아니라 선택받는 경험. 발급 몇 초 뒤 수신 화면이 뜬다.
+   받으면 그 카드 화면으로 넘어가 바로 통화한다(?answer=1). */
+const RING_DELAY = 4000;
+
+function ringFromIdol(cardId){
+  if (CREATE.cardId !== cardId || !window.AidolRing) return;
+  logStep('ring');
+  AidolRing.show({
+    name: CREATE.name, image: CREATE.image, label: '음성통화',
+    onAccept(){ logStep('ring-answer'); location.href = `/c/${cardId}?answer=1`; },
+    onDecline(why){
+      logStep('ring-' + why);
+      document.getElementById('result-sub').textContent =
+        `${CREATE.name}에게서 부재중 전화 1통 · 아래 통화하기로 다시 걸 수 있어요`;
+    },
+  });
+}

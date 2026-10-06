@@ -106,6 +106,14 @@ static/            통화 클라이언트 · jsQR
 ./.venv/bin/python tools/seed_lineup.py https://aidol-card-938904157102.asia-northeast3.run.app
 ```
 
+### 아이돌이 먼저 거는 전화
+
+카드를 발급하고 4초 뒤 방금 만든 아이돌에게서 전화가 온다(`static/ring.js`). 받으면
+`/c/{id}?answer=1` 로 넘어가 곧장 통화하고, 브라우저가 소리를 막으면 화면을 한 번 누르게 한다.
+`/c/{id}?ring=1` 로 열면 아무 카드나 먼저 전화를 건다(전시 시연용).
+거절 · 부재중 · 받기는 `create_step` 이벤트(`ring`, `ring-answer`, `ring-declined`, `ring-missed`)로 남는다.
+영상이 없는 음성 통화는 카드 사진을 화면에 깐다.
+
 ## 초대 경로
 
 관람객 기기를 통제할 수 없어 넷을 열어뒀다. 모두 같은 로비로 모인다.

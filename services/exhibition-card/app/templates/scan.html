@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=site-1">
+<link rel="stylesheet" href="/static/scan.css?v=ring-2">
 </head>
 <body>
 
@@ -183,7 +183,7 @@
     <span class="timer" id="t-solo">00:00</span>
   </div>
   <div class="stage">
-    <div class="feed" id="feed-solo">
+    <div class="feed{% if card.image_path %} has-photo{% endif %}" id="feed-solo"{% if card.image_path %} style="--photo:url('{{ card.image_path }}')"{% endif %}>
       <video id="avatar" autoplay playsinline></video>
       <div class="ph" id="feed-ph"><b>LIVE</b>{{ "연결 중" if card.face_status == "ready" else "음성 통화" }}</div>
       <div class="self" id="self-solo"><video id="selfcam" autoplay playsinline muted></video><span>내 화면</span></div>
@@ -242,7 +242,8 @@
 <script src="/static/jsQR.js"></script>
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
 <script src="/static/call-client.js?v=haneul-3"></script>
-<script src="/static/create.js?v=site-1"></script>
+<script src="/static/ring.js?v=ring-1"></script>
+<script src="/static/create.js?v=ring-1"></script>
 <script src="/static/room-client.js?v=haneul-3"></script>
 <script>
   const CARD = {{ card_json | safe }};
@@ -704,6 +705,34 @@
   }
 
   checkOpenLobby();
+
+  /* 아이돌이 먼저 거는 전화 (static/ring.js)
+     ?ring=1   이 카드가 먼저 전화를 건다 — 받기를 누르면 그 탭으로 바로 통화
+     ?answer=1 다른 화면(만들기)에서 이미 받고 넘어왔다 — 곧장 통화를 연다.
+               브라우저가 탭 없이 소리를 막으면 한 번만 눌러 달라고 한다.
+     아래쪽 let 선언(scanning 등)이 끝난 뒤에 돌도록 한 박자 미룬다. */
+  setTimeout(function(){
+    const q = new URLSearchParams(location.search);
+    const clean = () => history.replaceState(null, '', location.pathname);
+    if (q.has('ring')) {
+      clean();
+      setTimeout(() => AidolRing.show({
+        name: CARD.name, image: CARD.image_path,
+        label: CARD.face_status === 'ready' ? '영상통화' : '음성통화',
+        onAccept: startCall,
+      }), 1200);
+    } else if (q.has('answer')) {
+      clean();
+      let blocked = false;
+      try { const t = new AudioContext(); blocked = t.state === 'suspended'; t.close(); } catch {}
+      if (!blocked) return startCall();
+      const b = document.createElement('button');
+      b.className = 'tap-answer';
+      b.innerHTML = `<b>${CARD.name}에게 연결됐어요</b><span>화면을 누르면 목소리가 들려요</span>`;
+      b.onclick = () => { b.remove(); startCall(); };
+      document.body.appendChild(b);
+    }
+  }, 0);
   setInterval(checkOpenLobby, 5000);
 
   /* ───────── 카드 스캔 ───────── */
