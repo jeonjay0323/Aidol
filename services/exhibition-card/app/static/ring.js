@@ -63,5 +63,15 @@ window.AidolRing = (() => {
     stopTimer = setTimeout(() => { stop(); onDecline && onDecline('missed'); }, timeout);
   }
 
-  return { show, stop };
+  // 사용자가 누른 순간(발급 버튼)에 불러 둔다. iOS 는 탭 밖에서 처음 만든 소리를 막는다
+  function unlock() {
+    try {
+      ctx = ctx || new AudioContext();
+      if (ctx.state === 'suspended') ctx.resume();
+      const b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource();
+      s.buffer = b; s.connect(ctx.destination); s.start(0);
+    } catch {}
+  }
+
+  return { show, stop, unlock };
 })();

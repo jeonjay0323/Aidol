@@ -498,3 +498,11 @@
   .vbtn.on span{background:#fff;color:#111}
   .vbtn.end span{background:#ff4b4b;color:#fff}
   .vbtn:active span{transform:scale(.94)}
+
+  /* 시연 모드 */
+  body.demo .no-demo{display:none}
+  .demo-only{display:none}
+  body.demo .demo-only{display:flex}
+  body.demo .joinbar{display:none !important}
+  /* 아이패드에서 카드 화면이 너무 좁지 않게 */
+  @media (min-width:700px){ body.demo .wrap{max-width:540px} }

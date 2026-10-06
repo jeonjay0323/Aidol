@@ -323,6 +323,18 @@ async def home(request: Request):
     })
 
 
+@app.get("/demo", response_class=HTMLResponse)
+async def demo_page(request: Request):
+    """아이패드 시연용 첫 화면. 만들기 · 통화하기 두 개만 크게. 메뉴 없음."""
+    line = lineup()
+    made = next((c["image"] for c in gallery_cards() if c.get("image")), None)
+    if not made and len(line) > 3:
+        made = line[-1]["image"]   # 아직 만든 카드가 없으면 라인업 마지막 사진으로
+    return templates.TemplateResponse("demo.html", {
+        "request": request, "lineup": line, "made": made,
+    })
+
+
 @app.get("/make", response_class=HTMLResponse)
 async def make_page(request: Request):
     return templates.TemplateResponse("make.html", {"request": request, "page": "make"})

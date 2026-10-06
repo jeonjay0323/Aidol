@@ -174,3 +174,12 @@ body.site{
 @media (prefers-reduced-motion:reduce){
   .site *{animation:none !important;transition:none !important}
 }
+
+/* ── 시연 모드(/demo 에서 들어옴) — 메뉴 대신 처음으로 ── */
+.site-home{display:none}
+body.demo .site-links{display:none}
+body.demo .site-home{
+  display:inline-flex;margin-left:auto;padding:10px 18px;border-radius:var(--r-pill);
+  background:var(--fill-normal);font-family:var(--brand);font-weight:700;font-size:15px;color:var(--label-strong);
+}
+body.demo .site-nav-in{height:64px}

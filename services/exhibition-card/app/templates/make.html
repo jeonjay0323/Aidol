@@ -1,6 +1,6 @@
 {% extends "_site.html" %}
 {% block title %}아이돌 제작 · LUKIDS{% endblock %}
-{% block css %}<link rel="stylesheet" href="/static/scan.css?v=ring-2">{% endblock %}
+{% block css %}<link rel="stylesheet" href="/static/scan.css?v=demo-2">{% endblock %}
 {% block head %}
 <style>
   /* 왼쪽은 설명, 오른쪽은 폰 너비의 만들기 흐름. 좁으면 위아래로 */
@@ -71,10 +71,10 @@
     btn.parentElement.querySelectorAll('.opt').forEach(o => o.classList.remove('sel'));
     btn.classList.add('sel');
   }
-  const CREATE_HOME = () => { location.href = '/'; };
+  const CREATE_HOME = () => { location.href = document.body.classList.contains('demo') ? '/demo' : '/'; };
 </script>
-<script src="/static/ring.js?v=ring-1"></script>
-<script src="/static/create.js?v=ring-1"></script>
+<script src="/static/ring.js?v=demo-1"></script>
+<script src="/static/create.js?v=demo-1"></script>
 <script>
   // 제작 페이지는 모든 칸을 연다(C). 연구 조건을 시험할 때만 ?depth=A|B|C 로 바꾼다.
   // 전시장 카드 화면(/c/…)의 만들기는 지금처럼 서버가 조건을 배정한다.

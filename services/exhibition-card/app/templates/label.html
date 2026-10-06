@@ -69,7 +69,14 @@
   body.embed .stage-space{height:calc(60mm * 2);width:calc(40mm * 2)}
   body.embed .meta{display:none}
 
+  .btns{display:flex;gap:10px;width:100%;max-width:360px}
+  .pbtn{flex:1;padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
+        background:#6be016;color:#000;cursor:pointer}
+  .pbtn.ghost{background:#555;color:#fff}
+  body.embed .btns{display:none}
+
   @media print{
+    .btns{display:none}
     @page{size:60mm 40mm;margin:0}
     html,body{width:60mm;height:40mm;background:#fff;padding:0;display:block;overflow:hidden}
     .stage-space{height:auto}
@@ -104,6 +111,11 @@
 <div class="meta">
   {{ card.name }} · {{ card.card_id }}<br>
   라벨 40 × 60 mm → 용지 60 × 40 mm 가로로 인쇄
+</div>
+<!-- 인쇄 창이 자동으로 안 뜨는 기기(아이패드 등)와, 인쇄 뒤 원래 화면으로 돌아가기 -->
+<div class="btns">
+  <button class="pbtn" onclick="window.print()">인쇄하기</button>
+  <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
 </div>
 
 <script>

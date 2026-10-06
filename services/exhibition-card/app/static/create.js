@@ -223,6 +223,7 @@ function toResult(){
   if (!CREATE.name)  return hint('name-hint', '이름을 입력해주세요.');
   if (!CREATE.voice) return hint('name-hint', '목소리를 골라주세요.');
   CREATE.image = null; CREATE.tries = 0; CREATE.cardId = null;
+  rang = false; clearTimeout(ringTimer);
   document.getElementById('result-pick').hidden = false;
   document.getElementById('result-done').hidden = true;
   go('s-create-result');
@@ -299,6 +300,7 @@ function rollStats(){
 
 async function issueCard(){
   if (!CREATE.image) return;
+  window.AidolRing && AidolRing.unlock();
   document.getElementById('issue-btn').disabled = true;
   document.getElementById('regen-btn').disabled = true;
   hint('result-hint', '');
@@ -324,7 +326,7 @@ async function issueCard(){
     document.getElementById('result-pick').hidden = true;
     document.getElementById('result-done').hidden = false;
     // 카드를 받아 든 순간, 방금 만든 아이돌이 먼저 전화를 건다
-    setTimeout(() => ringFromIdol(j.cardId), RING_DELAY);
+    scheduleRing(j.cardId, RING_DELAY);
   } catch (e) {
     hint('result-hint', '카드를 만들지 못했어요. ' + e.message);
     document.getElementById('issue-btn').disabled = false;
@@ -336,16 +338,44 @@ async function issueCard(){
 // 발급 직후 자동으로 열지 않는 건, await 뒤의 window.open 을 사파리가 팝업으로 막기 때문.
 function printCard(){
   window.open(`/label/${CREATE.cardId}?print=1`, '_blank');
+  // 인쇄하는 동안엔 울리지 않는다. 라벨 탭을 닫고 돌아오면 그때 건다
+  holdRingUntilBack(CREATE.cardId);
 }
 
 
 /* ───────── 아이돌이 먼저 거는 전화 ─────────
    기획의 핵심 훅 — 고르는 게 아니라 선택받는 경험. 발급 몇 초 뒤 수신 화면이 뜬다.
    받으면 그 카드 화면으로 넘어가 바로 통화한다(?answer=1). */
-const RING_DELAY = 4000;
+const RING_DELAY = 6000;      // 발급 뒤 인쇄 버튼을 누를 여유
+const RING_AFTER_PRINT = 2500; // 라벨 탭에서 돌아온 뒤
+let ringTimer = null, rang = false;
+
+function scheduleRing(cardId, ms){
+  clearTimeout(ringTimer);
+  ringTimer = setTimeout(() => ringFromIdol(cardId), ms);
+}
+
+function holdRingUntilBack(cardId){
+  if (rang) return;
+  clearTimeout(ringTimer);
+  const back = () => {
+    if (document.visibilityState !== 'visible') return;
+    document.removeEventListener('visibilitychange', back);
+    window.removeEventListener('focus', back);
+    scheduleRing(cardId, RING_AFTER_PRINT);
+  };
+  // 새 탭이 열리면 이 탭이 가려졌다가 돌아올 때 visible 이 된다
+  setTimeout(() => {
+    document.addEventListener('visibilitychange', back);
+    window.addEventListener('focus', back);
+  }, 800);
+  // 같은 탭에서 인쇄 창만 떴다 닫힌 경우를 대비한 안전장치
+  scheduleRing(cardId, 40000);
+}
 
 function ringFromIdol(cardId){
-  if (CREATE.cardId !== cardId || !window.AidolRing) return;
+  if (rang || CREATE.cardId !== cardId || !window.AidolRing) return;
+  rang = true; clearTimeout(ringTimer);
   logStep('ring');
   AidolRing.show({
     name: CREATE.name, image: CREATE.image, label: '음성통화',

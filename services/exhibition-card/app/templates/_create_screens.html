@@ -113,12 +113,16 @@
   <div id="result-done" hidden>
     <button class="cta" onclick="printCard()">카드 인쇄하기</button>
     <div class="after">
-      <a class="act" href="#" onclick="location.href='/gallery?card=' + CREATE.cardId; return false">
+      <a class="act no-demo" href="#" onclick="location.href='/gallery?card=' + CREATE.cardId; return false">
         <span><b>전시에서 보기</b><small>만든 아이돌이 전시 페이지에 올라갔어요</small></span>
         <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
       </a>
       <a class="act" href="#" onclick="location.href='/c/' + CREATE.cardId; return false">
         <span><b>통화하기</b><small>내 카드 화면에서 바로 전화를 걸어요</small></span>
+        <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
+      </a>
+      <a class="act demo-only" href="/demo">
+        <span><b>처음으로</b><small>다음 사람이 만들 수 있게 첫 화면으로</small></span>
         <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
       </a>
     </div>

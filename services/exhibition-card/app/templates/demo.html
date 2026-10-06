@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="/static/tokens.css">
+<title>LUKIDS</title>
+<style>
+  /* 시연용 첫 화면 — 아이패드 한 장에 두 가지 일만 보인다. 메뉴 없음.
+     여기서 들어간 페이지는 sessionStorage 'lukids.demo' 로 시연 모드가 된다(_site.html · scan.html) */
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:#0b0b0c;color:#fff;font-family:var(--body);overflow:hidden;
+    display:flex;flex-direction:column;
+    padding:calc(36px + env(safe-area-inset-top)) 40px calc(36px + env(safe-area-inset-bottom));
+    -webkit-user-select:none;user-select:none;
+  }
+  .top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .logo{font-family:var(--brand);font-weight:700;font-size:24px;letter-spacing:.08em;display:flex;align-items:center;gap:10px}
+  .logo i{width:10px;height:10px;border-radius:50%;background:var(--primary-normal)}
+  .tag{font-family:var(--brand);font-size:15px;color:rgba(255,255,255,.55)}
+  h1{font-family:var(--brand);font-weight:700;font-size:44px;line-height:56px;letter-spacing:-.03em;margin:44px 0 32px;word-break:keep-all}
+  h1 em{font-style:normal;color:var(--primary-normal)}
+
+  .two{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:20px;min-height:0}
+  .tile{
+    position:relative;overflow:hidden;border-radius:24px;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:36px;color:#fff;text-decoration:none;isolation:isolate;
+    background:#1b1c1e;border:1px solid rgba(255,255,255,.08);
+    transition:transform .15s;
+  }
+  .tile:active{transform:scale(.985)}
+  .tile .pics{position:absolute;inset:0;z-index:-1;display:grid;grid-template-columns:repeat(3,1fr)}
+  .tile .pics img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+  .tile .pics.one{grid-template-columns:1fr}
+  .tile::after{content:"";position:absolute;inset:0;z-index:-1;
+    background:linear-gradient(to top,rgba(0,0,0,.92) 18%,rgba(0,0,0,.35) 60%,rgba(0,0,0,.1))}
+  .tile .n{font-family:var(--brand);font-weight:700;font-size:16px;color:var(--primary-normal);letter-spacing:.08em}
+  .tile b{display:block;font-family:var(--brand);font-weight:700;font-size:46px;line-height:58px;letter-spacing:-.03em;margin:8px 0 10px}
+  .tile p{font-size:18px;line-height:28px;color:rgba(255,255,255,.75);word-break:keep-all;max-width:420px}
+  .tile .go{
+    margin-top:26px;align-self:flex-start;display:inline-flex;align-items:center;gap:10px;
+    padding:16px 26px;border-radius:999px;background:var(--primary-normal);color:#000;
+    font-family:var(--brand);font-weight:700;font-size:19px;
+  }
+  .tile.call .go{background:#fff}
+  .tile .go svg{width:20px;height:20px}
+
+  /* 세로 아이패드 · 좁은 화면은 위아래로 */
+  @media (max-aspect-ratio:1/1){
+    h1{font-size:38px;line-height:50px;margin:32px 0 24px}
+    .two{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+    .tile b{font-size:40px;line-height:50px}
+  }
+  @media (max-width:600px){
+    body{padding:24px 16px}
+    h1{font-size:28px;line-height:38px}
+    .tile{padding:22px}
+    .tile b{font-size:30px;line-height:40px}
+    .tile p{font-size:15px;line-height:24px}
+  }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="logo"><i></i>LUKIDS</div>
+    <div class="tag">AI 아이돌 컴패니언</div>
+  </div>
+  <h1>실제 아이돌은 나를 모르지만,<br><em>이 아이돌은 나를 안다</em></h1>
+
+  <div class="two">
+    <a class="tile make" href="/make">
+      <div class="pics one">{% if made %}<img src="{{ made }}" alt="">{% endif %}</div>
+      <span class="n">01</span>
+      <b>아이돌 만들기</b>
+      <p>실물 또는 버추얼. 원하는 모습을 고르고 적으면 사진이 나오고, 카드로 인쇄해 가져가요.</p>
+      <span class="go">만들기 시작
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></span>
+    </a>
+    <a class="tile call" href="/call">
+      <div class="pics">{% for c in lineup[:3] %}{% if c.image %}<img src="{{ c.image }}" alt="">{% endif %}{% endfor %}</div>
+      <span class="n">02</span>
+      <b>아이돌과 통화하기</b>
+      <p>미리 준비된 공식 아이돌 {{ lineup | length }}명. 골라서 전화를 걸면 목소리로 대답해요.</p>
+      <span class="go">통화하러 가기
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.2 3.5h3l1.5 3.8-1.9 1.4a12 12 0 0 0 5.5 5.5l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8A16.5 16.5 0 0 1 4.4 5.5a1.8 1.8 0 0 1 1.8-2Z"/></svg></span>
+    </a>
+  </div>
+
+<script>
+  try { sessionStorage.setItem('lukids.demo', '1'); } catch {}
+</script>
+</body>
+</html>

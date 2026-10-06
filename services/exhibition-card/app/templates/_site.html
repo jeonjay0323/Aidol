@@ -7,15 +7,20 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css">
 {% block css %}{% endblock %}
-<link rel="stylesheet" href="/static/site.css?v=site-1">
+<link rel="stylesheet" href="/static/site.css?v=demo-1">
 <title>{% block title %}LUKIDS{% endblock %}</title>
 {% block head %}{% endblock %}
 </head>
 <body class="site">
+<script>
+  // /demo 에서 들어왔으면 시연 모드 — 메뉴 대신 "처음으로" 하나만
+  try { if (sessionStorage.getItem('lukids.demo')) document.body.classList.add('demo'); } catch {}
+</script>
 
 <nav class="site-nav" aria-label="주 메뉴">
   <div class="site-nav-in">
-    <a class="site-logo" href="/"><i></i>LUKIDS</a>
+    <a class="site-logo" href="/" onclick="if(document.body.classList.contains('demo')){location.href='/demo';return false}"><i></i>LUKIDS</a>
+    <a class="site-home" href="/demo">처음으로</a>
     <div class="site-links">
       {% set menu = [("home", "/", "", "소개"), ("make", "/make", "01", "제작"), ("print", "/print", "02", "인쇄"),
                      ("gallery", "/gallery", "03", "전시"), ("call", "/call", "04", "통화")] %}

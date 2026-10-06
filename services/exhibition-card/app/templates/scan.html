@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=voice-1">
+<link rel="stylesheet" href="/static/scan.css?v=demo-2">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
 <!-- ══ 1. 카드 스캔 결과 ══ -->
 <div class="wrap">
 <section class="screen on" id="s-card">
-  <header><div class="kicker">CARD SCANNED</div><a class="kicker home" href="/">LUKIDS →</a></header>
+  <header><div class="kicker">CARD SCANNED</div><a class="kicker home" href="/" id="home-link">LUKIDS →</a></header>
   <div class="joinbar" id="joinbar" hidden>
     <span class="joinico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-users"/></svg></span>
     <div><b id="joinhost">지금 열려 있는 통화</b><small>먼저 온 사람이 대화 중이에요</small></div>
@@ -77,14 +77,14 @@
       <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
     {% endif %}
-    <button class="act" onclick="openLobby()">
+    <button class="act no-demo" onclick="openLobby()">
       <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-users"/></svg></span>
       <span><b>멀티콜</b><small>다른 카드를 스캔해 아이돌과 주인을 부른다</small></span>
       <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
   </div>
 
-  <button class="ghost" onclick="startCreate()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg> 내 아이돌 만들기 (유저 카드 발급)</button>
+  <button class="ghost no-demo" onclick="startCreate()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg> 내 아이돌 만들기 (유저 카드 발급)</button>
 </section>
 
 <!-- ══ 2. 멀티콜 로비 ══ -->
@@ -264,13 +264,21 @@
 <script src="/static/jsQR.js"></script>
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
 <script src="/static/call-client.js?v=voice-1"></script>
-<script src="/static/ring.js?v=ring-1"></script>
-<script src="/static/create.js?v=ring-1"></script>
+<script src="/static/ring.js?v=demo-1"></script>
+<script src="/static/create.js?v=demo-1"></script>
 <script src="/static/room-client.js?v=haneul-3"></script>
 <script>
   const CARD = {{ card_json | safe }};
   const invited = [];   // 멀티콜에 초대된 카드 id
   const CREATE_HOME = () => go('s-card');   // create.js 가 만들기를 닫을 때
+  // /demo 에서 들어온 시연 — 멀티콜 · 만들기 · 설문을 숨기고 처음으로 돌아갈 길만 남긴다
+  let DEMO = false;
+  try { DEMO = !!sessionStorage.getItem('lukids.demo'); } catch {}
+  if (DEMO) {
+    document.body.classList.add('demo');
+    const h = document.getElementById('home-link');
+    h.href = '/demo'; h.textContent = '처음으로';
+  }
 
   /* ───────── 화면 전환 ───────── */
   function go(id){
@@ -465,7 +473,7 @@
     current = null;
     go('s-card');
     // 너무 짧은 통화는 묻지 않는다 — 답이 통화가 아니라 이탈을 반영한다
-    if (was && secs >= 20) askSurvey(was === 'c-multi' ? 'multi' : 'solo');
+    if (was && secs >= 20 && !DEMO) askSurvey(was === 'c-multi' ? 'multi' : 'solo');
   }
 
   /* ───────── 통화 직후 한 문항 ─────────
