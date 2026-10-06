@@ -20,13 +20,15 @@ window.LukidsBT = (() => {
     '0000ffe0-0000-1000-8000-00805f9b34fb',
     '0000ff80-0000-1000-8000-00805f9b34fb',
   ];
-  const DEFAULTS = { lang: 'tspl', dpi: 203, w: 60, h: 40, gap: 2, direction: 1, density: 8,
+  const DEFAULTS = { char: '', lang: 'tspl', dpi: 203, w: 60, h: 40, gap: 2, direction: 1, density: 8,
                      invert: false, chunk: 180, delay: 20 };
   const KEY = 'lukids.printer';
   let settings = { ...DEFAULTS };
   try { Object.assign(settings, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
 
-  let device = null, ch = null;
+  let device = null, ch = null, writable = [];
+  // 데이터를 받는 통로로 흔한 것들(앞이 우선). 6DAA 같은 ISSC 의 다른 쓰기 특성은 인쇄를 안 받는다
+  const PREFER = ['49535343-8841', '00002af1', '0000ff02', '0000fff2', '0000ff82', '0000ff12', '0000ff11', '0000fec7'];
   const logs = [];
   // 아이패드 화면의 로그를 서버에도 남긴다 — 실물 프린터 문제를 원격으로 보기 위해 (Cloud Run 로그 'btlog')
   const sid = Math.random().toString(36).slice(2, 8);
@@ -45,18 +47,25 @@ window.LukidsBT = (() => {
     device.addEventListener('gattserverdisconnected', () => { ch = null; log('연결 끊김'); });
     const server = await device.gatt.connect();
     const services = await server.getPrimaryServices();
-    ch = null;
-    for (const s of services) {
+    writable = [];
+    for (const sv of services) {
       let chars = [];
-      try { chars = await s.getCharacteristics(); } catch { continue; }
+      try { chars = await sv.getCharacteristics(); } catch { continue; }
       for (const c of chars) {
         const p = c.properties;
-        log(`서비스 ${s.uuid.slice(0, 8)} · 특성 ${c.uuid.slice(0, 8)} ${p.write ? 'W' : ''}${p.writeWithoutResponse ? 'w' : ''}${p.notify ? 'N' : ''}`);
-        if (!ch && (p.writeWithoutResponse || p.write)) ch = c;
+        log(`특성 ${c.uuid} ${p.write ? 'W' : ''}${p.writeWithoutResponse ? 'w' : ''}${p.notify ? 'N' : ''}`);
+        if (p.writeWithoutResponse || p.write) writable.push(c);
       }
     }
-    if (!ch) throw new Error('쓸 수 있는 특성을 못 찾았어요. 로그를 확인해 주세요.');
-    log(`서비스 ${services.length}개 · ${navigator.userAgent.slice(-40)}`);
+    if (!writable.length) throw new Error('쓸 수 있는 특성을 못 찾았어요. 로그를 확인해 주세요.');
+    // 설정에 고른 통로가 있으면 그것, 없으면 알려진 데이터 통로 순서대로
+    const want = (settings.char || '').toLowerCase();
+    const rank = (c) => { const u = c.uuid.toLowerCase(); const i = PREFER.findIndex(k => u.startsWith(k));
+                          return i < 0 ? 99 : i; };
+    ch = (want && writable.find(c => c.uuid.toLowerCase() === want))
+         || writable.slice().sort((a, b) => rank(a) - rank(b))[0];
+    LukidsBT.channels = writable.map(c => c.uuid);
+    log(`서비스 ${services.length}개 · 쓸 수 있는 통로 ${writable.length}개 · ${navigator.userAgent.slice(-40)}`);
     log(`보낼 곳: ${ch.uuid}`);
     return device.name;
   }
@@ -139,13 +148,33 @@ window.LukidsBT = (() => {
     log('보냄 — 다 보냈어요');
   }
 
+  // 통로 찾기: 쓸 수 있는 통로마다 "번호 + 언어" 를 찍는 작은 시험 라벨을 보낸다.
+  // 나온 라벨의 번호가 맞는 통로다. TSPL 로 먼저 다 돌고, 아무것도 안 나오면 ESC/POS 로.
+  async function probe(lang) {
+    if (!ch || !device || !device.gatt.connected) await connect();
+    const s = settings;
+    for (let i = 0; i < writable.length; i++) {
+      const c = writable[i], n = i + 1;
+      const job = lang === 'escpos'
+        ? concat([new Uint8Array([0x1b, 0x40, 0x1d, 0x21, 0x11]), ascii(`\n  ${n} ESC\n\n\n\n`), new Uint8Array([0x0c])])
+        : ascii(`SIZE ${s.w} mm,${s.h} mm\r\nGAP ${s.gap} mm,0 mm\r\nCLS\r\n` +
+                `TEXT 60,100,"5",0,1,1,"${n} TSPL"\r\nPRINT 1,1\r\n`);
+      log(`시험 ${n}/${writable.length} · ${lang} → ${c.uuid}`);
+      try {
+        ch = c; await send(job);
+      } catch (e) { log(`  실패: ${e.name} ${e.message}`); }
+      await sleep(2500);
+    }
+    log('통로 찾기 끝 — 나온 라벨의 번호를 /printer 의 "통로"에서 고르세요');
+  }
+
   function save(patch) {
     Object.assign(settings, patch);
     try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch {}
   }
   function reset() { settings = { ...DEFAULTS }; LukidsBT.settings = settings; save({}); }
 
-  const LukidsBT = { supported, connect, printCard, save, reset, settings, logs, onlog: null,
+  const LukidsBT = { supported, connect, printCard, probe, save, reset, settings, logs, onlog: null, channels: [],
                      get connected() { return !!(ch && device && device.gatt.connected); },
                      get name() { return device && device.name; } };
   return LukidsBT;

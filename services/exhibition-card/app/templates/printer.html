@@ -42,6 +42,8 @@
       <div class="btns">
         <button class="grad" id="b-connect" onclick="doConnect()">프린터 연결</button>
         <button class="grad" id="b-print" onclick="doPrint()">시험 인쇄</button>
+        <button class="site-btn line" onclick="doProbe('tspl')">통로 찾기 (TSPL)</button>
+        <button class="site-btn line" onclick="doProbe('escpos')">통로 찾기 (ESC/POS)</button>
       </div>
       <p class="tip">Aiyin 앱이 켜져 있으면 프린터를 잡고 있어서 연결이 안 될 수 있어요. 앱을 완전히 끄고 다시 해보세요.
         아무것도 안 나오면 오른쪽에서 "언어"를 ESC/POS 로 바꿔 보고, 하얗게만 나오면 "흑백 뒤집기"를 바꾸세요.</p>
@@ -49,6 +51,8 @@
 
     <div class="box">
       <h3>2. 설정</h3>
+      <div class="row"><label for="char">통로</label>
+        <select id="char"><option value="">자동</option></select></div>
       <div class="row"><label for="lang">언어</label>
         <select id="lang"><option value="tspl">TSPL (라벨 프린터 대부분)</option><option value="escpos">ESC/POS (영수증식)</option></select></div>
       <div class="row"><label for="dpi">해상도</label>
@@ -75,9 +79,9 @@
 {% endblock %}
 
 {% block script %}
-<script src="/static/bt-print.js?v=bt-2"></script>
+<script src="/static/bt-print.js?v=bt-3"></script>
 <script>
-  const F = ['lang','dpi','w','h','gap','direction','density','invert','chunk','delay'];
+  const F = ['char','lang','dpi','w','h','gap','direction','density','invert','chunk','delay'];
   const NUM = ['dpi','w','h','gap','direction','density','chunk','delay'];
   function fill(){ F.forEach(k => document.getElementById(k).value = String(LukidsBT.settings[k])); }
   F.forEach(k => document.getElementById(k).onchange = e => {
@@ -93,8 +97,19 @@
     document.getElementById('b-connect').disabled = document.getElementById('b-print').disabled = true;
   }
   function status(t){ document.getElementById('status').innerHTML = t; }
+  // 연결하면 통로 목록을 채운다. 번호는 "통로 찾기" 라벨에 찍히는 번호와 같다
+  function fillChannels(){
+    const sel = document.getElementById('char');
+    sel.innerHTML = '<option value="">자동</option>' + LukidsBT.channels.map((u, i) =>
+      `<option value="${u}">${i + 1} · ${u.slice(0, 8)}…${u.slice(-4)}</option>`).join('');
+    sel.value = LukidsBT.settings.char || '';
+  }
+  async function doProbe(lang){
+    try { await LukidsBT.probe(lang); fillChannels(); status('통로 찾기 끝 — 라벨에 찍힌 번호를 "통로"에서 고르세요'); }
+    catch (e) { LukidsBT.onlog('오류: ' + e.message); }
+  }
   async function doConnect(){
-    try { const n = await LukidsBT.connect(); status(`연결됨 · <b>${n || '프린터'}</b>`); }
+    try { const n = await LukidsBT.connect(); fillChannels(); status(`연결됨 · <b>${n || '프린터'}</b>`); }
     catch (e) { status('연결 실패'); LukidsBT.onlog('오류: ' + e.message); }
   }
   async function doPrint(){
