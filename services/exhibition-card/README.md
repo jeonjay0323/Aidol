@@ -109,7 +109,7 @@ static/            통화 클라이언트 · jsQR
 ### 표정 바뀌는 통화 — 공식 아이돌
 
 `app/static/expr/<slug>/` 에 기본 사진(base)과 표정 5장(laugh · surprised · thinking · shy · sad)을 두면
-그 공식 아이돌은 모든 화면에서 기본 사진으로 보이고, 통화는 큰 사진의 음성 통화가 된다(Simli · VRM 대신).
+그 공식 아이돌은 모든 화면에서 기본 사진으로 보이고, 통화는 큰 사진의 음성 통화가 된다. 단 Simli 얼굴이 준비된 카드(하루 · 시온)는 영상 통화가 우선이고, VRM(하늘)은 표정 세트가 대신한다.
 Gemini Live 의 출력 자막(`output_audio_transcription`)을 브라우저로 보내고, 아이돌이 하는 말에
 "ㅋㅋ/신났" → 웃음, "헐/진짜?" → 놀람 같은 낱말이 나오면 그 표정으로 바꾼다. 말을 마치면 2.5초 뒤 기본으로.
 사진은 배포에 실리는 파일이라 운영 DB 는 그대로다. 표정 사진은 `tools/make_expressions.py <slug>` —
