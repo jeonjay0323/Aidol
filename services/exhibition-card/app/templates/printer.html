@@ -42,6 +42,8 @@
       <div class="btns">
         <button class="grad" id="b-connect" onclick="doConnect()">프린터 연결</button>
         <button class="grad" id="b-print" onclick="doPrint()">시험 인쇄</button>
+        <button class="grad" onclick="doSelftest()" style="background:#fff;color:#000">자가진단 (가장 먼저 해보세요)</button>
+        <div id="step" style="font:700 40px var(--brand);text-align:center;color:var(--primary-normal);min-height:52px"></div>
         <button class="site-btn line" onclick="doProbe('tspl')">통로 찾기 (TSPL)</button>
         <button class="site-btn line" onclick="doProbe('escpos')">통로 찾기 (ESC/POS)</button>
       </div>
@@ -81,7 +83,7 @@
 {% endblock %}
 
 {% block script %}
-<script src="/static/bt-print.js?v=bt-5"></script>
+<script src="/static/bt-print.js?v=bt-6"></script>
 <script>
   const F = ['char','bmode','lang','dpi','w','h','gap','direction','density','invert','chunk','delay'];
   const NUM = ['bmode','dpi','w','h','gap','direction','density','chunk','delay'];
@@ -109,6 +111,15 @@
   async function doProbe(lang){
     try { await LukidsBT.probe(lang); fillChannels(); status('통로 찾기 끝 — 라벨에 찍힌 번호를 "통로"에서 고르세요'); }
     catch (e) { LukidsBT.onlog('오류: ' + e.message); }
+  }
+  async function doSelftest(){
+    try {
+      await LukidsBT.selftest((n, all, label) => {
+        document.getElementById('step').textContent = `${n} / ${all}`;
+        status(`지금 보내는 것: <b>${label}</b> — 종이가 나오면 이 번호를 기억하세요`);
+      });
+      document.getElementById('step').textContent = '끝';
+    } catch (e) { LukidsBT.onlog('오류: ' + String(e)); }
   }
   async function doConnect(){
     try { const n = await LukidsBT.connect(); fillChannels(); status(`연결됨 · <b>${n || '프린터'}</b>`); }

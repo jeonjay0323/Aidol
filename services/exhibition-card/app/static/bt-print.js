@@ -56,6 +56,17 @@ window.LukidsBT = (() => {
         const p = c.properties;
         log(`특성 ${c.uuid} ${p.write ? 'W' : ''}${p.writeWithoutResponse ? 'w' : ''}${p.notify ? 'N' : ''}`);
         if (p.writeWithoutResponse || p.write) writable.push(c);
+        if (p.notify) {
+          try {
+            await c.startNotifications();
+            c.addEventListener('characteristicvaluechanged', (ev) => {
+              const b = new Uint8Array(ev.target.value.buffer);
+              const hex = [...b].slice(0, 40).map(x => x.toString(16).padStart(2, '0')).join(' ');
+              const txt = String.fromCharCode(...b.slice(0, 60)).replace(/[^\x20-\x7e]/g, '.');
+              log(`응답 ${c.uuid.slice(0, 8)} ← ${hex} | ${txt}`);
+            });
+          } catch (e) { log(`알림 실패 ${c.uuid.slice(0, 8)}: ${String(e)}`); }
+        }
       }
     }
     if (!writable.length) throw new Error('쓸 수 있는 특성을 못 찾았어요. 로그를 확인해 주세요.');
@@ -157,8 +168,15 @@ window.LukidsBT = (() => {
     ]);
   }
 
+  let busy = false;
+  async function once(fn) {
+    if (busy) { log('이미 보내는 중이라 무시했어요'); return; }
+    busy = true;
+    try { return await fn(); } finally { busy = false; }
+  }
+
   async function printCard(cardId) {
-    try { return await _print(cardId); }
+    try { return await once(() => _print(cardId)); }
     catch (e) { log('오류: ' + (e && e.name ? e.name + ' ' + e.message : String(e))); throw e; }
   }
 
@@ -177,7 +195,8 @@ window.LukidsBT = (() => {
 
   // 통로 찾기: 쓸 수 있는 통로마다 "번호 + 언어" 를 찍는 작은 시험 라벨을 보낸다.
   // 나온 라벨의 번호가 맞는 통로다. TSPL 로 먼저 다 돌고, 아무것도 안 나오면 ESC/POS 로.
-  async function probe(lang) {
+  async function probe(lang) { return once(() => _probe(lang)); }
+  async function _probe(lang) {
     if (!ch || !device || !device.gatt.connected) await connect();
     const s = settings;
     for (let i = 0; i < writable.length; i++) {
@@ -189,10 +208,37 @@ window.LukidsBT = (() => {
       log(`시험 ${n}/${writable.length} · ${lang} → ${c.uuid}`);
       try {
         ch = c; await send(job);
-      } catch (e) { log(`  실패: ${e.name} ${e.message}`); }
+      } catch (e) { log(`  실패: ${String(e)}`); }
       await sleep(2500);
     }
     log('통로 찾기 끝 — 나온 라벨의 번호를 /printer 의 "통로"에서 고르세요');
+  }
+
+  // 자가진단: TSPL 'SELFTEST' · ESC/POS 'DC2 T' 를 통로마다 보낸다.
+  // 진단지가 나오면 그 순간 화면에 떠 있던 번호가 맞는 통로 · 언어다
+  async function selftest(onstep) { return once(() => _selftest(onstep)); }
+  async function _selftest(onstep) {
+    if (!ch || !device || !device.gatt.connected) await connect();
+    const order = writable.slice().sort((a, b) => {
+      const r = (c) => { const i = PREFER.findIndex(k => full(c.uuid).startsWith(k)); return i < 0 ? 99 : i; };
+      return r(a) - r(b);
+    });
+    const jobs = [];
+    for (const c of order) jobs.push([c, 'TSPL', ascii('\r\nSELFTEST\r\n')]);
+    for (const c of order) jobs.push([c, 'ESC', new Uint8Array([0x1b, 0x40, 0x12, 0x54])]);
+    for (let i = 0; i < jobs.length; i++) {
+      const [c, kind, bytes] = jobs[i];
+      const label = `${i + 1}. ${kind} → ${full(c.uuid).slice(4, 8)}`;
+      onstep && onstep(i + 1, jobs.length, label);
+      log(`자가진단 ${label}`);
+      try {
+        ch = c;
+        await (c.properties.write && c.writeValueWithResponse ? c.writeValueWithResponse(bytes)
+               : c.properties.writeWithoutResponse ? c.writeValueWithoutResponse(bytes) : c.writeValue(bytes));
+      } catch (e) { log(`  실패: ${String(e)}`); }
+      await sleep(8000);
+    }
+    log('자가진단 끝');
   }
 
   function save(patch) {
@@ -201,7 +247,7 @@ window.LukidsBT = (() => {
   }
   function reset() { settings = { ...DEFAULTS }; LukidsBT.settings = settings; save({}); }
 
-  const LukidsBT = { supported, connect, printCard, probe, save, reset, settings, logs, onlog: null, channels: [],
+  const LukidsBT = { supported, connect, printCard, probe, selftest, save, reset, settings, logs, onlog: null, channels: [],
                      get connected() { return !!(ch && device && device.gatt.connected); },
                      get name() { return device && device.name; } };
   return LukidsBT;
