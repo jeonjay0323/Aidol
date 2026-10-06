@@ -37,6 +37,16 @@ Aidol/
 다른 카드를 초대하면 여럿이 함께 대화한다. Cloud Run + Firestore 로 배포되어 있다.
 → [상세 문서](services/exhibition-card/README.md)
 
+마지막 배포
+
+| | |
+|---|---|
+| 일시 | 2026-10-06 13:13 KST |
+| 리비전 | `aidol-card-00001-2dh` |
+| 코드 | `13a4e44` (내 아이돌 만들기 · 60×40 라벨 인쇄 · GCP 이전) |
+| 주소 | https://aidol-card-938904157102.asia-northeast3.run.app |
+| 프로젝트 | `project-d4a769de-d13f-4a6a-a22` · asia-northeast3 |
+
 ### 버추얼 카드 — 하늘
 실사 대신 VRM 3D 모델로 통화하는 카드. Simli 없이 브라우저가 모델을 그리고, 색 · 말투 · 호칭을 꾸밀 수 있다.
 → [기술 정리](docs/features/버추얼%20캐릭터%20통화.md)
