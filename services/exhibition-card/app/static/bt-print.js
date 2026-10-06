@@ -61,9 +61,9 @@ window.LukidsBT = (() => {
     if (!writable.length) throw new Error('쓸 수 있는 특성을 못 찾았어요. 로그를 확인해 주세요.');
     // 설정에 고른 통로가 있으면 그것, 없으면 알려진 데이터 통로 순서대로
     const want = (settings.char || '').toLowerCase();
-    const rank = (c) => { const u = c.uuid.toLowerCase(); const i = PREFER.findIndex(k => u.startsWith(k));
+    const rank = (c) => { const u = full(c.uuid); const i = PREFER.findIndex(k => u.startsWith(k));
                           return i < 0 ? 99 : i; };
-    ch = (want && writable.find(c => c.uuid.toLowerCase() === want))
+    ch = (want && writable.find(c => full(c.uuid) === full(want)))
          || writable.slice().sort((a, b) => rank(a) - rank(b))[0];
     LukidsBT.channels = writable.map(c => c.uuid);
     log(`서비스 ${services.length}개 · 쓸 수 있는 통로 ${writable.length}개 · ${navigator.userAgent.slice(-40)}`);
@@ -72,12 +72,14 @@ window.LukidsBT = (() => {
   }
 
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  // Bluefy 는 16비트 UUID 를 'FF02' 처럼 짧게 준다. 비교할 때는 긴 형식으로 맞춘다
+  const full = (u) => { u = String(u).toLowerCase(); return u.length === 4 ? `0000${u}-0000-1000-8000-00805f9b34fb` : u; };
 
   async function send(bytes) {
     const n = settings.chunk;
     for (let i = 0; i < bytes.length; i += n) {
       const part = bytes.slice(i, i + n);
-      const withResp = ch.properties.write && (settings.resp ?? ch.uuid.toLowerCase().startsWith('0000ff02'));
+      const withResp = ch.properties.write && (settings.resp ?? full(ch.uuid).startsWith('0000ff02'));
       if (withResp || !ch.properties.writeWithoutResponse) {
         await (ch.writeValueWithResponse ? ch.writeValueWithResponse(part) : ch.writeValue(part));
       } else await ch.writeValueWithoutResponse(part);
@@ -157,7 +159,7 @@ window.LukidsBT = (() => {
 
   async function printCard(cardId) {
     try { return await _print(cardId); }
-    catch (e) { log('오류: ' + (e && (e.name + ' ' + e.message))); throw e; }
+    catch (e) { log('오류: ' + (e && e.name ? e.name + ' ' + e.message : String(e))); throw e; }
   }
 
   async function _print(cardId) {
@@ -166,7 +168,7 @@ window.LukidsBT = (() => {
     const s = settings;
     const url = `/label/${encodeURIComponent(cardId)}.png?mono=1&dpi=${s.dpi}`;
     const bm = await bitmap(url);
-    log(`이미지 ${bm.w}×${bm.h} (${s.dpi}dpi) · ${s.lang.toUpperCase()} · BITMAP ${s.bmode} · 통로 ${ch.uuid.slice(4, 8)}`);
+    log(`이미지 ${bm.w}×${bm.h} (${s.dpi}dpi) · ${s.lang.toUpperCase()} · BITMAP ${s.bmode} · 통로 ${full(ch.uuid).slice(4, 8)}`);
     const bytes = s.lang === 'escpos' ? escpos(bm) : tspl(bm);
     log(`보내는 중 ${bytes.length} 바이트`);
     await send(bytes);
