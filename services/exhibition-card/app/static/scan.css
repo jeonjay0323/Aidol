@@ -615,3 +615,12 @@
 
   /* 목소리 — 누르면 들려준다 */
   .opt.two small.play{color:var(--primary-normal);font-weight:700}
+
+  /* 종류 고르기 유도 — 아직 안 골랐으면 실물 → 버추얼 차례로 흰 테두리가 깜빡인다. 고르면 멈춘다 */
+  #kinds:not(.chosen) .grade.kind{animation:kindHint 2.4s ease-in-out infinite}
+  #kinds:not(.chosen) .grade.kind:nth-child(2){animation-delay:1.2s}
+  @keyframes kindHint{
+    0%,45%,100%{border-color:rgba(232,214,187,.11);box-shadow:none}
+    15%,30%{border-color:rgba(255,255,255,.9);box-shadow:0 0 0 3px rgba(255,255,255,.14)}
+  }
+  @media (prefers-reduced-motion:reduce){ #kinds:not(.chosen) .grade.kind{animation:none} }

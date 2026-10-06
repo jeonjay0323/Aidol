@@ -121,6 +121,7 @@ function hint(id, msg){
 function pickKind(btn){
   document.querySelectorAll('#kinds .grade').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
+  document.getElementById('kinds').classList.add('chosen');   // 깜빡임 멈춤
   CREATE.kind = btn.dataset.kind;
   CREATE.look = null;               // 실물과 버추얼은 고르는 축이 다르다
   hint('create-hint', '');
