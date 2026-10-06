@@ -12,23 +12,36 @@ function rememberMine(id){
 }
 
 /* ───────── 카드 만들기 ─────────
-   실물: normal.py PRESETS / epic.py SPECIES 의 키를 그대로 서버에 넘긴다.
+   실물: gen/idol.py(아이돌 생성기) 의 분위기 · 이종족 키를 그대로 서버에 넘긴다.
    버추얼: imagegen.py MOODS / HAIR 의 키. 조립은 서버가 한다. */
 
-const PRESETS = [
-  { k:'cat',  label:'고양이상', mood:'시크'  },
-  { k:'dog',  label:'강아지상', mood:'청량'  },
-  { k:'wolf', label:'늑대상',   mood:'다크'  },
-  { k:'fox',  label:'여우상',   mood:'무드'  },
-  { k:'deer', label:'사슴상',   mood:'몽환'  },
-];
+// 실물 — app/gen/idol.py (아이돌 생성기 사본) 의 키. 일상은 분위기, 에픽은 이종족
+const VIBES = {
+  f: [ { k:'cute and bubbly',   label:'발랄',     note:'통통 튀는 에너지' },
+       { k:'cool and chic',     label:'시크',     note:'차갑고 도도하게' },
+       { k:'innocent and pure', label:'청순',     note:'맑고 깨끗하게' },
+       { k:'bold girl-crush',   label:'걸크러시', note:'당당하고 강렬하게' },
+       { k:'dreamy and soft',   label:'몽환',     note:'부드럽고 아련하게' },
+       { k:'playful tomboy',    label:'보이시',   note:'장난기 있는 털털함' } ],
+  m: [ { k:'boyish and bright', label:'청량',     note:'밝은 소년미' },
+       { k:'cool and chic',     label:'시크',     note:'차갑고 도도하게' },
+       { k:'soft and gentle',   label:'다정',     note:'부드럽고 따뜻하게' },
+       { k:'dreamy and soft',   label:'몽환',     note:'아련한 분위기' },
+       { k:'charismatic and intense', label:'카리스마', note:'강렬한 눈빛' },
+       { k:'playful puppy-like', label:'댕댕',    note:'장난스러운 강아지상' } ],
+};
 const SPECIES = [
-  { k:'ninetail', label:'구미호', note:'여우 귀 · 금색 눈'   },
-  { k:'cat',      label:'묘인',   note:'고양이 귀 · 수염점'  },
-  { k:'devil',    label:'악마',   note:'램혼 · 진홍 눈'      },
-  { k:'angel',    label:'천사',   note:'광륜 · 백금 눈'      },
-  { k:'fairy',    label:'요정',   note:'뾰족귀 · 연두 눈'    },
-  { k:'mermaid',  label:'인어',   note:'지느러미 귀 · 비늘'  },
+  { k:'mermaid',   label:'인어',     note:'진주빛 비늘 · 지느러미 귀' },
+  { k:'fairy',     label:'요정',     note:'투명한 날개 · 뾰족귀' },
+  { k:'gumiho',    label:'구미호',   note:'여우 귀 · 여우 눈' },
+  { k:'elf',       label:'엘프',     note:'긴 뾰족귀 · 신비로운 빛' },
+  { k:'angel',     label:'천사',     note:'흰 깃털 날개 · 광륜' },
+  { k:'cat',       label:'묘인',     note:'고양이 귀' },
+  { k:'rabbit',    label:'토끼',     note:'진짜 토끼 귀' },
+  { k:'tiger',     label:'호랑이',   note:'호랑이 귀 · 줄무늬' },
+  { k:'vampire',   label:'뱀파이어', note:'창백한 피부 · 작은 송곳니' },
+  { k:'dragon',    label:'드래곤',   note:'작은 뿔 · 비늘' },
+  { k:'butterfly', label:'나비',     note:'파스텔 나비 날개 · 더듬이' },
 ];
 const MOODS = [
   { k:'fresh',  label:'청량', note:'맑은 하늘 · 활짝 웃음' },
@@ -95,6 +108,7 @@ function pickGender(btn){
   btn.classList.add('sel');
   CREATE.gender = btn.dataset.gender;
   CREATE.voice = null;              // 목소리 풀이 성별마다 다르다
+  CREATE.look = null;               // 분위기 목록도 성별마다 다르다
   hint('create-hint', '');
 }
 function pickGrade(btn){
@@ -105,7 +119,7 @@ function pickGrade(btn){
 
 function lookPool(){
   if (CREATE.kind === 'virtual') return MOODS;
-  return CREATE.grade === 'epic' ? SPECIES : PRESETS;
+  return CREATE.grade === 'epic' ? SPECIES : VIBES[CREATE.gender || 'f'];
 }
 
 function renderLook(){
@@ -115,7 +129,7 @@ function renderLook(){
   document.querySelectorAll('#grade button')
     .forEach(b => b.classList.toggle('sel', b.dataset.grade === CREATE.grade));
   document.getElementById('look-q').textContent =
-    virtual ? '어떤 분위기인가요?' : epic ? '어떤 종족인가요?' : '어떤 얼굴인가요?';
+    virtual ? '어떤 분위기인가요?' : epic ? '어떤 종족인가요?' : '어떤 분위기인가요?';
   document.getElementById('look-sub').textContent =
     virtual ? '표정 · 조명 · 배경이 함께 정해집니다'
     : epic ? '종족마다 귀 · 눈 · 표식과 배경이 함께 정해집니다'
@@ -207,7 +221,7 @@ function syncReview(){
     ['이름',   CREATE.name || '—'],
     ['종류',   virtual ? '버추얼' : epic ? '실물 · 에픽' : '실물 · 일상'],
     ['성별',   CREATE.gender === 'f' ? '여자' : '남자'],
-    [virtual ? '분위기' : epic ? '종족' : '얼굴상', lookLabel()],
+    [virtual || !epic ? '분위기' : '종족', lookLabel()],
     ...(virtual ? [['머리색', hairLabel()]] : []),
     ...(CREATE.prompt ? [['직접 쓴 모습', CREATE.prompt]] : []),
     ['목소리', CREATE.voice || '—'],
@@ -275,7 +289,7 @@ function buildPersona(){
   const virtual = CREATE.kind === 'virtual';
   const who = virtual ? '버추얼 아이돌' : '아이돌 연습생';
   const look = virtual ? `${lookLabel()} 분위기에 ${hairLabel()} 머리`
-             : CREATE.grade === 'epic' ? `${lookLabel()} 컨셉` : `${lookLabel()} 얼굴`;
+             : CREATE.grade === 'epic' ? `${lookLabel()} 컨셉` : `${lookLabel()} 분위기`;
   return [
     `너는 ${who} '${CREATE.name}'이야. ${CREATE.gender === 'f' ? '여자' : '남자'}야.`,
     `외모: ${look}.`,

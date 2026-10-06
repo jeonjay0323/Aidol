@@ -75,7 +75,7 @@ static/            통화 클라이언트 · jsQR
 
 | | 고르는 것 | 프롬프트 |
 |---|---|---|
-| 실물 | 일상(동물상 5) · 에픽(종족 6) | `app/gen/normal.py` · `epic.py` (tools/image-generator 사본, 레퍼런스 없이) |
+| 실물 | 일상(분위기 6) · 에픽(이종족 11) | `app/gen/idol.py` — ~/claude/idol-photos 아이돌 생성기(female_idol · male_idol) 사본 |
 | 버추얼 | 분위기 5 · 머리색 6 | `app/imagegen.py` 애니 일러스트 |
 
 `POST /api/generate` 가 JPEG 을 돌려주고(저장 안 함), 고른 한 장을 `POST /api/cards`

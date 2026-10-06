@@ -20,8 +20,9 @@ from google.genai import types
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent / "gen"))  # epic.py 가 `import normal` 을 쓴다
-import normal as N  # noqa: E402
+import normal as N  # noqa: E402  (공식 카드 발급 · seed_lineup 이 쓴다)
 import epic as E    # noqa: E402
+import idol as I    # noqa: E402  만들기 화면의 실물 — 2026-10-07 아이돌 생성기
 
 # main.py 가 .env 를 읽기 전에 이 모듈이 import 되므로, 프로젝트는 호출할 때 읽는다
 def project():
@@ -76,12 +77,12 @@ def virtual_prompt(gender, mood, hair, add):
 
 
 # ── 실물 ─────────────────────────────────────────────────
+# 2026-10-07 부터 ~/claude/idol-photos 의 아이돌 생성기 프롬프트(gen/idol.py)를 쓴다.
+# 일상 = 분위기(vibe) 하나를 고르고, 에픽 = 이종족(race) 하나를 고른다. 얼굴 · 머리 · 화장은 매번 무작위.
 def real_prompt(gender, grade, look, add, rng):
-    add = f"Additional requests from the creator (follow them): {add}." if add else None
     if grade == "epic":
-        return E.build_prompt(look, rng, refs=[], gender=gender, add=add), LABEL_ASPECT
-    # profile 은 가로컷이라 세로 화보컷(editorial) 프롬프트를 쓴다
-    return N.build_prompt(look, rng, refs=[], mode="editorial", add=add, gender=gender), LABEL_ASPECT
+        return I.build_prompt(gender, rng, race=look, add=add), LABEL_ASPECT
+    return I.build_prompt(gender, rng, vibe=look, add=add), LABEL_ASPECT
 
 
 def build(spec):
@@ -93,9 +94,9 @@ def build(spec):
     if spec.get("kind") == "virtual":
         return virtual_prompt(gender, spec.get("mood"), spec.get("hair"), add), LABEL_ASPECT
     grade, look = spec.get("grade"), spec.get("look")
-    pool = E.SPECIES if grade == "epic" else N.PRESETS
+    pool = I.RACE_KEYS if grade == "epic" else I.VIBES[gender]
     if look not in pool:
-        raise ValueError("얼굴상을 골라주세요")
+        raise ValueError("분위기나 종족을 골라주세요")
     return real_prompt(gender, grade, look, add, random.Random())
 
 
