@@ -325,8 +325,8 @@ async function issueCard(){
     document.getElementById('result-sub').textContent = '카드 번호 ' + j.cardId;
     document.getElementById('result-pick').hidden = true;
     document.getElementById('result-done').hidden = false;
-    // 카드를 받아 든 순간, 방금 만든 아이돌이 먼저 전화를 건다
-    scheduleRing(j.cardId, RING_DELAY);
+    // (2026-10-07) 발급 뒤 아이돌이 먼저 거는 전화는 껐다 — 시연에서 인쇄 흐름을 끊는다.
+    // 다시 켜려면 여기서 scheduleRing(j.cardId, RING_DELAY) 를 부른다.
   } catch (e) {
     hint('result-hint', '카드를 만들지 못했어요. ' + e.message);
     document.getElementById('issue-btn').disabled = false;
@@ -338,8 +338,6 @@ async function issueCard(){
 // 발급 직후 자동으로 열지 않는 건, await 뒤의 window.open 을 사파리가 팝업으로 막기 때문.
 function printCard(){
   window.open(`/label/${CREATE.cardId}?print=1`, '_blank');
-  // 인쇄하는 동안엔 울리지 않는다. 라벨 탭을 닫고 돌아오면 그때 건다
-  holdRingUntilBack(CREATE.cardId);
 }
 
 

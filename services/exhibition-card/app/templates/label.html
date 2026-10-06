@@ -8,8 +8,8 @@
   /* 만들기 화면에서 나온 카드용 라벨. 디자인은 세로 40×60mm,
      용지는 가로 60×40mm 라 인쇄할 때만 90° 돌린다. */
   :root{
-    --paper:#e8d6bb;
-    --ink:#2b1d14;
+    --paper:#ffffff;
+    --ink:#000000;
     --w:40mm;
     --h:60mm;
   }
@@ -22,8 +22,8 @@
   }
 
   /* 화면에서만 확대 */
-  .stage{transform:scale(3);transform-origin:top center}
-  .stage-space{height:calc(60mm * 3)}
+  .stage{transform:scale(var(--s,2));transform-origin:top center}
+  .stage-space{height:calc(60mm * var(--s,2))}
 
   .label{
     width:var(--w);height:var(--h);position:relative;overflow:hidden;
@@ -46,7 +46,7 @@
   .foot{
     position:absolute;left:0;right:0;bottom:0;padding:6mm 1.6mm 1.6mm;
     display:flex;align-items:flex-end;gap:1.4mm;
-    background:linear-gradient(to top,rgba(20,13,8,.85) 0%,rgba(20,13,8,.55) 60%,transparent 100%);
+    background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.55) 60%,transparent 100%);
   }
   .who{flex:1;min-width:0}
   .name{
@@ -57,7 +57,8 @@
   .tags{margin-top:.9mm;font-size:1.7mm;font-weight:700;color:var(--paper);opacity:.85;
         white-space:nowrap;overflow:hidden}
   /* 66자 주소 = 버전5 · 37모듈 + 여백 4. 16mm 면 모듈당 0.39mm */
-  .qr{width:16mm;flex:none;background:#fff;border-radius:.6mm;padding:.4mm}
+  .qr{width:16mm;flex:none;background:#fff;border-radius:.6mm;padding:.4mm .4mm .6mm}
+  .qr small{display:block;text-align:center;font-size:1.45mm;line-height:1.2;font-weight:800;color:#000;margin-top:.2mm;letter-spacing:-.05mm;white-space:nowrap}
   .qr img{width:100%;display:block;image-rendering:pixelated}
 
   .meta{color:#ddd;font-size:13px;text-align:center;line-height:1.8}
@@ -65,8 +66,8 @@
 
   /* 인쇄 페이지의 미리보기(iframe). 라벨만 2배로 */
   body.embed{background:transparent;padding:0;gap:0;overflow:hidden;align-items:flex-start}
-  body.embed .stage{transform:scale(2);transform-origin:top left}
-  body.embed .stage-space{height:calc(60mm * 2);width:calc(40mm * 2)}
+  body.embed .stage{transform:scale(2) !important;transform-origin:top left}
+  body.embed .stage-space{height:calc(60mm * 2) !important;width:calc(40mm * 2)}
   body.embed .meta{display:none}
 
   .btns{display:flex;gap:10px;width:100%;max-width:360px}
@@ -108,7 +109,7 @@
         <div class="name">{{ card.name }}</div>
         <div class="tags">{{ card.tags | join(" · ") }}</div>
       </div>
-      <div class="qr"><img src="{{ qr_url }}" alt="스캔용 QR"></div>
+      <div class="qr"><img src="{{ qr_url }}" alt="스캔용 QR"><small>스캔하고 통화하세요</small></div>
     </div>
   </div>
 </div>
@@ -154,6 +155,12 @@
     }
   }
   if (!document.body.classList.contains('embed')) prepare();
+  // 미리보기는 버튼까지 한 화면에 들어오게 화면 높이에 맞춘다 (60mm ≈ 227px)
+  function fitPreview(){
+    const s = Math.max(1, Math.min(2.4, (innerHeight - 420) / 227));
+    document.documentElement.style.setProperty('--s', s.toFixed(2));
+  }
+  fitPreview(); addEventListener('resize', fitPreview);
 </script>
 </body>
 </html>

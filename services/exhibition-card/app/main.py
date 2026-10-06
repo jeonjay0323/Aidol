@@ -410,7 +410,7 @@ async def qr_png(request: Request, card_id: str):
     url = f"{base_url(request)}/c/{card_id}"
     qr = segno.make(url, error="m")
     buf = io.BytesIO()
-    qr.save(buf, kind="png", scale=20, border=2, dark="#2b1d14", light="#f2e6d2")
+    qr.save(buf, kind="png", scale=20, border=2, dark="#000000", light="#ffffff")
     return Response(buf.getvalue(), media_type="image/png")
 
 

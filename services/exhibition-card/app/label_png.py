@@ -17,8 +17,8 @@ FONTS = Path(__file__).parent / "static" / "fonts"
 DPI = 300
 MM = DPI / 25.4
 W, H = round(40 * MM), round(60 * MM)          # 세로 디자인 472 × 709
-PAPER = (232, 214, 187)                          # label.html --paper
-INK = (43, 29, 20)                               # --ink
+PAPER = (255, 255, 255)                          # label.html --paper
+INK = (0, 0, 0)                                  # --ink
 
 
 def font(weight, px):
@@ -63,7 +63,7 @@ def render(photo_bytes, name, tags, card_id, scan_url, mono=False):
     for y in range(top, H):
         t = (y - top) / (H - top)
         shade.putpixel((0, y), round(255 * (0.55 * min(t / 0.4, 1) + 0.30 * max(t - 0.4, 0) / 0.6)))
-    label = Image.composite(Image.new("RGB", (W, H), (20, 13, 8)), label, shade.resize((W, H)))
+    label = Image.composite(Image.new("RGB", (W, H), (0, 0, 0)), label, shade.resize((W, H)))
 
     d = ImageDraw.Draw(label)
     pad = mm(1.6)
@@ -81,12 +81,15 @@ def render(photo_bytes, name, tags, card_id, scan_url, mono=False):
     q = mm(16)
     qr = segno.make(scan_url, error="m")
     buf = io.BytesIO()
-    qr.save(buf, kind="png", scale=10, border=2, dark="#2b1d14", light="#ffffff")
+    qr.save(buf, kind="png", scale=10, border=2, dark="#000000", light="#ffffff")
     qr_img = Image.open(buf).convert("RGB").resize((q, q), Image.NEAREST)
-    qx, qy = W - pad - q, H - pad - q
-    d.rounded_rectangle((qx - mm(0.5), qy - mm(0.5), qx + q + mm(0.5), qy + q + mm(0.5)),
+    cap = mm(2.2)                                   # QR 아래 "스캔하고 통화하세요"
+    qx, qy = W - pad - q, H - pad - q - cap
+    d.rounded_rectangle((qx - mm(0.5), qy - mm(0.5), qx + q + mm(0.5), qy + q + cap + mm(0.3)),
                         radius=mm(0.6), fill=(255, 255, 255))
     label.paste(qr_img, (qx, qy))
+    cap_f = fit_text(d, "스캔하고 통화하세요", "bold", mm(1.6), q)
+    d.text((qx + q / 2, qy + q + cap / 2), "스캔하고 통화하세요", font=cap_f, fill=(0, 0, 0), anchor="mm")
 
     text_w = qx - pad - mm(1.4)
     name_f = fit_text(d, name, "bold", mm(6.4), text_w)
