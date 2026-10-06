@@ -28,7 +28,12 @@ window.LukidsBT = (() => {
 
   let device = null, ch = null;
   const logs = [];
-  function log(m) { logs.push(m); console.log('[bt]', m); LukidsBT.onlog && LukidsBT.onlog(m); }
+  // 아이패드 화면의 로그를 서버에도 남긴다 — 실물 프린터 문제를 원격으로 보기 위해 (Cloud Run 로그 'btlog')
+  const sid = Math.random().toString(36).slice(2, 8);
+  function log(m) {
+    logs.push(m); console.log('[bt]', m); LukidsBT.onlog && LukidsBT.onlog(m);
+    try { navigator.sendBeacon('/api/btlog', JSON.stringify({ sid, m: String(m).slice(0, 300) })); } catch {}
+  }
 
   const supported = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
 
@@ -51,6 +56,7 @@ window.LukidsBT = (() => {
       }
     }
     if (!ch) throw new Error('쓸 수 있는 특성을 못 찾았어요. 로그를 확인해 주세요.');
+    log(`서비스 ${services.length}개 · ${navigator.userAgent.slice(-40)}`);
     log(`보낼 곳: ${ch.uuid}`);
     return device.name;
   }
@@ -116,7 +122,13 @@ window.LukidsBT = (() => {
   }
 
   async function printCard(cardId) {
-    if (!ch || !device.gatt.connected) await connect();
+    try { return await _print(cardId); }
+    catch (e) { log('오류: ' + (e && (e.name + ' ' + e.message))); throw e; }
+  }
+
+  async function _print(cardId) {
+    log(`설정 ${JSON.stringify(settings)}`);
+    if (!ch || !device || !device.gatt.connected) await connect();
     const s = settings;
     const url = `/label/${encodeURIComponent(cardId)}.png?mono=1&dpi=${s.dpi}`;
     const bm = await bitmap(url);
@@ -124,7 +136,7 @@ window.LukidsBT = (() => {
     const bytes = s.lang === 'escpos' ? escpos(bm) : tspl(bm);
     log(`보내는 중 ${bytes.length} 바이트`);
     await send(bytes);
-    log('보냄');
+    log('보냄 — 다 보냈어요');
   }
 
   function save(patch) {

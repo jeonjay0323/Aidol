@@ -396,6 +396,17 @@ async def call_page(request: Request):
     })
 
 
+@app.post("/api/btlog")
+async def api_btlog(request: Request):
+    """블루투스 인쇄 로그(bt-print.js). 실물 프린터 문제를 원격으로 보려고 서버 로그에 남긴다."""
+    try:
+        body = (await request.body())[:600].decode("utf-8", "replace")
+        logging.getLogger("btlog").info(body)
+    except Exception:
+        pass
+    return Response(status_code=204)
+
+
 @app.get("/printer", response_class=HTMLResponse)
 async def printer_page(request: Request):
     """블루투스 라벨 프린터 연결 · 설정 · 시험 인쇄 (static/bt-print.js)."""
