@@ -54,6 +54,8 @@
 
   <div class="field" id="prompt-field">
     <label for="c-prompt">원하는 모습을 직접 써주세요 <span style="font-weight:600">(선택)</span></label>
+    <!-- 프리셋 키워드 — 들어올 때마다 무작위 6개, 누르면 입력 칸에 붙고 다시 누르면 빠진다 -->
+    <div class="presets" id="prompt-presets" aria-label="추천 키워드"></div>
     <textarea id="c-prompt" rows="3" maxlength="300" oninput="syncPrompt()"
       placeholder="예 · 은색 귀걸이, 앞머리 있는 단발, 별 모양 머리핀"></textarea>
     <div class="ctxline"><span id="prompt-count">0</span> / 300자</div>

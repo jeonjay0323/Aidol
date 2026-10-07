@@ -184,6 +184,7 @@ function toLook(){
   }
   // A조건은 고르기만 한다 — 직접 쓰는 칸을 열면 조건이 섞인다
   document.getElementById('prompt-field').hidden = CREATE.depth === 'A';
+  renderPresets();
   renderLook();
   logStep('look');
   go('s-create-look');
@@ -193,6 +194,46 @@ function syncPrompt(){
   const el = document.getElementById('c-prompt');
   CREATE.prompt = el.value.trim();
   document.getElementById('prompt-count').textContent = el.value.length;
+  const words = promptWords();
+  document.querySelectorAll('#prompt-presets button[data-w]')
+    .forEach(b => b.classList.toggle('on', words.includes(b.dataset.w)));
+}
+
+/* 프리셋 키워드 — 매번 무작위로 몇 개만 보여 준다. 누르면 입력 칸에 「, 키워드」로 붙는다 */
+const PROMPT_PRESETS = [
+  '귀걸이', '진주 귀걸이', '피어싱', '단발', '앞머리', '긴 생머리', '포니테일', '양갈래', '웨이브 펌',
+  '안경', '주근깨', '보조개', '눈웃음', '윙크', '은색 목걸이', '초커', '별 모양 머리핀', '리본',
+  '하트 헤어핀', '꽃 장식', '니트 모자', '헤드폰', '후드티', '가죽 재킷', '셔츠 칼라', '스웨터',
+  '붉은 립', '반짝이 아이섀도', '은은한 메이크업', '그윽한 눈빛', '해맑은 미소', '무대 조명'
+];
+const promptWords = () => document.getElementById('c-prompt').value.split(',').map(s => s.trim()).filter(Boolean);
+
+function renderPresets(){
+  const box = document.getElementById('prompt-presets');
+  if (!box) return;
+  const pool = PROMPT_PRESETS.slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  box.innerHTML = '';
+  pool.slice(0, 6).forEach(w => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.w = w; b.textContent = '+ ' + w;
+    b.onclick = () => togglePreset(w);
+    box.appendChild(b);
+  });
+  const more = document.createElement('button');
+  more.type = 'button'; more.className = 'more'; more.textContent = '↻ 다른 추천';
+  more.onclick = renderPresets;
+  box.appendChild(more);
+  syncPrompt();
+}
+
+function togglePreset(w){
+  const el = document.getElementById('c-prompt');
+  const words = promptWords();
+  const i = words.indexOf(w);
+  if (i >= 0) words.splice(i, 1); else words.push(w);
+  el.value = words.join(', ').slice(0, el.maxLength);
+  syncPrompt();
 }
 
 function toName(){

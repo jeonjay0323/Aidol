@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=ui2-3">
+<link rel="stylesheet" href="/static/scan.css?v=ui2-4">
 </head>
 <body>
 
@@ -277,8 +277,8 @@
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
 <script src="/static/call-client.js?v=expr-1"></script>
 <script src="/static/ring.js?v=demo-1"></script>
-<script src="/static/create.js?v=ui2-3"></script>
-<script src="/static/room-client.js?v=haneul-3"></script>
+<script src="/static/create.js?v=ui2-4"></script>
+<script src="/static/room-client.js?v=sync-1"></script>
 <script>
   const CARD = {{ card_json | safe }};
   const invited = [];   // 멀티콜에 초대된 카드 id
@@ -537,6 +537,7 @@
     document.getElementById('cap-solo').innerHTML =
       (line ? line + '<br>' : '') + (hint ? '<em>' + hint + '</em>' : '');
   }
+  const multiNames = {};
   function setMultiCaption(line, hint){
     document.getElementById('cap-multi').innerHTML =
       (line ? line + '<br>' : '') + (hint ? '<em>' + hint + '</em>' : '');
@@ -677,6 +678,7 @@
 
     AidolRoom.start(ids, (cid) => cells[cid], {
       onJoined(members){
+        members.forEach(m => { multiNames[m.cardId] = m.name; });
         grid.innerHTML = '';
         members.forEach(m => {
           const cell = document.createElement('div');
@@ -720,7 +722,12 @@
         const el = document.getElementById('cell-' + cid);
         if (el) el.classList.add('turn');
       },
-      onSaid(cid, text){ if (text) setMultiCaption(text, ''); },
+      onSaid(cid, text){
+        // 자막은 소리가 나오는 순간에 맞춰 온다(room-client.js). 누가 말하는지 이름을 붙인다
+        if (!text) return;
+        const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+        setMultiCaption(`<b>${esc(multiNames[cid] || '')}</b> ${esc(text)}`, '');
+      },
       onError(e){
         document.getElementById('load-msg').textContent = '연결 실패: ' + e;
         setTimeout(()=>go('s-card'), 2500);

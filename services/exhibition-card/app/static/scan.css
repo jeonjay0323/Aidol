@@ -340,6 +340,13 @@
   }
   .field textarea:focus{outline:none;border-color:var(--label-normal)}
   .field textarea::placeholder{color:var(--label-assistive)}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .presets button{
+    font-family:var(--brand);font-size:14px;line-height:20px;font-weight:700;padding:8px 14px;border-radius:999px;
+    background:var(--fill-alt);border:1px solid var(--line-normal);color:var(--label-normal);cursor:pointer;
+  }
+  .presets button.on{background:var(--primary-normal);border-color:var(--primary-normal);color:#0d0d0d}
+  .presets button.more{background:none;border-style:dashed;color:var(--label-alt)}
   .ctxline{
     margin-top:6px;text-align:right;font-family:var(--brand);
     font-size:12px;line-height:16px;letter-spacing:0.0252em;color:var(--label-alt);

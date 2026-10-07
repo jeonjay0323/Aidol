@@ -10,6 +10,8 @@ window.AidolRoom = (() => {
   let members = {};           // cardId -> {pc, ws, buffer, videoEl} | {vrm}
   let analyser = null, speaking = null;   // speaking: 지금 재생 중인 오디오의 cardId
   let nextPlayTime = 0, activeSources = 0, muted = false, active = false;
+  // 자막 싱크 — 마지막으로 예약한 오디오의 재생 시각에 맞춰 그 조각의 글자를 띄운다
+  let lastAt = 0; const subs = {}, fresh = {};
   let hooks = {};
   const SIMLI_CHUNK = 3200;
 
@@ -153,6 +155,7 @@ window.AidolRoom = (() => {
     src.buffer = buf; src.connect(analyser || playCtx.destination);
     const at = Math.max(playCtx.currentTime, nextPlayTime);
     src.start(at);
+    lastAt = at;
     nextPlayTime = at + buf.duration;
     src.onended = () => { if (--activeSources === 0) speaking = null; };
   }
@@ -200,9 +203,16 @@ window.AidolRoom = (() => {
         speaking = msg.cardId;
         schedule(bytes);
         toSimli(msg.cardId, bytes);
+      } else if (msg.type === 'text') {
+        const cid = msg.cardId;
+        if (fresh[cid] !== false) { subs[cid] = ''; fresh[cid] = false; }   // 새 턴이면 비우고 시작
+        subs[cid] += msg.text;
+        const show = subs[cid];
+        const wait = playCtx ? Math.max(0, (lastAt - playCtx.currentTime) * 1000) : 0;
+        setTimeout(() => { if (active) hooks.onSaid && hooks.onSaid(cid, show); }, wait);
       } else if (msg.type === 'turn_complete') {
         flushSimli(msg.cardId);
-        hooks.onSaid && hooks.onSaid(msg.cardId, msg.text);
+        fresh[msg.cardId] = true;   // 다음 조각부터는 새 자막
       } else if (msg.type === 'error') {
         hooks.onError && hooks.onError(msg.data);
       }
