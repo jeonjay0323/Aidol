@@ -137,7 +137,7 @@ async def api_generate(spec: dict):
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
-        data = await asyncio.to_thread(imagegen.generate, spec)
+        data, note = await asyncio.to_thread(imagegen.generate, spec)
         ok = True
     except RuntimeError as e:
         ok, data = False, str(e)
@@ -151,7 +151,7 @@ async def api_generate(spec: dict):
         logging.warning(f"generate 로그 실패: {e}")
     if not ok:
         raise HTTPException(502, data)
-    return {"image": "data:image/jpeg;base64," + base64.b64encode(data).decode()}
+    return {"image": "data:image/jpeg;base64," + base64.b64encode(data).decode(), "note": note}
 
 
 @app.get("/api/cards")

@@ -101,10 +101,30 @@ def build(spec):
     return real_prompt(gender, grade, look, add, random.Random())
 
 
+class Blocked(RuntimeError):
+    """모델이 이미지를 주지 않았다(대개 안전 필터). 다시 뽑거나 문장을 빼면 될 때가 많다."""
+
+
 def generate(spec):
-    """JPEG 바이트를 돌려준다. 썸네일 저장소(700KB) 에 그대로 들어가는 크기로."""
-    prompt, aspect = build(spec)
-    return to_jpeg(render(prompt, aspect), trim=spec.get("kind") == "virtual")
+    """(JPEG 바이트, 안내 문구 또는 None). 썸네일 저장소(700KB) 에 그대로 들어가는 크기로.
+
+    이미지가 안 오면(안전 필터) 같은 조합으로 한 번 더 — 얼굴 · 머리가 새로 뽑혀 통과할 때가 많다.
+    그래도 안 되고 관람객이 쓴 문장이 있으면 문장을 빼고 한 번 더, 그 사실을 안내한다.
+    (2026-10-07 운영: 실물 · 에픽 + 직접 쓴 18자 조합이 바로 막혀 502 가 났다)"""
+    trim = spec.get("kind") == "virtual"
+    tries = [(spec, None), (spec, None)]
+    if str(spec.get("prompt") or "").strip():
+        tries.append(({**spec, "prompt": ""}, "쓴 문장 일부는 그림에 반영하지 못했어요. 문장을 바꿔 다시 만들 수 있어요."))
+    last = None
+    for i, (sp, note) in enumerate(tries):
+        prompt, aspect = build(sp)
+        try:
+            return to_jpeg(render(prompt, aspect), trim=trim), note
+        except Blocked as e:
+            last = e
+            log.warning(f"이미지 없음 {i + 1}/{len(tries)} · {sp.get('kind')}/{sp.get('grade')}/{sp.get('look') or sp.get('mood')}"
+                        f" · 문장 {str(sp.get('prompt') or '')[:80]!r} · {e}")
+    raise RuntimeError("이미지를 만들지 못했어요. 다른 조합이나 문장으로 다시 해보세요.") from last
 
 
 def render(prompt, aspect):
@@ -120,12 +140,16 @@ def render(prompt, aspect):
                     image_config=types.ImageConfig(aspect_ratio=aspect),
                 ),
             )
-            for part in (r.candidates[0].content.parts if r.candidates else []) or []:
+            cand = r.candidates[0] if r.candidates else None
+            for part in ((cand.content.parts if cand and cand.content else None) or []):
                 if part.inline_data and part.inline_data.data:
                     return part.inline_data.data
-            # 안전 필터에 걸리면 이미지 없이 돌아온다. 다른 지역도 같으니 바로 멈춘다.
-            raise RuntimeError("이미지를 만들지 못했어요. 프롬프트를 바꿔서 다시 해보세요.")
-        except RuntimeError:
+            # 안전 필터에 걸리면 이미지 없이 돌아온다. 다른 지역도 같으니 이 프롬프트로는 멈춘다
+            why = getattr(cand, "finish_reason", None) if cand else None
+            fb = getattr(r, "prompt_feedback", None)
+            texts = [p.text for p in ((cand.content.parts if cand and cand.content else None) or []) if getattr(p, "text", None)]
+            raise Blocked(f"finish={why} feedback={getattr(fb, 'block_reason', None)} text={(' '.join(texts))[:120]!r}")
+        except Blocked:
             raise
         except Exception as e:
             err = e

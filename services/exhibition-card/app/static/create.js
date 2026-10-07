@@ -346,7 +346,7 @@ async function generate(){
     CREATE.image = j.image;
     document.getElementById('gen-img').src = j.image;
     document.getElementById('result-q').textContent = '이 모습 어때요?';
-    document.getElementById('result-sub').textContent = '마음에 안 들면 다시 만들 수 있어요';
+    document.getElementById('result-sub').textContent = j.note || '마음에 안 들면 다시 만들 수 있어요';
   } catch (e) {
     document.getElementById('result-q').textContent = '사진을 만들지 못했어요';
     document.getElementById('result-sub').textContent = '';
