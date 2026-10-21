@@ -1,0 +1,196 @@
+{% extends "_site.html" %}
+{% block title %}LUKIDS — 나를 아는 아이돌{% endblock %}
+{% block head %}
+<style>
+  .hero{padding:72px 0 56px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:48px;align-items:center}
+  .hero .site-step{margin-bottom:16px}
+  .hero h1{
+    font-family:var(--brand);font-weight:700;font-size:48px;line-height:60px;letter-spacing:-0.03em;
+    color:var(--label-strong);word-break:keep-all;
+  }
+  .hero h1 em{font-style:normal;color:var(--primary-normal)}
+  .hero p{font-size:17px;line-height:28px;color:var(--label-neutral);margin:20px 0 28px;max-width:480px;word-break:keep-all}
+  .hero .cta{display:flex;gap:8px;flex-wrap:wrap}
+  /* 공식 아이돌 얼굴을 겹쳐 세운다 */
+  .faces{position:relative;height:400px}
+  .faces img{
+    position:absolute;width:44%;aspect-ratio:3/4;object-fit:cover;object-position:50% 22%;
+    border-radius:var(--r);border:1px solid var(--line-solid);box-shadow:0 20px 50px rgba(0,0,0,.45);
+  }
+  .faces img:nth-child(1){left:0;top:40px;transform:rotate(-5deg)}
+  .faces img:nth-child(2){left:28%;top:0;z-index:2}
+  .faces img:nth-child(3){right:0;top:56px;transform:rotate(5deg)}
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;padding:40px 0 32px;gap:28px}
+    .hero h1{font-size:34px;line-height:44px}
+    .hero p{font-size:16px;line-height:26px}
+    .faces{height:290px;max-width:400px}
+  }
+
+  .sec{padding:56px 0;border-top:1px solid var(--line-solid-alt)}
+  .sec-h{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:24px}
+  .sec-h h2{font-family:var(--brand);font-weight:700;font-size:24px;line-height:32px;color:var(--label-strong)}
+  .sec-h p{font-size:14px;line-height:22px;color:var(--label-alt);margin-top:4px;word-break:keep-all}
+  .sec-h a{font-family:var(--brand);font-size:14px;color:var(--label-alt);flex:none}
+  .sec-h a:hover{color:var(--label-normal)}
+
+  /* 네 기능 */
+  .feats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media (max-width:860px){ .feats{grid-template-columns:1fr 1fr} }
+  @media (max-width:480px){ .feats{grid-template-columns:1fr} }
+  .feat{
+    display:flex;flex-direction:column;min-height:210px;padding:22px 20px;border-radius:var(--r);
+    background:var(--bg-elevated);border:1px solid var(--line-solid-alt);transition:border-color .18s;
+  }
+  .feat:hover{border-color:var(--primary-normal)}
+  .feat .n{font-family:var(--brand);font-weight:700;font-size:13px;color:var(--primary-normal)}
+  .feat b{font-family:var(--brand);font-weight:700;font-size:20px;line-height:28px;color:var(--label-strong);margin:10px 0 6px}
+  .feat span{font-size:14px;line-height:22px;color:var(--label-alt);word-break:keep-all}
+  .feat .go{margin-top:auto;padding-top:18px;font-family:var(--brand);font-size:13px;color:var(--label-neutral)}
+
+  /* 경험의 순서 */
+  .loop{display:grid;grid-template-columns:repeat(4,1fr);counter-reset:l}
+  .loop div{counter-increment:l;padding:0 20px 0 0;position:relative}
+  .loop div::before{
+    content:counter(l);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;
+    background:var(--fill-normal);font-family:var(--brand);font-weight:700;font-size:14px;margin-bottom:14px;
+  }
+  .loop div:not(:last-child)::after{
+    content:"";position:absolute;top:16px;left:44px;right:12px;height:1px;background:var(--line-normal);
+  }
+  .loop b{display:block;font-family:var(--brand);font-weight:700;font-size:16px;line-height:24px;margin-bottom:4px}
+  .loop span{font-size:13px;line-height:20px;color:var(--label-alt);word-break:keep-all}
+  @media (max-width:760px){
+    .loop{grid-template-columns:1fr;gap:20px}
+    .loop div{display:grid;grid-template-columns:32px 1fr;gap:2px 14px;padding:0}
+    .loop div::before{grid-row:span 2;margin:0}
+    .loop div::after{display:none}
+  }
+
+  /* 라인업 스트립 */
+  .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  @media (max-width:760px){ .strip{grid-template-columns:repeat(5,42%);overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px} .strip > *{scroll-snap-align:start} }
+  .mem{display:block;border-radius:var(--r);overflow:hidden;background:var(--bg-elevated);border:1px solid var(--line-solid-alt)}
+  .mem img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;object-position:50% 22%}
+  .mem div{padding:10px 12px 12px}
+  .mem b{font-family:var(--brand);font-weight:700;font-size:16px}
+  .mem small{display:block;font-size:12px;color:var(--label-alt);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* 프로젝트 정보 */
+  .about{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+  @media (max-width:760px){ .about{grid-template-columns:1fr;gap:20px} }
+  .about h3{font-family:var(--brand);font-weight:700;font-size:13px;color:var(--label-alt);letter-spacing:.06em;margin-bottom:10px}
+  .about p,.about li{font-size:14px;line-height:24px;color:var(--label-neutral);word-break:keep-all}
+  .about ul{list-style:none}
+  .about li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line-solid-alt);padding:6px 0}
+  .about li span:last-child{color:var(--label-alt);text-align:right}
+</style>
+{% endblock %}
+
+{% block body %}
+<main class="site-main">
+
+  <section class="hero">
+    <div>
+      <div class="site-step">LUKIDS · AI 아이돌 컴패니언</div>
+      <h1>실제 아이돌은 나를 모르지만,<br><em>이 아이돌은 나를 안다</em></h1>
+      <p>프롬프트로 나만의 아이돌을 만들고, 카드로 인쇄해 손에 쥐고, 얼굴을 보며 영상통화로 이야기합니다.
+         텍스트에 머무는 캐릭터챗과 달리 얼굴과 목소리로 쌓는 관계를 실험합니다.</p>
+      <div class="cta">
+        <a class="site-btn" href="/make">내 아이돌 만들기</a>
+        <a class="site-btn line" href="/call">공식 아이돌과 통화</a>
+      </div>
+    </div>
+    <div class="faces" aria-hidden="true">
+      {% for c in lineup[:3] %}{% if c.image %}<img src="{{ c.image }}" alt="">{% endif %}{% endfor %}
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-h"><div><h2>네 가지로 경험합니다</h2><p>만들고, 갖고, 보여주고, 이야기한다.</p></div></div>
+    <div class="feats">
+      <a class="feat" href="/make"><span class="n">01</span><b>아이돌 제작</b>
+        <span>실물 화보 또는 버추얼 일러스트. 조합을 고르고 원하는 모습을 직접 써서 생성합니다.</span>
+        <span class="go">만들러 가기 →</span></a>
+      <a class="feat" href="/print"><span class="n">02</span><b>아이돌 인쇄</b>
+        <span>내가 만든 아이돌을 60 × 40 mm 카드로 뽑습니다. QR 을 찍으면 그 아이돌에게 다시 전화가 연결돼요.</span>
+        <span class="go">인쇄하러 가기 →</span></a>
+      <a class="feat" href="/gallery"><span class="n">03</span><b>아이돌 구경</b>
+        <span>관람객이 만든 아이돌은 모두 전시 페이지에 걸립니다. 다른 사람의 아이돌과도 통화할 수 있어요.</span>
+        <span class="go">구경하러 가기 →</span></a>
+      <a class="feat" href="/call"><span class="n">04</span><b>아이돌 통화</b>
+        <span>미리 준비된 공식 아이돌 다섯 명과 영상 · 음성으로 통화합니다. 여럿이 함께 부르는 멀티콜도 됩니다.</span>
+        <span class="go">통화하러 가기 →</span></a>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-h"><div><h2>전시장에서의 한 바퀴</h2><p>관람객 한 명이 부스에서 겪는 순서입니다.</p></div></div>
+    <div class="loop">
+      <div><b>만든다</b><span>종류 · 얼굴상 · 프롬프트를 정하고 20초 안에 사진이 나온다</span></div>
+      <div><b>갖는다</b><span>고른 한 장이 카드로 발급되고 바로 인쇄된다</span></div>
+      <div><b>걸린다</b><span>카드는 전시 벽(페이지)에 올라가 다른 관람객도 본다</span></div>
+      <div><b>이야기한다</b><span>카드 QR 을 찍으면 그 아이돌과 통화가 시작된다</span></div>
+    </div>
+  </section>
+
+  {% if lineup %}
+  <section class="sec">
+    <div class="sec-h"><div><h2>공식 라인업</h2><p>지금 바로 통화할 수 있는 아이돌</p></div><a href="/call">모두 보기 →</a></div>
+    <div class="strip">
+      {% for c in lineup %}
+      <a class="mem" href="/c/{{ c.cardId }}">
+        {% if c.image %}<img src="{{ c.image }}" alt="" loading="lazy">{% endif %}
+        <div><b>{{ c.name }}</b><small>{{ c.tags | join(" · ") }}</small></div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="sec">
+    <div class="sec-h"><div><h2>최근에 만들어진 아이돌</h2><p>관람객이 직접 만든 카드</p></div><a href="/gallery">전시 보기 →</a></div>
+    {% if recent %}
+    <div class="site-grid">
+      {% for c in recent %}
+      <a class="site-card" href="/gallery?card={{ c.cardId }}">
+        <div class="ph">{% if c.image %}<img src="{{ c.image }}" alt="" loading="lazy">{% endif %}
+          <span class="kind {{ 'v' if c.kind == 'virtual' }}">{{ "버추얼" if c.kind == "virtual" else "실물" }}</span></div>
+        <div class="body"><div class="name">{{ c.name }}</div><div class="tags">{{ c.tags | join(" · ") }}</div></div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="site-empty">아직 만들어진 아이돌이 없어요.<div><a class="site-btn" href="/make">첫 번째로 만들기</a></div></div>
+    {% endif %}
+  </section>
+
+  <section class="sec">
+    <div class="about">
+      <div>
+        <h3>프로젝트</h3>
+        <p>경희대학교 졸업스튜디오3 개인작. AI 아이돌과 1:1 로 소통하는 서비스를 전시용 피지컬 카드로 시험합니다.</p>
+      </div>
+      <div>
+        <h3>무엇을 확인하나</h3>
+        <p>직접 만든 정도가 애착을 바꾸는가. 카드를 가져간 사람이 집에서 다시 여는가(재방문), 여럿이 함께 부르면 대화가 길어지는가.</p>
+      </div>
+      <div>
+        <h3>만든 재료</h3>
+        <ul>
+          <li><span>대화 · 음성</span><span>Gemini Live</span></li>
+          <li><span>사진 생성</span><span>Gemini 2.5 Flash Image</span></li>
+          <li><span>얼굴 립싱크</span><span>Simli</span></li>
+          <li><span>버추얼 3D</span><span>VRM · three.js</span></li>
+          <li><span>서버</span><span>Cloud Run · Firestore</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <span>LUKIDS · 2026 경희대학교 졸업스튜디오3</span>
+  <span>프로토타입 · 중간 보고</span>
+</footer>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "_site.html" %}
+{% block title %}아이돌 제작 · LUKIDS{% endblock %}
+{% block css %}<link rel="stylesheet" href="/static/scan.css?v=ui2-4">{% endblock %}
+{% block head %}
+<style>
+  /* 왼쪽은 설명, 오른쪽은 폰 너비의 만들기 흐름. 좁으면 위아래로 */
+  .make{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:56px;align-items:start}
+  .make .wrap{max-width:none;margin:0;padding:0 0 40px}
+  .make-side{position:sticky;top:56px}
+  /* 단계 목록 01~04 — 지난 단계는 체크 · 눌러서 돌아가기, 지금 단계는 그라데이션 번호 */
+  .flow{list-style:none;counter-reset:f;margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .flow li{
+    counter-increment:f;display:grid;grid-template-columns:44px 1fr;align-items:center;gap:2px 14px;
+    padding:14px 16px;border-radius:14px;border:1px solid var(--line-solid-alt);background:var(--bg-elevated);
+    transition:border-color .2s,background .2s,opacity .2s;opacity:.55;
+  }
+  .flow li::before{
+    content:"0" counter(f);grid-row:span 2;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+    font:700 15px var(--brand);background:var(--fill-alt);color:var(--label-alt);
+  }
+  .flow b{font-family:var(--brand);font-weight:700;font-size:16px;line-height:22px;color:var(--label-normal)}
+  .flow span{font-size:13px;line-height:19px;color:var(--label-alt);word-break:keep-all}
+  /* 색은 차분하게 — 그라데이션은 주요 버튼에만 쓴다. 지금 단계는 흰 번호 · 밝은 테두리, 지난 단계는 회색 체크 */
+  .flow li.done{opacity:.85;cursor:pointer}
+  .flow li.done::before{content:"✓";background:var(--fill-normal);color:var(--label-neutral);font-size:16px}
+  .flow li.done:hover{opacity:1;border-color:var(--line-solid)}
+  .flow li.now{opacity:1;border-color:rgba(255,255,255,.45);background:var(--bg-elevated)}
+  .flow li.now::before{background:var(--label-normal);color:#000}
+  /* 제작 페이지에서는 흐름 위 헤더(뒤로 · CREATE YOUR OWN)를 쓰지 않는다 — 지난 단계를 눌러 돌아간다 */
+  .make .screen > header{display:none}
+  .make .screen{padding-top:44px}   /* 왼쪽 제목과 높이를 맞춘다 */
+  @media (max-width:900px){
+    .make{grid-template-columns:1fr;gap:0}
+    .make-side{position:static}
+    /* 세로 화면 — 단계 목록을 가로 한 줄로 */
+    .make-side .site-head{padding-bottom:16px}
+    .make-side .flow{flex-direction:row;gap:6px;margin:0 0 20px}
+    .make-side .flow li{flex:1;grid-template-columns:1fr;justify-items:center;text-align:center;padding:10px 6px;gap:6px}
+    .make-side .flow li::before{grid-row:auto;width:34px;height:34px;font-size:13px}
+    .make-side .flow li span{display:none}
+    .make-side .flow b{font-size:13px;line-height:17px}
+    .make .wrap{max-width:420px;width:100%;margin:0 auto}
+    .make .screen{padding-top:4px}
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<svg class="sr" aria-hidden="true" focusable="false"><defs>
+  <g id="g-plus" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></g>
+  <g id="g-chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></g>
+</defs></svg>
+
+<main class="site-main">
+  <div class="make">
+    <div class="make-side">
+      <div class="site-head">
+        <div class="site-step">01 · 아이돌 제작</div>
+        <h1>나만의 아이돌을<br>만들어보세요!</h1>
+        <p>실제 인물처럼 혹은 버추얼 캐릭터로! 내가 고른 조합과 쓴 문장이 나만의 아이돌이 돼요.</p>
+      </div>
+      <ol class="flow" id="flow">
+        <li data-s="s-create"><b>종류 · 성별</b><span>실물 아이돌 또는 버추얼 아이돌</span></li>
+        <li data-s="s-create-look"><b>모습</b><span>얼굴상 · 종족 · 분위기 · 머리색과 직접 쓰는 프롬프트</span></li>
+        <li data-s="s-create-name"><b>이름 · 목소리</b><span>통화할 때 그대로 쓰입니다</span></li>
+        <li data-s="s-create-result"><b>생성 · 발급</b><span>마음에 들 때까지 다시 뽑고, 고른 한 장으로 카드를 발급합니다</span></li>
+      </ol>
+    </div>
+    <div class="wrap">
+      {% include "_create_screens.html" %}
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block script %}
+<script>
+  const ORDER = ['s-create', 's-create-look', 's-create-name', 's-create-result'];
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    document.getElementById(id).classList.add('on');
+    const n = ORDER.indexOf(id);
+    document.querySelectorAll('#flow li').forEach((li, i) => {
+      li.classList.toggle('done', i < n);
+      li.classList.toggle('now', i === n);
+    });
+    window.scrollTo(0, 0);
+  }
+  function pick(btn){
+    btn.parentElement.querySelectorAll('.opt').forEach(o => o.classList.remove('sel'));
+    btn.classList.add('sel');
+  }
+  // 지난 단계를 누르면 그 단계로 돌아간다 (발급한 뒤에는 막는다 — 다시 만들려면 처음부터)
+  document.querySelectorAll('#flow li').forEach((li, i) => li.addEventListener('click', () => {
+    if (!li.classList.contains('done') || CREATE.cardId) return;
+    if (i === 1) return toLook();
+    if (i === 2) return toName();
+    go(ORDER[i]);
+  }));
+  const CREATE_HOME = () => { location.href = document.body.classList.contains('demo') ? '/demo' : '/'; };
+</script>
+<script src="/static/ring.js?v=demo-1"></script>
+<script src="/static/create.js?v=gen-retry-1"></script>
+<script>
+  // 제작 페이지는 B — 프롬프트 · 이름 · 목소리까지 고르고 바로 사진 만들기(성격 칸 없음).
+  // 연구 조건을 시험할 때만 ?depth=A|B|C 로 바꾼다.
+  // 전시장 카드 화면(/c/…)의 만들기는 지금처럼 서버가 조건을 배정한다.
+  const q = new URLSearchParams(location.search).get('depth');
+  CREATE.depth = ['A', 'B', 'C'].includes(q) ? q : 'B';
+  startCreate();
+</script>
+{% endblock %}

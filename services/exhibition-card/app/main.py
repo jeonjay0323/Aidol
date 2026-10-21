@@ -4,10 +4,13 @@
 카드는 즉시 발급되고 얼굴은 최대 8시간 뒤에 붙는다.
 그 간격을 face_status로 표현하고, 스캔 시 상태에 따라 화면을 분기한다.
 """
+import asyncio
+import base64
 import io
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 import segno
@@ -17,10 +20,11 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import call, db, room, simli
-
 HERE = Path(__file__).parent
+# call · room · db 가 import 될 때 GCP_PROJECT 를 읽는다. 그보다 먼저 .env 를 올린다.
 load_dotenv(HERE.parent / ".env")
+
+from . import call, db, expr, imagegen, room, simli  # noqa: E402
 
 # 카드 QR에 박히는 주소. 전시 배포 시 고정 도메인으로 바꾼다.
 BASE_URL = os.getenv("BASE_URL", "").rstrip("/")
@@ -57,25 +61,49 @@ async def create_card(
     stats: str = Form("{}"),
     source: str = Form("user"),
     image: UploadFile = File(None),
+    model: UploadFile = File(None),
+    register_face: bool = Form(True),
 ):
     """
     companion-creator가 호출하는 엔드포인트.
     이미지를 함께 주면 얼굴 등록까지 바로 걸어둔다 (카드 발급은 기다리지 않는다).
+    model(.vrm)을 주면 버추얼 카드가 된다. 이때 이미지는 카드 썸네일로만 쓰고
+    Simli 등록은 건너뛴다 — 브라우저가 모델을 직접 그리므로 바로 영상통화가 된다.
+    register_face=false 면 사진 카드도 등록 없이 음성 통화 카드로 나간다(만들기 화면).
+    이때 사진은 DB 에 둔다 — Cloud Run 파일시스템은 재시작하면 사라지는데 인쇄는 나중에도 해야 한다.
     """
+    is_vrm = model is not None
+    has_image = image is not None
+    thumb = None
+    if image is not None and not register_face and not is_vrm:
+        thumb = await image.read()
+        if not thumb.startswith(b"\xff\xd8") or len(thumb) > 700_000:
+            raise HTTPException(400, "JPEG 700KB 이하만 받습니다")
     card_id = db.create_card(
         name=name, persona=persona, voice=voice,
         tags=json.loads(tags), stats=json.loads(stats), source=source,
+        avatar_type="vrm" if is_vrm else "photo",
     )
 
     warnings = []
+    if is_vrm:
+        models = HERE / "static" / "models"
+        models.mkdir(exist_ok=True)
+        (models / f"{card_id}.vrm").write_bytes(await model.read())
+        db.set_media(card_id, model_path=f"/static/models/{card_id}.vrm")
+        db.set_face(card_id, face_status="ready")
+
+    if thumb is not None:
+        db.set_thumb(card_id, thumb)
+        db.set_media(card_id, image_path=f"/thumb/{card_id}.jpg")
+        image = None   # 아래 파일 저장 · Simli 등록을 건너뛴다
     if image is not None:
         data = await image.read()
         path = HERE / "static" / "faces" / f"{card_id}.png"
         path.write_bytes(data)
+        db.set_media(card_id, image_path=f"/static/faces/{card_id}.png")
+    if image is not None and not is_vrm:
         db.set_face(card_id, face_status="none")
-        with db.connect() as con:
-            con.execute("UPDATE cards SET image_path=? WHERE card_id=?",
-                        (f"/static/faces/{card_id}.png", card_id))
         try:
             face_id, warnings = simli.submit_face(data, card_id, image.filename or "face.png")
             db.set_face(card_id, face_id=face_id, face_status="processing")
@@ -87,15 +115,43 @@ async def create_card(
     card = db.get_card(card_id)
     try:
         db.log_event("card_issued", card_id=card_id,
-                     meta={"source": source, "hasImage": image is not None})
+                     meta={"source": source, "hasImage": has_image, "faceReg": register_face,
+                           "avatar": "vrm" if is_vrm else "photo"})
     except Exception as e:
         logging.warning(f"card_issued 로그 실패: {e}")
     return JSONResponse({
         "cardId": card_id,
         "scanUrl": f"/c/{card_id}",
         "faceStatus": card["face_status"],
+        "avatarType": card["avatar_type"],
         "warnings": warnings,
     })
+
+
+@app.post("/api/generate")
+async def api_generate(spec: dict):
+    """만들기 화면의 조합 + 프롬프트로 카드 사진을 만든다. 저장하지 않고 돌려만 준다.
+    관람객이 마음에 들 때까지 다시 뽑고, 고른 한 장을 /api/cards 에 실어 발급한다."""
+    try:
+        imagegen.build(spec)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        data, note = await asyncio.to_thread(imagegen.generate, spec)
+        ok = True
+    except RuntimeError as e:
+        ok, data = False, str(e)
+    try:
+        db.log_event("generate", meta={
+            "kind": spec.get("kind"), "grade": spec.get("grade"), "ok": ok,
+            "promptLen": len(str(spec.get("prompt") or "")),
+            "depth": str(spec.get("depth"))[:4], "try": spec.get("try"),
+        })
+    except Exception as e:
+        logging.warning(f"generate 로그 실패: {e}")
+    if not ok:
+        raise HTTPException(502, data)
+    return {"image": "data:image/jpeg;base64," + base64.b64encode(data).decode(), "note": note}
 
 
 @app.get("/api/cards")
@@ -116,11 +172,66 @@ async def api_get(card_id: str):
 async def api_call_config(card_id: str):
     """통화 엔진이 세션을 열 때 필요한 세 값."""
     card = card_or_404(card_id)
-    if card["face_status"] != "ready":
+    av = call.avatar_of(card)
+    if not av:
         return {"mode": "voice", "persona": card["persona"], "voice": card["voice"],
-                "faceId": None, "reason": card["face_status"]}
+                "faceId": None, "avatar": None, "reason": card["face_status"]}
     return {"mode": "video", "persona": card["persona"], "voice": card["voice"],
-            "faceId": card["face_id"]}
+            "faceId": av.get("faceId"), "avatar": av}
+
+
+# ── 꾸미기 ───────────────────────────────────────────────
+COLOR_PARTS = {"hair", "eye", "top", "bottom", "shoes"}
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+@app.post("/api/cards/{card_id}/custom")
+async def api_custom(card_id: str, payload: dict):
+    """버추얼 카드의 색 · 말투 · 호칭 · 한 줄 설정. 다음 통화부터 반영된다."""
+    card = card_or_404(card_id)
+    colors = {k: v for k, v in (payload.get("colors") or {}).items()
+              if k in COLOR_PARTS and isinstance(v, str) and HEX.match(v)}
+    custom = {
+        "colors": colors,
+        "speech": payload.get("speech") if payload.get("speech") in call.SPEECH else None,
+        "callme": str(payload.get("callme") or "").strip()[:10],
+        "note": str(payload.get("note") or "").strip()[:100],
+    }
+    db.set_custom(card_id, custom)
+    try:
+        before = card.get("custom") or {}
+        db.log_event("customize", card_id=card_id, meta={
+            "parts": sorted(colors), "speech": custom["speech"],
+            "callme": bool(custom["callme"]), "noteLen": len(custom["note"]),
+            "first": not before,
+        })
+    except Exception as e:
+        logging.warning(f"customize 로그 실패: {e}")
+    return custom
+
+
+@app.post("/api/cards/{card_id}/thumb")
+async def api_thumb(card_id: str, request: Request):
+    """꾸민 모습을 브라우저가 찍어 올린다. 카드 · 로비 · 멀티콜 화면이 이 이미지를 쓴다."""
+    card = card_or_404(card_id)
+    if card.get("avatar_type") != "vrm":
+        raise HTTPException(400, "버추얼 카드만 올릴 수 있습니다")
+    data = await request.body()
+    # Firestore 문서 한도(1MB) 안쪽. JPEG 시그니처만 받는다.
+    if not data.startswith(b"\xff\xd8") or len(data) > 700_000:
+        raise HTTPException(400, "JPEG 700KB 이하만 받습니다")
+    db.set_thumb(card_id, data)
+    return {"imagePath": db.get_card(card_id)["image_path"]}
+
+
+@app.get("/thumb/{card_id}.jpg")
+async def thumb(card_id: str):
+    data = db.get_thumb(card_id)
+    if not data:
+        raise HTTPException(404)
+    # 주소에 버전(?v=)이 붙어 있어 바뀌면 새 주소가 된다. 오래 캐시해도 된다.
+    return Response(data, media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 # ── 화면 ─────────────────────────────────────────────────
@@ -138,6 +249,10 @@ async def scan_landing(request: Request, card_id: str):
         logging.warning(f"scan 로그 실패: {e}")
     card.pop("persona", None)
     card.pop("owner_token", None)
+    ex = expr.of(card)
+    if ex:
+        # 표정 세트가 있는 공식 아이돌은 기본 표정 사진으로 보이고, 통화는 표정 전환 화면으로 간다
+        card["image_path"], card["expr"], card["face_status"] = ex["base"], ex, "expr"
     return templates.TemplateResponse("scan.html", {
         "request": request, "card": card, "card_json": json.dumps(card, ensure_ascii=False),
     })
@@ -146,10 +261,164 @@ async def scan_landing(request: Request, card_id: str):
 @app.get("/card/{card_id}", response_class=HTMLResponse)
 async def printable_card(request: Request, card_id: str):
     card = card_or_404(card_id)
+    card["image_path"] = card["photo_path"]   # 인쇄물은 실물 카드와 같아야 한다
     return templates.TemplateResponse("card.html", {
         "request": request, "card": card,
         "qr_url": f"/qr/{card_id}.png",
     })
+
+
+@app.get("/label/{card_id}.png")
+async def label_png(request: Request, card_id: str, mono: bool = False, dpi: int = 300):
+    """라벨 이미지 — 라벨 프린터 앱(Aiyin 등)에 넘긴다. /label/{id} 보다 먼저 등록해야 한다."""
+    from . import label_png as L
+    card = card_or_404(card_id)
+    path = card.get("photo_path") or ""
+    if path.startswith("/thumb/"):
+        photo = db.get_thumb(card_id)
+    elif path.startswith("/static/"):
+        f = HERE / path.split("?")[0].lstrip("/")
+        photo = f.read_bytes() if f.exists() else None
+    else:
+        photo = None
+    png = await asyncio.to_thread(L.render, photo, card["name"], card.get("tags"), card_id,
+                                  f"{base_url(request)}/c/{card_id}", mono, max(150, min(dpi, 600)))
+    try:
+        db.log_event("label_image", card_id=card_id, meta={"mono": mono, "dpi": dpi})
+    except Exception as e:
+        logging.warning(f"label_image 로그 실패: {e}")
+    return Response(png, media_type="image/png", headers={
+        "Content-Disposition": f'inline; filename="lukids-{card_id}{"-mono" if mono else ""}.png"'})
+
+
+@app.get("/label/{card_id}", response_class=HTMLResponse)
+async def printable_label(request: Request, card_id: str):
+    """만들기 화면에서 나온 카드용 60×40mm 라벨. 세로로 디자인하고 인쇄할 때 눕힌다."""
+    card = card_or_404(card_id)
+    card["image_path"] = card["photo_path"]
+    return templates.TemplateResponse("label.html", {
+        "request": request, "card": card, "qr_url": f"/qr/{card_id}.png",
+        "embed": "embed" in request.query_params,
+    })
+
+
+# ── 사이트 — 소개 · 제작 · 인쇄 · 전시 · 통화 ─────────────────
+# 통화 페이지에 세우는 공식 아이돌 5명. 로컬 SQLite 와 운영 Firestore 의 카드 id 가 달라서
+# 이름으로 찾는다. 공식 카드 발급은 tools/seed_lineup.py.
+LINEUP = [
+    {"name": "하루", "line": "차분하고 다정한 메인보컬. 조용한 밤에 통화하는 걸 좋아해요."},
+    {"name": "시온", "line": "무대 위에선 날카롭고, 통화에선 한없이 부드러운 댄서."},
+    {"name": "하늘", "line": "토끼 헤드폰을 쓴 버추얼 라이버. 리듬게임과 딸기 우유를 좋아해요."},
+    {"name": "도하", "line": "웃음이 많은 막내 래퍼. 오늘 하루가 어땠는지 꼭 물어봐요."},
+    {"name": "린",   "line": "몽환적인 음색의 보컬. 말수는 적지만 이야기를 끝까지 들어줘요."},
+]
+
+
+def public_card(c):
+    """목록 화면에 내려보내는 값. persona · owner_token · face_id 는 서버에만 둔다."""
+    tags = c.get("tags") or []
+    ex = expr.of(c)
+    return {
+        "cardId": c["card_id"], "name": c["name"], "tags": tags,
+        "stats": c.get("stats") or {}, "image": ex["base"] if ex else c.get("image_path"),
+        "expr": bool(ex),
+        "kind": "virtual" if c.get("avatar_type") == "vrm" or "버추얼" in tags[:1] else "real",
+        "avatar": c.get("avatar_type"), "faceStatus": c.get("face_status"),
+        "createdAt": c.get("created_at"),
+    }
+
+
+def lineup():
+    officials = {}
+    for c in db.list_cards(source="official"):
+        officials.setdefault(c["name"], c)   # 같은 이름이 둘이면 최신(목록 맨 앞)
+    out = []
+    for p in LINEUP:
+        c = officials.get(p["name"])
+        if c:
+            out.append({**public_card(c), "line": p["line"]})
+    return out
+
+
+def gallery_cards():
+    return [public_card(c) for c in db.list_cards(source="user")]
+
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("home.html", {
+        "request": request, "page": "home",
+        "lineup": lineup(), "recent": gallery_cards()[:6],
+    })
+
+
+@app.get("/demo", response_class=HTMLResponse)
+async def demo_page(request: Request):
+    """아이패드 시연용 첫 화면. 만들기 · 통화하기 두 개만 크게. 메뉴 없음."""
+    line = lineup()
+    made = next((c["image"] for c in gallery_cards() if c.get("image")), None)
+    if not made and len(line) > 3:
+        made = line[-1]["image"]   # 아직 만든 카드가 없으면 라인업 마지막 사진으로
+    return templates.TemplateResponse("demo.html", {
+        "request": request, "lineup": line, "made": made,
+    })
+
+
+@app.get("/make", response_class=HTMLResponse)
+async def make_page(request: Request):
+    return templates.TemplateResponse("make.html", {"request": request, "page": "make"})
+
+
+@app.get("/print", response_class=HTMLResponse)
+async def print_page(request: Request):
+    return templates.TemplateResponse("print.html", {"request": request, "page": "print"})
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+async def gallery_page(request: Request):
+    cards = gallery_cards()
+    return templates.TemplateResponse("gallery.html", {
+        "request": request, "page": "gallery",
+        "cards_json": json.dumps(cards, ensure_ascii=False),
+    })
+
+
+@app.get("/api/gallery")
+async def api_gallery():
+    """전시 페이지가 새로 만든 카드를 주기적으로 받아간다."""
+    return gallery_cards()
+
+
+@app.get("/call", response_class=HTMLResponse)
+async def call_page(request: Request):
+    return templates.TemplateResponse("lineup.html", {
+        "request": request, "page": "call", "lineup": lineup(),
+    })
+
+
+@app.get("/station", response_class=HTMLResponse)
+async def station_page(request: Request):
+    """인쇄 대기 화면 — 프린터가 연결된 노트북에 띄워 두면 새 카드 라벨을 자동으로 뽑는다."""
+    return templates.TemplateResponse("station.html", {"request": request, "base": base_url(request)})
+
+
+@app.post("/api/btlog")
+async def api_btlog(request: Request):
+    """블루투스 인쇄 로그(bt-print.js). 실물 프린터 문제를 원격으로 보려고 서버 로그에 남긴다."""
+    try:
+        body = (await request.body())[:600].decode("utf-8", "replace")
+        logging.getLogger("btlog").info(body)
+    except Exception:
+        pass
+    return Response(status_code=204)
+
+
+@app.get("/printer", response_class=HTMLResponse)
+async def printer_page(request: Request):
+    """블루투스 라벨 프린터 연결 · 설정 · 시험 인쇄 (static/bt-print.js)."""
+    made = gallery_cards()
+    sample = made[0]["cardId"] if made else next((c["cardId"] for c in lineup()), "")
+    return templates.TemplateResponse("printer.html", {"request": request, "page": "print", "sample": sample})
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -166,7 +435,7 @@ async def qr_png(request: Request, card_id: str):
     url = f"{base_url(request)}/c/{card_id}"
     qr = segno.make(url, error="m")
     buf = io.BytesIO()
-    qr.save(buf, kind="png", scale=20, border=2, dark="#2b1d14", light="#f2e6d2")
+    qr.save(buf, kind="png", scale=20, border=2, dark="#000000", light="#ffffff")
     return Response(buf.getvalue(), media_type="image/png")
 
 
@@ -318,6 +587,7 @@ def _summarize():
             "official": sum(1 for c in cards.values() if c.get("source") == "official"),
             "user": sum(1 for c in cards.values() if c.get("source") == "user"),
             "faceReady": sum(1 for c in cards.values() if c.get("face_status") == "ready"),
+            "virtual": sum(1 for c in cards.values() if c.get("avatar_type") == "vrm"),
         },
         "scan": {
             "events": by_type.get("scan", 0),
@@ -354,6 +624,63 @@ def _summarize():
             } for cid, n in scans.items()
         ], key=lambda x: -x["scans"]),
     }
+
+
+# ── 연구용 ────────────────────────────────────────────────
+# docs/연구 설계 — 커스터마이징과 다인 참여.md 참고
+
+CONDITIONS = ["A", "B", "C"]     # A 프리셋 / B 이름 / C 성격까지 직접
+
+
+@app.get("/api/condition")
+async def api_condition():
+    """만들기를 시작할 때 조건을 배정한다.
+
+    참가자가 고르게 두면 자기선택 편향이 생기므로 서버가 정한다.
+    무작위 대신 가장 적게 배정된 칸을 채워 균형을 맞춘다(전시 표본이 작다).
+    """
+    counts = {c: 0 for c in CONDITIONS}
+    try:
+        for e in db.list_events(limit=20000, type="condition_assigned"):
+            c = (e.get("meta") or {}).get("depth")
+            if c in counts:
+                counts[c] += 1
+    except Exception as e:
+        logging.warning(f"조건 집계 실패: {e}")
+    depth = min(CONDITIONS, key=lambda c: counts[c])
+    try:
+        db.log_event("condition_assigned", meta={"depth": depth, "counts": counts})
+    except Exception as e:
+        logging.warning(f"condition_assigned 로그 실패: {e}")
+    return {"depth": depth, "counts": counts}
+
+
+@app.post("/api/step")
+async def api_step(payload: dict):
+    """만들기 단계별 도달 기록. 완주율과 소진 효과를 본다."""
+    try:
+        db.log_event("create_step", meta={
+            "step": str(payload.get("step"))[:32],
+            "depth": str(payload.get("depth"))[:4],
+            "ms": payload.get("ms"),
+        })
+    except Exception as e:
+        logging.warning(f"create_step 로그 실패: {e}")
+    return {"ok": True}
+
+
+@app.post("/api/survey")
+async def api_survey(payload: dict):
+    """통화 직후 한 문항. 전시장에서 회수되는 유일한 주관 지표다."""
+    try:
+        db.log_event("survey", card_id=payload.get("cardId"), meta={
+            "q": str(payload.get("q"))[:40],
+            "value": payload.get("value"),
+            "context": str(payload.get("context"))[:16],
+        })
+    except Exception as e:
+        logging.warning(f"survey 로그 실패: {e}")
+    return {"ok": True}
 
 
 @app.get("/api/stats")

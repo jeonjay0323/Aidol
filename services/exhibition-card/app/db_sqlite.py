@@ -21,9 +21,17 @@ CREATE TABLE IF NOT EXISTS cards (
   source       TEXT NOT NULL DEFAULT 'user',   -- official | user
   face_id      TEXT,
   face_status  TEXT NOT NULL DEFAULT 'none',   -- none | processing | ready | failed
+  avatar_type  TEXT NOT NULL DEFAULT 'photo',  -- photo(Simli 실사) | vrm(버추얼 3D)
+  model_path   TEXT,                           -- vrm 카드의 모델 파일
+  custom       TEXT NOT NULL DEFAULT '{}',     -- 꾸미기 (색 · 말투 · 호칭)
+  thumb_v      INTEGER,                        -- 꾸민 모습 스냅샷 버전 (thumbs 테이블)
   owner_token  TEXT,                           -- 유저 카드 주인 (멀티콜 초대용)
   created_at   TEXT NOT NULL,
   ready_at     TEXT
+);
+CREATE TABLE IF NOT EXISTS thumbs (
+  card_id TEXT PRIMARY KEY,
+  data    BLOB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_face_status ON cards(face_status);
 CREATE INDEX IF NOT EXISTS idx_source ON cards(source);
@@ -46,9 +54,31 @@ def connect():
     return con
 
 
+# 버추얼 카드 이전에 만들어진 DB에는 없는 컬럼들
+MIGRATIONS = {
+    "avatar_type": "TEXT NOT NULL DEFAULT 'photo'",
+    "model_path": "TEXT",
+    "custom": "TEXT NOT NULL DEFAULT '{}'",
+    "thumb_v": "INTEGER",
+}
+
+
 def init():
     with connect() as con:
         con.executescript(SCHEMA)
+        have = {r["name"] for r in con.execute("PRAGMA table_info(cards)")}
+        for col, ddl in MIGRATIONS.items():
+            if col not in have:
+                con.execute(f"ALTER TABLE cards ADD COLUMN {col} {ddl}")
+
+
+def _with_thumb(d):
+    """꾸민 모습을 찍어둔 카드는 화면용 이미지를 그것으로 바꾼다.
+    인쇄용 카드는 실물과 같아야 하므로 원래 이미지를 photo_path로 남긴다."""
+    d["photo_path"] = d.get("image_path")
+    if d.get("thumb_v"):
+        d["image_path"] = f"/thumb/{d['card_id']}.jpg?v={d['thumb_v']}"
+    return d
 
 
 def _row_to_dict(row):
@@ -57,13 +87,17 @@ def _row_to_dict(row):
     d = dict(row)
     d["tags"] = json.loads(d["tags"])
     d["stats"] = json.loads(d["stats"])
-    return d
+    d["custom"] = json.loads(d.get("custom") or "{}")
+    return _with_thumb(d)
 
 
 def create_card(name, persona, voice="Puck", tags=None, stats=None,
-                image_path=None, source="user", face_id=None, owner_token=None):
+                image_path=None, source="user", face_id=None, owner_token=None,
+                avatar_type="photo", model_path=None):
     card_id = new_card_id()
-    face_status = "ready" if face_id else "none"
+    # vrm 카드는 브라우저가 모델을 바로 그리므로 등록 대기가 없다
+    ready = bool(face_id) or (avatar_type == "vrm" and bool(model_path))
+    face_status = "ready" if ready else "none"
     with connect() as con:
         # 8자 랜덤이라 충돌은 사실상 없지만, 겹치면 다시 뽑는다
         while con.execute("SELECT 1 FROM cards WHERE card_id=?", (card_id,)).fetchone():
@@ -71,14 +105,15 @@ def create_card(name, persona, voice="Puck", tags=None, stats=None,
         con.execute(
             """INSERT INTO cards
                (card_id, name, persona, voice, tags, stats, image_path,
-                source, face_id, face_status, owner_token, created_at, ready_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                source, face_id, face_status, avatar_type, model_path,
+                owner_token, created_at, ready_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (card_id, name, persona, voice,
              json.dumps(tags or [], ensure_ascii=False),
              json.dumps(stats or {}, ensure_ascii=False),
-             image_path, source, face_id, face_status,
+             image_path, source, face_id, face_status, avatar_type, model_path,
              owner_token or secrets.token_urlsafe(16),
-             now(), now() if face_id else None),
+             now(), now() if ready else None),
         )
     return card_id
 
@@ -117,6 +152,38 @@ def set_face(card_id, face_id=None, face_status=None):
     args.append(card_id)
     with connect() as con:
         con.execute(f"UPDATE cards SET {', '.join(sets)} WHERE card_id=?", args)
+
+
+def set_media(card_id, image_path=None, model_path=None):
+    sets, args = [], []
+    if image_path is not None:
+        sets.append("image_path=?"); args.append(image_path)
+    if model_path is not None:
+        sets.append("model_path=?"); args.append(model_path)
+    if not sets:
+        return
+    args.append(card_id)
+    with connect() as con:
+        con.execute(f"UPDATE cards SET {', '.join(sets)} WHERE card_id=?", args)
+
+
+def set_custom(card_id, custom):
+    with connect() as con:
+        con.execute("UPDATE cards SET custom=? WHERE card_id=?",
+                    (json.dumps(custom, ensure_ascii=False), card_id))
+
+
+def set_thumb(card_id, data):
+    import time
+    with connect() as con:
+        con.execute("INSERT OR REPLACE INTO thumbs (card_id, data) VALUES (?,?)", (card_id, data))
+        con.execute("UPDATE cards SET thumb_v=? WHERE card_id=?", (int(time.time()), card_id))
+
+
+def get_thumb(card_id):
+    with connect() as con:
+        row = con.execute("SELECT data FROM thumbs WHERE card_id=?", (card_id,)).fetchone()
+    return row["data"] if row else None
 
 
 def pending_faces():

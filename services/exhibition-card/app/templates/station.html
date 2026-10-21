@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
+<title>인쇄 대기 · LUKIDS</title>
+<style>
+  /* 인쇄 대기 화면 — 프린터가 연결된 노트북에 띄워 둔다.
+     아이패드에서 카드가 발급되면 여기서 라벨을 자동으로 뽑는다(브라우저 인쇄 = PC 드라이버).
+     크롬을 --kiosk-printing 으로 켜면 인쇄 창 없이 기본 프린터로 바로 나간다. */
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0b0b0c;color:#fff;font-family:var(--body);min-height:100vh;padding:40px}
+  h1{font:700 32px var(--brand);display:flex;align-items:center;gap:14px}
+  .dot{width:14px;height:14px;border-radius:50%;background:var(--status-positive);animation:p 1.6s infinite}
+  .dot.off{background:#666;animation:none}
+  @keyframes p{50%{opacity:.35}}
+  .sub{color:rgba(255,255,255,.6);margin:8px 0 28px;font-size:16px;line-height:26px}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:28px}
+  .bar button,.bar label{padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:#1b1c1e;color:#fff;
+    font:600 15px var(--body);cursor:pointer;display:flex;align-items:center;gap:8px}
+  .bar .go{background:linear-gradient(90deg,#d9d453,#e63bc0 55%,#8b3be6);border:none;font-weight:700}
+  .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+  .it{background:#1b1c1e;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+  .it img{width:100%;aspect-ratio:2/3;object-fit:cover;object-position:50% 20%;display:block}
+  .it div{padding:10px 12px;font-size:14px}
+  .it b{display:block;font:700 17px var(--brand)}
+  .it small{color:rgba(255,255,255,.55)}
+  .it.new{outline:3px solid var(--primary-normal)}
+  .it button{margin-top:8px;width:100%;padding:8px;border-radius:8px;border:none;background:#333;color:#fff;font:600 13px var(--body);cursor:pointer}
+  .help{margin-top:36px;color:rgba(255,255,255,.55);font-size:14px;line-height:24px;max-width:760px}
+  .help code{background:#222;padding:2px 6px;border-radius:5px;color:#ffd60a}
+  iframe.pf{position:fixed;width:1px;height:1px;left:-9999px;border:0}
+</style>
+</head>
+<body>
+  <h1><span class="dot" id="dot"></span><span id="title">인쇄 대기 중</span></h1>
+  <p class="sub">아이패드에서 카드가 발급되면 이 컴퓨터에 연결된 프린터로 라벨이 자동으로 나와요. 이 창은 켜 둔 채로 두세요.</p>
+
+  <div class="bar">
+    <button class="go" id="toggle" onclick="toggle()">자동 인쇄 멈추기</button>
+    <button onclick="testPrint()">시험 인쇄 (가장 최근 카드)</button>
+    <label><input type="checkbox" id="only-new" checked> 이 창을 연 뒤 만든 카드만</label>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="help">
+    처음 한 번 준비: ① 프린터 드라이버를 설치하고 프린터를 연결 ② 시스템 프린터 설정에서 용지를 <b>60 × 40 mm</b>, 여백 0 으로
+    ③ "시험 인쇄"로 확인 — 인쇄 창이 뜨면 이 프린터 · 60×40 · 여백 없음 · 배율 100% 로 고르고 인쇄.<br>
+    인쇄 창 없이 바로 나가게 하려면 크롬을 완전히 끄고 이렇게 다시 켜세요(이 프린터를 기본 프린터로):<br>
+    맥 <code>open -na "Google Chrome" --args --kiosk-printing {{ base }}/station</code><br>
+    윈도우 <code>chrome.exe --kiosk-printing {{ base }}/station</code>
+  </div>
+
+<script>
+  let on = true, seen = new Set(), first = true;
+  const list = document.getElementById('list');
+  const printed = (() => { try { return new Set(JSON.parse(localStorage.getItem('lukids.station') || '[]')); } catch { return new Set(); } })();
+  const keep = () => { try { localStorage.setItem('lukids.station', JSON.stringify([...printed].slice(-300))); } catch {} };
+
+  // 라벨 페이지를 숨은 프레임에 열고, 사진 · QR 이 다 뜬 뒤 인쇄한다 (label.html 의 @page 60×40 · 90° 회전)
+  const queue = []; let printing = false;
+  function enqueue(id){ queue.push(id); pump(); }
+  function pump(){
+    if (printing || !queue.length) return;
+    printing = true;
+    const id = queue.shift();
+    const f = document.createElement('iframe'); f.className = 'pf';
+    f.src = `/label/${id}?embed=0`;
+    f.onload = () => {
+      const imgs = [...f.contentDocument.images];
+      Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })))
+        .then(() => setTimeout(() => {
+          try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { console.warn(e); }
+          printed.add(id); keep(); mark(id);
+          fetch('/api/step', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ step:'station-print', depth:null, ms:null }) }).catch(()=>{});
+          setTimeout(() => { f.remove(); printing = false; pump(); }, 4000);
+        }, 300));
+    };
+    document.body.appendChild(f);
+  }
+
+  function mark(id){
+    const el = document.getElementById('it-' + id);
+    if (el) el.querySelector('small').textContent = '인쇄함 ' + new Date().toLocaleTimeString('ko-KR');
+  }
+  function draw(cards){
+    list.innerHTML = cards.slice(0, 24).map(c => `
+      <div class="it ${printed.has(c.cardId) ? '' : 'new'}" id="it-${c.cardId}">
+        ${c.image ? `<img src="${c.image}" alt="">` : ''}
+        <div><b>${c.name}</b><small>${printed.has(c.cardId) ? '인쇄함' : c.cardId}</small>
+        <button onclick="enqueue('${c.cardId}')">다시 인쇄</button></div>
+      </div>`).join('');
+  }
+
+  async function tick(){
+    try {
+      const cards = await fetch('/api/gallery').then(r => r.json());
+      if (first) {
+        // 창을 연 순간 이미 있던 카드는 뽑지 않는다(체크 해제 시 안 뽑은 것 모두)
+        if (document.getElementById('only-new').checked) cards.forEach(c => printed.add(c.cardId));
+        keep(); first = false;
+      }
+      draw(cards);
+      if (on) cards.slice().reverse().forEach(c => { if (!printed.has(c.cardId) && !seen.has(c.cardId)) { seen.add(c.cardId); enqueue(c.cardId); } });
+    } catch {}
+  }
+  function toggle(){
+    on = !on;
+    document.getElementById('toggle').textContent = on ? '자동 인쇄 멈추기' : '자동 인쇄 다시 켜기';
+    document.getElementById('title').textContent = on ? '인쇄 대기 중' : '자동 인쇄 멈춤';
+    document.getElementById('dot').classList.toggle('off', !on);
+  }
+  async function testPrint(){
+    const cards = await fetch('/api/gallery').then(r => r.json()).catch(() => []);
+    if (cards[0]) enqueue(cards[0].cardId);
+  }
+  tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>

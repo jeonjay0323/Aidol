@@ -7,6 +7,7 @@
 그래서 다음 차례가 와도 대화를 알고 있다.
 """
 import asyncio
+import time
 import base64
 import json
 import logging
@@ -19,30 +20,31 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google.genai import types
 
-from . import db
+from . import call, db
 
 load_dotenv(Path(__file__).parent.parent / ".env")
-GCP_PROJECT = os.getenv("GCP_PROJECT", "project-8f215caa-065e-4ffe-ac9")
+GCP_PROJECT = os.getenv("GCP_PROJECT", "project-d4a769de-d13f-4a6a-a22")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-live-2.5-flash-native-audio")
 
 log = logging.getLogger("room")
 
-# 사람 발화 한 번당 아이돌끼리 주고받을 최대 횟수
-MAX_RELAYS = 2
+# 사람 발화 한 번당 아이돌끼리 주고받을 최대 횟수 — 2 는 둘이 너무 오래 떠들어서 1 로 (2026-10-07)
+MAX_RELAYS = 1
 router = APIRouter()
 
 
 def build_config(card, others):
     """다른 멤버가 누구인지 알려줘야 서로를 아는 대화가 된다."""
-    persona = card["persona"]
+    persona = call.persona_of(card)
     if others:
         names = ", ".join(o["name"] for o in others)
         persona += (
             f"\n\n지금 {names}와(과) 함께 단체 영상통화 중이야. "
             f"상대가 한 말은 '(이름): 내용' 형태로 전달돼. "
             f"네 차례에만 말하고, 다른 사람 말에 자연스럽게 반응해. "
-            f"이름을 부르며 대화해도 좋아. 짧게 말해."
+            f"이름을 부르며 대화해도 좋아. 한 번에 딱 한 문장, 아주 짧게 말하고 "
+            f"사람(통화를 건 친구)에게 말을 넘겨."
         )
     return types.LiveConnectConfig(
         response_modalities=["AUDIO"],
@@ -62,9 +64,10 @@ def build_config(card, others):
 
 
 class Room:
-    def __init__(self, websocket, cards):
+    def __init__(self, websocket, cards, room_id=""):
         self.ws = websocket
         self.cards = cards
+        self.room_id = room_id
         self.sessions = {}          # card_id -> live session
         self.turn = 0               # 라운드로빈 커서
         self.target = None          # 클라이언트가 지목한 상대
@@ -120,10 +123,14 @@ class Room:
         cid, name = card["card_id"], card["name"]
         sess = self.sessions[cid]
         said = []
+        started, nbytes = None, 0   # 이번 턴 오디오 — 재생이 끝나는 시각을 어림한다
         try:
             while True:
                 async for response in sess.receive():
                     if response.data:
+                        if started is None:
+                            started = time.monotonic()
+                        nbytes += len(response.data)
                         await self.ws.send_text(json.dumps({
                             "type": "audio", "cardId": cid,
                             "data": base64.b64encode(response.data).decode(),
@@ -134,6 +141,8 @@ class Room:
                     out = getattr(sc, "output_transcription", None)
                     if out and getattr(out, "text", None):
                         said.append(out.text)
+                        # 자막은 조각째 바로 보낸다 — 브라우저가 그 소리가 재생되는 순간에 띄운다
+                        await self.ws.send_text(json.dumps({"type": "text", "cardId": cid, "text": out.text}))
                     if getattr(sc, "turn_complete", False):
                         text = "".join(said).strip()
                         said = []
@@ -143,8 +152,14 @@ class Room:
                         if text:
                             log.info(f"{name}: {text}")
                             await self.inject(text, name, exclude=cid)
+                            # 생성은 재생보다 빠르다. 다음 사람은 이 말이 다 들린 뒤에 시작해야 겹치지 않는다
+                            if started is not None:
+                                left = started + nbytes / 48000 - time.monotonic()   # 24kHz · 16bit
+                                if left > 0:
+                                    await asyncio.sleep(left + 0.4)
                             # 맥락만 넣으면 대화가 거기서 끊긴다. 한 명은 받아치게 한다.
                             await self.relay(cid, name, text)
+                        started, nbytes = None, 0
                         break
         except Exception as e:
             log.info(f"pump 종료 {cid}: {e}")
@@ -157,6 +172,13 @@ class Room:
 
                 if t == "target":
                     self.target = msg.get("cardId")
+                    # 누구를 지목했는지가 RQ2(통제 욕구·자기 것 편애)의 핵심 지표다
+                    try:
+                        db.log_event("room_target", card_id=self.target,
+                                     session_id=self.room_id,
+                                     meta={"host": self.cards[0]["card_id"]})
+                    except Exception as e:
+                        log.warning(f"room_target 로그 실패: {e}")
 
                 elif t == "activity_start":
                     async with self.lock:
@@ -201,7 +223,7 @@ async def room_socket(websocket: WebSocket):
         except Exception as e:
             log.warning(f"room_start 로그 실패: {e}")
         client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
-        room = Room(websocket, cards)
+        room = Room(websocket, cards, room_id)
 
         async with AsyncExitStack() as stack:
             for card in cards:
@@ -215,7 +237,8 @@ async def room_socket(websocket: WebSocket):
                 "type": "joined",
                 "members": [{
                     "cardId": c["card_id"], "name": c["name"], "voice": c["voice"],
-                    "faceId": c["face_id"] if c["face_status"] == "ready" else None,
+                    "faceId": (call.avatar_of(c) or {}).get("faceId"),
+                    "avatar": call.avatar_of(c),
                     "image": c["image_path"],
                 } for c in cards],
             }))

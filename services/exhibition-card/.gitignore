@@ -22,3 +22,6 @@ c/
 /card.html
 
 .DS_Store
+
+# 버추얼 카드 모델 — 용량이 커서 로컬에만 둔다 (.gcloudignore 는 포함하므로 배포엔 들어간다)
+app/static/models/

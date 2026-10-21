@@ -3,242 +3,49 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#17110c">
+<meta name="theme-color" content="#1b1c1e">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
 <title>{{ card.name }} · AIDOL</title>
-<style>
-  :root{
-    --bg:#17110c;
-    --bg-2:#221812;
-    --paper:#e8d6bb;
-    --ink:#2b1d14;
-    --accent:#d8452f;
-    --live:#3ecf8e;
-    --dim:rgba(232,214,187,.55);
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{
-    background:var(--bg);color:var(--paper);
-    font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
-    min-height:100vh;overflow-x:hidden;
-  }
-  .wrap{max-width:420px;margin:0 auto;padding:0 20px calc(28px + env(safe-area-inset-bottom))}
-
-  .screen{display:none;animation:in .34s cubic-bezier(.2,.8,.3,1)}
-  .screen.on{display:block}
-  @keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-
-  header{padding:22px 0 16px;display:flex;align-items:center;gap:10px}
-  .back{
-    width:32px;height:32px;border-radius:9px;border:1px solid rgba(232,214,187,.2);
-    background:none;color:var(--paper);font-size:16px;cursor:pointer;flex:none;
-  }
-  .kicker{font-size:11px;letter-spacing:2.4px;color:var(--dim);font-weight:800}
-
-  /* ── 프로필 ── */
-  .hero{
-    border-radius:18px;overflow:hidden;position:relative;
-    background:linear-gradient(150deg,#c9a97f,#a8825a 55%,#8d6a48);
-    aspect-ratio:63/70;display:flex;align-items:center;justify-content:center;
-    animation:pop .5s cubic-bezier(.2,1.1,.35,1) both;
-  }
-  @keyframes pop{from{opacity:0;transform:scale(.9) rotate(-2deg)}to{opacity:1;transform:none}}
-  .ph{text-align:center;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;letter-spacing:1px;line-height:2}
-  .ph b{display:block;font-size:16px;letter-spacing:2px}
-  .badge{
-    position:absolute;top:12px;left:12px;background:var(--ink);color:var(--paper);
-    font-size:11px;font-weight:900;padding:5px 9px;border-radius:7px;letter-spacing:.5px;
-  }
-  .serial{position:absolute;bottom:12px;right:12px;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:1px}
-
-  h1{font-size:38px;font-weight:900;letter-spacing:-1px;margin:18px 0 6px}
-  .tags{font-size:13px;color:var(--dim);font-weight:700}
-  .hero .face{width:100%;height:100%;object-fit:cover}
-  .status.wait{color:#e0a93c}
-  .status.wait .dot{background:#e0a93c}
-  .status{
-    display:inline-flex;align-items:center;gap:6px;margin-top:14px;
-    font-size:12px;font-weight:800;color:var(--live);
-  }
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.6s infinite}
-  @keyframes pulse{50%{opacity:.35}}
-
-  .joinbar{
-    display:flex;align-items:center;gap:12px;margin-bottom:16px;
-    background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);
-    border-radius:14px;padding:13px 15px;
-  }
-  .joinbar b{display:block;font-size:14px;font-weight:800;color:var(--live)}
-  .joinbar small{font-size:12px;color:var(--dim);font-weight:600}
-  .joinbar button{
-    margin-left:auto;padding:9px 14px;border-radius:10px;border:none;cursor:pointer;
-    background:var(--live);color:#0d2a1c;font-size:13px;font-weight:800;font-family:inherit;
-  }
-  .actions{display:flex;flex-direction:column;gap:10px;margin-top:24px}
-  .act{
-    display:flex;align-items:center;gap:14px;width:100%;
-    background:var(--bg-2);border:1px solid rgba(232,214,187,.11);
-    border-radius:14px;padding:17px 16px;cursor:pointer;
-    color:var(--paper);text-align:left;font-family:inherit;
-    transition:transform .12s,border-color .12s;
-  }
-  .act:active{transform:scale(.985);border-color:rgba(232,214,187,.3)}
-  .act.primary{background:var(--paper);color:var(--ink);border-color:transparent}
-  .act.primary small{color:rgba(43,29,20,.62)}
-  .act .ico{font-size:22px;flex:none;width:26px;text-align:center}
-  .act b{display:block;font-size:15px;font-weight:800;margin-bottom:3px}
-  .act small{font-size:12px;color:var(--dim);font-weight:600}
-  .act .arrow{margin-left:auto;font-size:15px;opacity:.5}
-
-  .ghost{
-    margin-top:22px;width:100%;padding:15px;border-radius:14px;
-    background:none;border:1px dashed rgba(232,214,187,.28);
-    color:var(--dim);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;
-  }
-
-  /* ── 통화 화면 ── */
-  .call{
-    position:fixed;inset:0;max-width:420px;margin:0 auto;
-    background:#0d0a07;display:none;flex-direction:column;
-    animation:in .3s ease;z-index:10;
-  }
-  .call.on{display:flex}
-  .call-top{
-    padding:calc(18px + env(safe-area-inset-top)) 20px 12px;
-    display:flex;align-items:center;gap:9px;z-index:3;
-  }
-  .rec{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--live)}
-  .timer{margin-left:auto;font-size:12px;font-weight:700;color:var(--dim);font-variant-numeric:tabular-nums}
-
-  .stage{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
-  .feed{
-    flex:1;margin:0 16px;border-radius:20px;position:relative;overflow:hidden;
-    background:linear-gradient(150deg,#c9a97f,#a8825a 55%,#8d6a48);
-    display:flex;align-items:center;justify-content:center;
-  }
-  /* 아이돌이 말하는 동안 화면이 살짝 반응 */
-  .feed video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:1}
-  .feed .ph{position:relative;z-index:2}
-  .feed.talking{animation:talk 1.8s ease-in-out infinite}
-  @keyframes talk{50%{filter:brightness(1.08)}}
-
-  .self video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-              display:none;border-radius:11px;transform:scaleX(-1)}
-  .self span{position:relative;z-index:2}
-  .self.on span{display:none}
-  .self{position:relative;overflow:hidden;
-    position:absolute;bottom:14px;right:14px;width:74px;aspect-ratio:3/4;
-    border-radius:11px;background:#2a2119;border:1px solid rgba(255,255,255,.14);
-    display:flex;align-items:center;justify-content:center;
-    font-size:10px;font-weight:700;color:rgba(255,255,255,.45);
-  }
-  .caption{
-    padding:18px 24px 8px;text-align:center;min-height:74px;
-    font-size:15px;font-weight:700;line-height:1.6;
-  }
-  .caption em{font-style:normal;color:var(--dim);font-weight:600;font-size:13px}
-
-  .call-bar{
-    padding:10px 20px calc(24px + env(safe-area-inset-bottom));
-    display:flex;gap:10px;align-items:center;justify-content:center;
-  }
-  .cbtn{
-    flex:1;padding:14px 8px;border-radius:14px;border:none;cursor:pointer;
-    background:var(--bg-2);color:var(--paper);font-family:inherit;
-    font-size:12px;font-weight:800;display:flex;flex-direction:column;align-items:center;gap:5px;
-  }
-  .cbtn i{font-style:normal;font-size:19px}
-  .cbtn.end{background:var(--accent);color:#fff;flex:none;width:64px}
-  .cbtn:active{transform:scale(.96)}
-
-  .opts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
-  .opt{
-    padding:15px 12px;border-radius:13px;cursor:pointer;font-family:inherit;
-    background:rgba(232,214,187,.07);border:1.5px solid transparent;
-    color:var(--paper);font-size:14px;font-weight:700;text-align:center;
-  }
-  .opt.sel{border-color:var(--accent);background:rgba(216,69,47,.14)}
-  .cta{
-    width:100%;padding:16px;border-radius:14px;border:none;cursor:pointer;
-    background:var(--paper);color:var(--ink);font-size:15px;font-weight:900;font-family:inherit;
-  }
-  .cta:disabled{opacity:.3}
-
-  /* ── 멀티콜 ── */
-  .seats{display:flex;flex-direction:column;gap:10px;margin:10px 0 22px}
-  .seat{
-    display:flex;align-items:center;gap:13px;padding:13px 14px;
-    border-radius:14px;background:var(--bg-2);border:1px solid rgba(232,214,187,.1);
-  }
-  .seat.empty{background:none;border:1.5px dashed rgba(232,214,187,.22);cursor:pointer}
-  .thumb{
-    width:42px;height:52px;border-radius:9px;flex:none;
-    background:linear-gradient(150deg,#c9a97f,#8d6a48);
-    display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,.55);font-weight:700;
-  }
-  .thumb.me{background:#2a2119;color:var(--dim)}
-  .seat b{display:block;font-size:14.5px;font-weight:800;margin-bottom:3px}
-  .seat small{font-size:12px;color:var(--dim);font-weight:600}
-  .seat .tail{margin-left:auto;font-size:11px;font-weight:800;color:var(--dim)}
-  .seat .tail.wait{color:#e0a93c}
-  .seat .tail.ok{color:var(--live)}
-
-  .note{
-    font-size:12.5px;color:var(--dim);line-height:1.8;font-weight:600;
-    background:var(--bg-2);border-radius:12px;padding:14px 15px;margin-bottom:20px;
-  }
-  .note b{color:var(--paper)}
-
-  /* 스캔 대기 */
-  .scanbox{
-    aspect-ratio:1;border-radius:20px;margin:14px 0 20px;
-    border:2px dashed rgba(232,214,187,.28);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
-    background:rgba(232,214,187,.03);
-  }
-  .scanbox{position:relative;overflow:hidden}
-  .scanbox video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
-  .scanbox .big{font-size:44px;animation:pulse 1.8s infinite}
-  .scanbox p{font-size:13.5px;color:var(--dim);font-weight:700;text-align:center;line-height:1.8}
-
-  /* 멀티 통화 그리드 */
-  .grid{
-    flex:1;margin:0 16px;display:grid;gap:8px;
-    grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
-  }
-  .cell{
-    border-radius:14px;position:relative;overflow:hidden;
-    background:linear-gradient(150deg,#c9a97f,#8d6a48);
-    display:flex;align-items:center;justify-content:center;
-    font-size:11px;font-weight:700;color:rgba(255,255,255,.6);
-  }
-  .cell.person{background:#2a2119;color:var(--dim)}
-  .cell video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
-  .cell.person video{transform:scaleX(-1)}
-  .cell.turn{outline:2px solid var(--live);outline-offset:-2px}
-  .cell .who{z-index:2}
-  .cell .who{
-    position:absolute;bottom:8px;left:8px;font-size:10.5px;font-weight:800;
-    color:#fff;background:rgba(0,0,0,.42);padding:3px 7px;border-radius:6px;
-  }
-
-  .loading{text-align:center;padding:70px 0}
-  .spin{
-    width:44px;height:44px;margin:0 auto 22px;border-radius:50%;
-    border:3px solid rgba(232,214,187,.15);border-top-color:var(--accent);
-    animation:spin .8s linear infinite;
-  }
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .loading p{font-size:14px;color:var(--dim);font-weight:700}
-</style>
+<link rel="stylesheet" href="/static/scan.css?v=ui2-4">
 </head>
 <body>
+
+<!-- 아이콘. 이모지는 안드로이드·iOS·전시장 키오스크에서 전부 다르게 그려져서 직접 그린다. -->
+<svg class="sr" aria-hidden="true" focusable="false"><defs>
+  <g id="g-video" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="6" width="12.5" height="12" rx="3"/><path d="M15 10.5 20.4 7.4a.8.8 0 0 1 1.2.7v7.8a.8.8 0 0 1-1.2.7L15 13.5Z"/></g>
+  <g id="g-phone" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.2 3.5h3l1.5 3.8-1.9 1.4a12 12 0 0 0 5.5 5.5l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8A16.5 16.5 0 0 1 4.4 5.5a1.8 1.8 0 0 1 1.8-2Z"/></g>
+  <g id="g-users" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="8" r="3.3"/><path d="M2.8 19.5a6.2 6.2 0 0 1 12.4 0"/>
+    <path d="M16.2 5.2a3.3 3.3 0 0 1 0 5.9M17.6 14.2a6.2 6.2 0 0 1 3.6 5.3"/></g>
+  <g id="g-mic" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="2.6" width="6" height="11" rx="3"/><path d="M5.5 11.2a6.5 6.5 0 0 0 13 0M12 17.7v3.7"/></g>
+  <g id="g-mic-off" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 4.4a3 3 0 0 0-6 .2v6M9 13.2a3 3 0 0 0 5.1 1.4"/>
+    <path d="M5.5 11.2a6.5 6.5 0 0 0 10 5.5M18.5 11.2a6.5 6.5 0 0 1-.4 2.2M12 17.7v3.7M3.5 2.8l17 18"/></g>
+  <g id="g-cam" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="6" width="12.5" height="12" rx="3"/><path d="M15 10.5 20.4 7.4a.8.8 0 0 1 1.2.7v7.8a.8.8 0 0 1-1.2.7L15 13.5Z"/></g>
+  <g id="g-cam-off" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 10.5 20.4 7.4a.8.8 0 0 1 1.2.7v7.8a.8.8 0 0 1-1.2.7L15 13.5Z"/>
+    <path d="M9.6 6H12a3 3 0 0 1 3 3v2.4M15 15.2A3 3 0 0 1 12 18H5.5a3 3 0 0 1-3-3V9a3 3 0 0 1 2.2-2.9"/>
+    <path d="M3.5 2.8l17 18"/></g>
+  <g id="g-x" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></g>
+  <g id="g-plus" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></g>
+  <g id="g-chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></g>
+  <g id="g-card" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.4" y="4.6" width="19.2" height="14.8" rx="3"/><path d="M2.4 9.4h19.2"/>
+    <circle cx="8" cy="14" r="1.9"/><path d="M13.4 13h5M13.4 16h3.2"/></g>
+</defs></svg>
 
 <!-- ══ 1. 카드 스캔 결과 ══ -->
 <div class="wrap">
 <section class="screen on" id="s-card">
-  <header><div class="kicker">CARD SCANNED</div></header>
+  <header><div class="kicker">CARD SCANNED</div><a class="kicker home" href="/" id="home-link">LUKIDS →</a></header>
   <div class="joinbar" id="joinbar" hidden>
-    <div><b id="joinhost"></b><small>통화가 열려 있어요</small></div>
+    <span class="joinico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-users"/></svg></span>
+    <div><b id="joinhost">지금 열려 있는 통화</b><small>먼저 온 사람이 대화 중이에요</small></div>
     <button onclick="joinOpenLobby()">참여하기</button>
   </div>
   <div class="hero">
@@ -249,7 +56,9 @@
   </div>
   <h1>{{ card.name }}</h1>
   <div class="tags">{{ card.tags | join(" · ") }}</div>
-  {% if card.face_status == "ready" %}
+  {% if card.expr %}
+  <div class="status"><span class="dot"></span>지금 통화할 수 있어요</div>
+  {% elif card.face_status == "ready" %}
   <div class="status"><span class="dot"></span>지금 영상통화할 수 있어요</div>
   {% elif card.face_status == "processing" %}
   <div class="status wait"><span class="dot"></span>얼굴을 만드는 중 · 목소리로는 지금 통화할 수 있어요</div>
@@ -259,27 +68,37 @@
 
   <div class="actions">
     <button class="act primary" onclick="startCall()">
-      <span class="ico">{{ '📹' if card.face_status == 'ready' else '📞' }}</span>
-      <span><b>{{ "영상통화 걸기" if card.face_status == "ready" else "음성통화 걸기" }}</b><small>{{ "얼굴 보고 이야기한다" if card.face_status == "ready" else "목소리로 이야기한다" }}</small></span>
-      <span class="arrow">›</span>
+      <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-{{ 'video' if card.face_status == 'ready' else 'phone' }}"/></svg></span>
+      {% if card.expr %}<span><b>전화 걸기</b><small>표정을 보며 이야기한다</small></span>
+      {% else %}<span><b>{{ "영상통화 걸기" if card.face_status == "ready" else "음성통화 걸기" }}</b><small>{{ "얼굴 보고 이야기한다" if card.face_status == "ready" else "목소리로 이야기한다" }}</small></span>{% endif %}
+      <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
-    <button class="act" onclick="openLobby()">
-      <span class="ico">👥</span>
+    {% if card.avatar_type == "vrm" and not card.expr %}
+    <button class="act" onclick="openCustom()">
+      <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg></span>
+      <span><b>꾸미기</b><small>머리색 · 옷 · 말투를 내 취향대로</small></span>
+      <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
+    </button>
+    {% endif %}
+    <button class="act no-demo" onclick="openLobby()">
+      <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-users"/></svg></span>
       <span><b>멀티콜</b><small>다른 카드를 스캔해 아이돌과 주인을 부른다</small></span>
-      <span class="arrow">›</span>
+      <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
   </div>
 
-  <button class="ghost" onclick="go('s-create')">＋ 내 아이돌 만들기 (유저 카드 발급)</button>
+  <button class="ghost no-demo" onclick="startCreate()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg> 내 아이돌 만들기 (유저 카드 발급)</button>
 </section>
 
 <!-- ══ 2. 멀티콜 로비 ══ -->
 <section class="screen" id="s-lobby">
-  <header><button class="back" onclick="go('s-card')">‹</button><div class="kicker">MULTI CALL</div></header>
+  <header><button class="back" aria-label="뒤로" onclick="go('s-card')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">MULTI CALL</div></header>
   <div style="font-size:20px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px">누구를 부를까요?</div>
   <div style="font-size:13px;color:var(--dim);font-weight:600;margin-bottom:6px">
     카드를 스캔하면 그 아이돌과 <b style="color:var(--paper)">카드 주인</b>이 함께 초대됩니다
   </div>
+
+  <p class="hint" id="lobby-hint" role="status" hidden></p>
 
   <div class="seats" id="seats">
     <div class="seat">
@@ -288,13 +107,14 @@
       <div class="tail ok">참여중</div>
     </div>
     <div class="seat">
-      <div class="thumb">PHOTO</div>
+      {% if card.image_path %}<img class="thumb" src="{{ card.image_path }}" alt="" style="object-fit:cover">
+      {% else %}<div class="thumb">PHOTO</div>{% endif %}
       <div><b>{{ card.name }}</b><small>{{ card.card_id }} · {{ "공식" if card.source == "official" else "유저" }} 카드</small></div>
       <div class="tail ok">참여중</div>
     </div>
     <div id="pickable"></div>
     <div class="seat empty" onclick="go('s-scan')">
-      <div class="thumb me">＋</div>
+      <div class="thumb me"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg></div>
       <div><b>카드 스캔해서 초대</b><small>공식 카드 · 유저 카드 모두 가능</small></div>
     </div>
   </div>
@@ -308,30 +128,48 @@
 
 <!-- ══ 3. 스캔 대기 ══ -->
 <section class="screen" id="s-scan">
-  <header><button class="back" onclick="go('s-lobby')">‹</button><div class="kicker">SCAN TO INVITE</div></header>
+  <header><button class="back" aria-label="뒤로" onclick="go('s-lobby')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">SCAN TO INVITE</div></header>
   <div class="scanbox" id="scanbox">
     <video id="qrcam" autoplay playsinline muted></video>
-    <div class="big" id="scanicon">📇</div>
+    <div class="big" id="scanicon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-card"/></svg></div>
     <p id="scanmsg">초대할 카드를 대주세요<br>NFC는 폰 뒷면에 탭 · QR은 카메라로</p>
   </div>
   <button class="cta" onclick="startScan()" id="scanbtn">스캔 시작</button>
   <div style="height:10px"></div>
 </section>
 
-<!-- ══ 4. 내 아이돌 만들기 ══ -->
-<section class="screen" id="s-create">
-  <header><button class="back" onclick="go('s-card')">‹</button><div class="kicker">CREATE YOUR OWN</div></header>
-  <div style="font-size:20px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px">어떤 아이돌을 만들까요?</div>
-  <div style="font-size:13px;color:var(--dim);font-weight:600;margin-bottom:20px">고른 조합으로 카드가 인쇄되어 나옵니다</div>
-  <div class="opts">
-    <button class="opt" onclick="pick(this)">청량</button>
-    <button class="opt" onclick="pick(this)">시크</button>
-    <button class="opt" onclick="pick(this)">몽환</button>
-    <button class="opt" onclick="pick(this)">강렬</button>
-    <button class="opt" onclick="pick(this)">따뜻</button>
-    <button class="opt" onclick="pick(this)">엉뚱</button>
+{% include "_create_screens.html" %}
+
+<!-- ══ 꾸미기 (버추얼 카드) ══ -->
+<section class="screen" id="s-custom">
+  <header><button class="back" aria-label="뒤로" onclick="closeCustom()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CUSTOMIZE</div></header>
+  <div class="q">{{ card.name }} 꾸미기</div>
+  <div class="qsub">바꾼 모습과 말투는 다음 통화부터 그대로 나옵니다</div>
+
+  <div class="cust-stage" id="cust-stage"><div class="ph" id="cust-ph"><b>3D</b>모델을 불러오는 중</div></div>
+  <div id="cust-parts"></div>
+
+  <div class="field">
+    <label>말투</label>
+    <div class="seg" id="cust-speech" style="margin-bottom:0">
+      <button data-v="" onclick="pickSpeech(this)">원래대로</button>
+      <button data-v="casual" onclick="pickSpeech(this)">반말</button>
+      <button data-v="polite" onclick="pickSpeech(this)">존댓말</button>
+    </div>
   </div>
-  <button class="cta" onclick="load('아이돌을 만드는 중','s-card')">만들기</button>
+  <div class="field">
+    <label for="cust-callme">나를 뭐라고 부를까요?</label>
+    <input id="cust-callme" type="text" maxlength="10" placeholder="예 · 지우야, 오빠, 선배" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="cust-note">한 줄 설정</label>
+    <textarea id="cust-note" rows="3" maxlength="100"
+      placeholder="예 · 요즘 리듬게임에 빠져 있다. 내가 우울하면 먼저 알아챈다."></textarea>
+  </div>
+
+  <p class="hint" id="cust-hint" role="status" hidden></p>
+  <button class="cta" onclick="saveCustom()">저장하기</button>
+  <div style="height:10px"></div>
 </section>
 
 <!-- 로딩 -->
@@ -348,7 +186,7 @@
     <span class="timer" id="t-solo">00:00</span>
   </div>
   <div class="stage">
-    <div class="feed" id="feed-solo">
+    <div class="feed{% if card.image_path %} has-photo{% endif %}" id="feed-solo"{% if card.image_path %} style="--photo:url('{{ card.image_path }}')"{% endif %}>
       <video id="avatar" autoplay playsinline></video>
       <div class="ph" id="feed-ph"><b>LIVE</b>{{ "연결 중" if card.face_status == "ready" else "음성 통화" }}</div>
       <div class="self" id="self-solo"><video id="selfcam" autoplay playsinline muted></video><span>내 화면</span></div>
@@ -357,10 +195,41 @@
       안녕, 와줘서 고마워.<br><em>말을 걸어보세요</em>
     </div>
   </div>
+  <!-- 음성 통화 — 전화 앱처럼 이름 · 파형 · 스피커 · 끊기만 -->
+  <div class="vcall{% if card.expr %} expr{% endif %}" id="vcall">
+    <div class="vcall-bg"{% if card.image_path %} style="background-image:url('{{ card.image_path }}')"{% endif %}></div>
+    <div class="vcall-top">
+      <div class="vcall-app"><i></i>LUKIDS 음성통화</div>
+      {% if card.expr %}
+      <!-- 표정 세트 — 겹쳐 두고 고른 것만 보인다(app/expr.py) -->
+      <div class="vcall-portrait" id="portrait">
+        {% for f, src in card.expr.items() %}<img src="{{ src }}" data-f="{{ f }}" alt=""{% if f == "base" %} class="on"{% endif %}>{% endfor %}
+      </div>
+      {% else %}
+      <div class="vcall-face">
+        <span class="wave w1"></span><span class="wave w2"></span><span class="wave w3"></span>
+        {% if card.image_path %}<img src="{{ card.image_path }}" alt="">{% endif %}
+      </div>
+      {% endif %}
+      <div class="vcall-name">{{ card.name }}</div>
+      <div class="vcall-time" id="vt-solo" role="timer">연결 중…</div>
+      <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <!-- 아이돌이 하는 말 자막 (Gemini 출력 자막) -->
+      <div class="vsub" id="vsub" aria-live="polite"></div>
+    </div>
+    <div class="vcall-acts">
+      <button class="vbtn on" id="spk-btn" onclick="toggleSpeaker(this)" aria-pressed="true">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4Z" fill="currentColor"/><path class="sw" d="M15.5 8.8a4.5 4.5 0 0 1 0 6.4M18 6.3a8 8 0 0 1 0 11.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>스피커</button>
+      <button class="vbtn" onclick="toggleMic(this)" aria-pressed="false">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-mic"/></svg></span>음소거</button>
+      <button class="vbtn end" onclick="endCall()" aria-label="통화 끊기">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 13.6c4.9-4.3 12.1-4.3 17 0l-1.9 2.6-3.4-1.2v-2.4a12 12 0 0 0-6.4 0V15l-3.4 1.2Z" fill="currentColor"/></svg></span>끊기</button>
+    </div>
+  </div>
   <div class="call-bar">
-    <button class="cbtn" onclick="toggleMic(this)"><i id="mic-ico">🎙️</i>마이크</button>
-    <button class="cbtn" onclick="toggleCam(this)"><i id="cam-ico">📷</i>카메라</button>
-    <button class="cbtn end" onclick="endCall()"><i>✕</i></button>
+    <button class="cbtn" onclick="toggleMic(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-mic"/></svg>마이크</button>
+    <button class="cbtn" onclick="toggleCam(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-cam"/></svg>카메라</button>
+    <button class="cbtn end" onclick="endCall()" aria-label="통화 종료"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-x"/></svg></button>
   </div>
 </div>
 
@@ -378,18 +247,50 @@
     </div>
   </div>
   <div class="call-bar">
-    <button class="cbtn" onclick="go2scan()"><i>＋</i>초대</button>
-    <button class="cbtn" onclick="toggleMic(this)"><i id="mic-ico-m">🎙️</i>마이크</button>
-    <button class="cbtn end" onclick="endCall()"><i>✕</i></button>
+    <button class="cbtn" onclick="go2scan()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg>초대</button>
+    <button class="cbtn" onclick="toggleMic(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-mic"/></svg>마이크</button>
+    <button class="cbtn end" onclick="endCall()" aria-label="통화 종료"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-x"/></svg></button>
   </div>
 </div>
 
+<!-- 통화가 끝나면 한 문항만 묻는다. 전시장에서 회수되는 유일한 주관 지표. -->
+<div class="survey" id="survey">
+  <div class="dim" onclick="skipSurvey()"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sq" id="survey-q"></div>
+    <div class="sn" id="survey-n"></div>
+    <div class="scale" id="survey-scale"></div>
+    <div class="ends"><span id="survey-lo"></span><span id="survey-hi"></span></div>
+    <button class="ghost" onclick="skipSurvey()" style="margin-top:0">건너뛰기</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
+} }
+</script>
 <script src="/static/jsQR.js"></script>
-<script src="/static/call-client.js"></script>
-<script src="/static/room-client.js"></script>
+<script src="/static/vrm-avatar.js?v=haneul-3"></script>
+<script src="/static/call-client.js?v=expr-1"></script>
+<script src="/static/ring.js?v=demo-1"></script>
+<script src="/static/create.js?v=gen-retry-1"></script>
+<script src="/static/room-client.js?v=sync-1"></script>
 <script>
   const CARD = {{ card_json | safe }};
   const invited = [];   // 멀티콜에 초대된 카드 id
+  const CREATE_HOME = () => go('s-card');   // create.js 가 만들기를 닫을 때
+  // /demo 에서 들어온 시연 — 멀티콜 · 만들기 · 설문을 숨기고 처음으로 돌아갈 길만 남긴다
+  let DEMO = false;
+  try { DEMO = !!sessionStorage.getItem('lukids.demo'); } catch {}
+  if (DEMO) {
+    document.body.classList.add('demo');
+    const h = document.getElementById('home-link');
+    h.href = '/demo'; h.textContent = '처음으로';
+  }
 
   /* ───────── 화면 전환 ───────── */
   function go(id){
@@ -408,11 +309,157 @@
     setTimeout(()=>go(next), 1800);
   }
 
+  /* ───────── 꾸미기 (버추얼 카드) ─────────
+     색은 브라우저가 모델 텍스처를 다시 칠하고, 말투·호칭·설정은 서버가
+     통화 페르소나 뒤에 붙인다. 저장하면 1:1과 멀티콜 모두에 반영된다. */
+  const PART_LABEL = { hair:'머리', eye:'눈', top:'상의', bottom:'하의', shoes:'신발' };
+  const SWATCH = {
+    hair:   ['#F4A7C0','#B9A6F2','#9CC9F5','#F2D27A','#3A3340'],
+    eye:    ['#6FA8FF','#E0607A','#8E6FE0','#57C49A','#E8B04A'],
+    top:    ['#F7F7F7','#BFEBD9','#F6C1D0','#9CC3F5','#2F3440'],
+    bottom: ['#3B4A6B','#2B2B2B','#C9B8E8','#E5C07B','#F6C1D0'],
+    shoes:  ['#F7F7F7','#2B2B2B','#F4A7C0','#9CC3F5','#BFEBD9'],
+  };
+  let custView = null;
+  const CUST = { colors:{}, speech:'', callme:'', note:'' };
+
+  async function openCustom(){
+    const c = CARD.custom || {};
+    Object.assign(CUST, { colors:{ ...(c.colors || {}) }, speech:c.speech || '',
+                          callme:c.callme || '', note:c.note || '' });
+    document.getElementById('cust-callme').value = CUST.callme;
+    document.getElementById('cust-note').value = CUST.note;
+    document.querySelectorAll('#cust-speech button')
+      .forEach(b => b.classList.toggle('sel', b.dataset.v === CUST.speech));
+    hint('cust-hint', '');
+    go('s-custom');
+    if (custView) return;
+    try {
+      custView = await AidolVRM.mount(document.getElementById('cust-stage'), CARD.model_path,
+                                      null, { colors: CUST.colors });
+      document.getElementById('cust-ph').style.display = 'none';
+      buildParts(custView.parts);
+    } catch (e) {
+      console.warn('미리보기 실패', e);
+      document.getElementById('cust-ph').innerHTML = '<b>3D</b>모델을 불러오지 못했어요';
+    }
+  }
+
+  function buildParts(parts){
+    const box = document.getElementById('cust-parts');
+    box.innerHTML = '';
+    parts.filter(p => SWATCH[p]).forEach(part => {
+      const f = document.createElement('div');
+      f.className = 'field';
+      f.innerHTML = `<label>${PART_LABEL[part]}</label><div class="sw"></div>`;
+      const row = f.querySelector('.sw');
+      const add = (hex, cls, title) => {
+        const b = document.createElement('button');
+        b.className = cls || '';
+        b.title = title || hex;
+        b.setAttribute('aria-label', PART_LABEL[part] + ' ' + (title || hex));
+        if (hex) b.style.background = hex;
+        b.onclick = () => setColor(part, hex, b);
+        row.appendChild(b);
+        return b;
+      };
+      add(null, 'orig', '원래 색');
+      SWATCH[part].forEach(hex => add(hex));
+      // 직접 고르기 — 색상 선택기를 투명하게 덮어 버튼처럼 쓴다
+      const pick = add(null, 'pick', '직접 고르기');
+      pick.onclick = null;
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = CUST.colors[part] || '#ffffff';
+      input.oninput = () => { pick.style.background = input.value; setColor(part, input.value, pick); };
+      pick.appendChild(input);
+      markColor(row, CUST.colors[part]);
+      box.appendChild(f);
+    });
+  }
+
+  function markColor(row, hex){
+    let hit = false;
+    row.querySelectorAll('button').forEach(b => {
+      const on = !b.classList.contains('pick') && (b.classList.contains('orig') ? !hex : b.title === hex);
+      b.classList.toggle('sel', on);
+      hit = hit || on;
+    });
+    if (!hit && hex) {                      // 팔레트에 없는 색이면 직접 고른 색이다
+      const pick = row.querySelector('.pick');
+      pick.classList.add('sel');
+      pick.style.background = hex;
+    }
+  }
+
+  function setColor(part, hex, btn){
+    if (hex) CUST.colors[part] = hex; else delete CUST.colors[part];
+    markColor(btn.parentElement, hex);
+    custView && custView.recolor(CUST.colors);
+  }
+
+  function pickSpeech(btn){
+    document.querySelectorAll('#cust-speech button').forEach(b => b.classList.remove('sel'));
+    btn.classList.add('sel');
+    CUST.speech = btn.dataset.v;
+  }
+
+  // 꾸민 모습을 한 장 찍어 카드 사진으로 쓴다. 실패해도 꾸미기 저장은 이미 끝났다.
+  async function saveThumb(){
+    if (!custView) return;
+    try {
+      const blob = await custView.snapshot();
+      const r = await fetch('/api/cards/' + CARD.card_id + '/thumb', {
+        method:'POST', headers:{'Content-Type':'image/jpeg'}, body: blob,
+      });
+      if (!r.ok) throw new Error(r.status);
+      CARD.image_path = (await r.json()).imagePath;
+      const hero = document.querySelector('#s-card .hero');
+      let img = hero.querySelector('.face');
+      if (!img) {
+        hero.querySelector('.ph')?.remove();
+        img = document.createElement('img');
+        img.className = 'face';
+        img.alt = CARD.name;
+        hero.prepend(img);
+      }
+      img.src = CARD.image_path;
+    } catch (e) { console.warn('썸네일 저장 실패', e); }
+  }
+
+  function closeCustom(){
+    if (custView) { custView.dispose(); custView = null; }
+    document.getElementById('cust-ph').style.display = '';
+    document.getElementById('cust-ph').innerHTML = '<b>3D</b>모델을 불러오는 중';
+    document.getElementById('cust-parts').innerHTML = '';
+    go('s-card');
+  }
+
+  async function saveCustom(){
+    CUST.callme = document.getElementById('cust-callme').value.trim();
+    CUST.note = document.getElementById('cust-note').value.trim();
+    try {
+      const r = await fetch('/api/cards/' + CARD.card_id + '/custom', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ...CUST, speech: CUST.speech || null }),
+      });
+      if (!r.ok) throw new Error(r.status);
+      CARD.custom = await r.json();
+      await saveThumb();
+      closeCustom();
+    } catch (e) {
+      hint('cust-hint', '저장하지 못했어요. 잠시 뒤 다시 눌러주세요.');
+    }
+  }
+
   /* ───────── 통화 ───────── */
   let timer = null, seconds = 0, current = null;
 
+  let micDenied = false;
   function openCall(id){
     current = id;
+    micDenied = false;
+    document.getElementById('vt-solo').textContent = '연결 중…';
     // 통화는 .screen 위에 덮이므로 아래 화면(로딩 포함)을 반드시 정리한다
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
     document.getElementById(id).classList.add('on');
@@ -424,9 +471,12 @@
       const m = String(Math.floor(seconds/60)).padStart(2,'0');
       const s = String(seconds%60).padStart(2,'0');
       el.textContent = `${m}:${s}`;
+      if (id === 'c-solo' && !micDenied) document.getElementById('vt-solo').textContent = `${m}:${s}`;
     },1000);
   }
   function endCall(){
+    const was = current;              // 솔로였는지 멀티였는지에 따라 묻는 게 다르다
+    const secs = seconds;
     AidolCall.end();
     AidolRoom.end();
     clearInterval(timer);
@@ -434,12 +484,60 @@
     resetFeed();
     current = null;
     go('s-card');
+    // 너무 짧은 통화는 묻지 않는다 — 답이 통화가 아니라 이탈을 반영한다
+    if (was && secs >= 20 && !DEMO) askSurvey(was === 'c-multi' ? 'multi' : 'solo');
+  }
+
+  /* ───────── 통화 직후 한 문항 ─────────
+     docs/연구 설계 — 커스터마이징과 다인 참여.md 의 유일한 주관 지표.
+     전시장에서는 문항이 늘수록 회수율이 떨어져 하나만 묻는다. */
+  const SURVEY = {
+    solo:  { q:'방금 그 아이돌은 얼마나 \'내 것\' 같나요?',
+             n:'RQ1 · 커스터마이징 깊이와 소유감',
+             lo:'남의 것 같다', hi:'완전히 내 것' },
+    multi: { q:'여럿이 함께한 게 좋았나요, 둘만일 때가 좋았나요?',
+             n:'RQ2 · 다인 참여와 사적 친밀감',
+             lo:'둘만일 때', hi:'여럿이 함께' },
+  };
+
+  function askSurvey(context){
+    const cfg = SURVEY[context];
+    document.getElementById('survey-q').textContent = cfg.q;
+    document.getElementById('survey-n').textContent = cfg.n;
+    document.getElementById('survey-lo').textContent = cfg.lo;
+    document.getElementById('survey-hi').textContent = cfg.hi;
+    const box = document.getElementById('survey-scale');
+    box.innerHTML = '';
+    for (let i = 1; i <= 7; i++) {          // 7점 — 중앙값이 있어야 회피 응답이 드러난다
+      const b = document.createElement('button');
+      b.textContent = i;
+      b.onclick = () => sendSurvey(context, i, b);
+      box.appendChild(b);
+    }
+    document.getElementById('survey').classList.add('on');
+  }
+
+  function sendSurvey(context, value, btn){
+    btn.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+    btn.classList.add('sel');
+    fetch('/api/survey', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cardId: CARD.card_id, q: context, value, context }) })
+      .catch(()=>{});
+    setTimeout(() => document.getElementById('survey').classList.remove('on'), 280);
+  }
+
+  // 건너뛴 것도 데이터다. 무응답률이 높으면 문항 자체를 의심해야 한다.
+  function skipSurvey(){
+    fetch('/api/survey', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cardId: CARD.card_id, q:'skip', value:null }) }).catch(()=>{});
+    document.getElementById('survey').classList.remove('on');
   }
 
   function setCaption(line, hint){
     document.getElementById('cap-solo').innerHTML =
       (line ? line + '<br>' : '') + (hint ? '<em>' + hint + '</em>' : '');
   }
+  const multiNames = {};
   function setMultiCaption(line, hint){
     document.getElementById('cap-multi').innerHTML =
       (line ? line + '<br>' : '') + (hint ? '<em>' + hint + '</em>' : '');
@@ -448,26 +546,56 @@
   function startCall(){
     document.getElementById('load-msg').textContent = CARD.name + '에게 거는 중';
     go('s-load');
+    Sub.reset();
     AidolCall.start(CARD.card_id, document.getElementById('avatar'), {
       onConnected(msg){
+        const voice = msg.mode !== 'video';
+        document.getElementById('c-solo').classList.toggle('voice', voice);
+        // 내 얼굴은 늘 보인다 — 음성 통화면 같은 화면을 전화 화면 구석으로 옮긴다
+        const me = document.getElementById('self-solo');
+        (voice ? document.getElementById('vcall') : document.getElementById('feed-solo')).appendChild(me);
         openCall('c-solo');
         setCaption('', msg.mode === 'video' ? '연결 중…' : '음성으로 연결 중…');
       },
       onVideo(){ document.getElementById('feed-ph').style.display = 'none'; },
+      onSelfVideo(){ document.getElementById('self-solo').classList.add('on'); },
       onMicReady(){ setCaption('안녕, 와줘서 고마워.', '말을 걸어보세요'); },
-      onMicDenied(){ setCaption('', '마이크 권한을 허용해야 대화할 수 있어요'); },
+      onMicDenied(){
+        setCaption('', '마이크 권한을 허용해야 대화할 수 있어요');
+        micDenied = true; document.getElementById('vt-solo').textContent = '마이크를 허용해 주세요';
+      },
       onSpeaking(on){
         document.getElementById('feed-solo').classList.toggle('talking', on);
-        if(on) setCaption('', '말하는 중…');
+        document.getElementById('vcall').classList.toggle('talking', on);
       },
-      onUserSpeaking(on){ if(on) setCaption('', '듣고 있어요…'); },
+      onUserSpeaking(on){ if(on){ setCaption('', '듣고 있어요…'); Face.listen(); Sub.reset(); } },
+      onText(text){ Face.hear(text); Sub.add(text); },
+      onTurnEnd(){ Face.settle(); },
       onError(e){
         document.getElementById('load-msg').textContent = '연결 실패: ' + e;
         setTimeout(()=>go('s-card'), 2500);
       },
       onEnd(){ endCall(); },
-    });
+    }, document.getElementById('selfcam'));
   }
+
+  /* ───────── 자막 ─────────
+     아이돌 말을 한 턴 동안 이어 붙여 보여준다. 내가 말을 시작하면 지운다.
+     음성 통화는 사진 아래(#vsub), 영상 통화는 화면 아래 캡션에 같은 글을 쓴다. */
+  const Sub = (() => {
+    let turn = '';
+    const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    function draw(){
+      const el = document.getElementById('vsub');
+      el.textContent = turn;
+      el.classList.toggle('on', !!turn);
+      if (turn) document.getElementById('cap-solo').innerHTML = esc(turn);
+    }
+    return {
+      add(text){ turn += text; draw(); },
+      reset(){ turn = ''; draw(); },
+    };
+  })();
 
   // 로비에 초대 가능한 카드를 띄운다. 전시에서는 카드를 스캔해 넣지만,
   // 벽에 놓인 카드를 직접 고를 수도 있어야 한다.
@@ -533,10 +661,15 @@
   }
 
   function startMulti(){
+    const hint = document.getElementById('lobby-hint');
     if (!invited.length) {
-      alert('먼저 함께 통화할 카드를 골라주세요.');
+      // alert 는 전시장 기기에서 화면을 멈춰 세운다. 같은 자리에 인라인으로 띄운다.
+      hint.textContent = '먼저 함께 통화할 카드를 골라주세요. 아래에서 고르거나 카드를 스캔하면 됩니다.';
+      hint.hidden = false;
+      hint.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
+    hint.hidden = true;
     clearInterval(lobbyTimer);
     const ids = [CARD.card_id, ...invited];
     document.getElementById('load-msg').textContent = '멀티콜을 여는 중';
@@ -545,6 +678,7 @@
 
     AidolRoom.start(ids, (cid) => cells[cid], {
       onJoined(members){
+        members.forEach(m => { multiNames[m.cardId] = m.name; });
         grid.innerHTML = '';
         members.forEach(m => {
           const cell = document.createElement('div');
@@ -588,7 +722,12 @@
         const el = document.getElementById('cell-' + cid);
         if (el) el.classList.add('turn');
       },
-      onSaid(cid, text){ if (text) setMultiCaption(text, ''); },
+      onSaid(cid, text){
+        // 자막은 소리가 나오는 순간에 맞춰 온다(room-client.js). 누가 말하는지 이름을 붙인다
+        if (!text) return;
+        const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+        setMultiCaption(`<b>${esc(multiNames[cid] || '')}</b> ${esc(text)}`, '');
+      },
       onError(e){
         document.getElementById('load-msg').textContent = '연결 실패: ' + e;
         setTimeout(()=>go('s-card'), 2500);
@@ -602,13 +741,54 @@
     document.getElementById('self-solo').style.opacity = '';
   }
 
+  /* ───────── 표정 ─────────
+     아이돌이 하는 말(글자)을 쌓아 보다가 낱말이 걸리면 그 표정으로 바꾼다.
+     말을 마치면 잠시 뒤 기본 표정으로, 내가 말하는 동안에도 기본 표정(듣는 얼굴). */
+  const Face = (() => {
+    const RULES = [
+      ['laugh',     /ㅋ|ㅎㅎ|하하|히히|헤헤|푸하|웃기|웃겨|웃었|재밌|재미있|신난|신나|신났|즐거|행복|최고/],
+      ['surprised', /헐|진짜\?|정말\?|진짜로\?|우와|와[!~ ]|어머|깜짝|대박|세상에|놀랐|놀라|어떻게 그런/],
+      ['sad',       /속상|힘들|슬프|슬퍼|아팠|아프|우울|괜찮아\?|미안|외로|걱정/],
+      ['shy',       /고마워|고마운|부끄|쑥스|칭찬|설레|좋아해|사랑|예쁘다고|귀엽다고/],
+      ['thinking',  /음\.\.|음…|흠|글쎄|생각해|고민|어떻게 하지|뭐였더라|그러니까/],
+    ];
+    let turn = '', current = 'base', back = null;
+    const el = () => document.getElementById('portrait');
+    function show(f){
+      const p = el();
+      if (!p || f === current || !p.querySelector(`[data-f="${f}"]`)) return;
+      current = f;
+      p.querySelectorAll('img').forEach(i => i.classList.toggle('on', i.dataset.f === f));
+    }
+    return {
+      hear(text){
+        clearTimeout(back);
+        turn += text;
+        // 최근 말 위주로 — 앞에서 웃다가 걱정하는 말로 넘어가면 표정도 따라간다
+        const tail = turn.slice(-40);
+        const hit = RULES.find(([, re]) => re.test(tail));
+        if (hit) show(hit[0]);
+      },
+      settle(){ turn = ''; clearTimeout(back); back = setTimeout(() => show('base'), 2500); },
+      listen(){ turn = ''; clearTimeout(back); show('base'); },
+    };
+  })();
+
+  function toggleSpeaker(btn){
+    const quiet = AidolCall.toggleSpeaker();
+    btn.classList.toggle('on', !quiet);
+    btn.setAttribute('aria-pressed', quiet ? 'false' : 'true');
+  }
   function toggleMic(btn){
     const off = (current === 'c-multi') ? AidolRoom.toggleMute() : AidolCall.toggleMute();
-    btn.querySelector('i').textContent = off ? '🔇' : '🎙️';
+    if (btn.classList.contains('vbtn')) btn.classList.toggle('on', off);
+    btn.querySelector('use').setAttribute('href', off ? '#g-mic-off' : '#g-mic');
+    btn.setAttribute('aria-pressed', off ? 'true' : 'false');
   }
   function toggleCam(btn){
     const off = AidolCall.toggleCam();
-    btn.querySelector('i').textContent = off ? '🚫' : '📷';
+    btn.querySelector('use').setAttribute('href', off ? '#g-cam-off' : '#g-cam');
+    btn.setAttribute('aria-pressed', off ? 'true' : 'false');
   }
 
   /* ───────── 진행 중인 통화에 참여 ───────── */
@@ -619,7 +799,7 @@
       const bar = document.getElementById('joinbar');
       if (d.host && d.host.cardId !== CARD.card_id) {
         openHost = d.host;
-        document.getElementById('joinhost').textContent = d.host.name + '의';
+        document.getElementById('joinhost').textContent = d.host.name + '의 통화가 열려 있어요';
         bar.hidden = false;
       } else {
         openHost = null;
@@ -647,6 +827,34 @@
   }
 
   checkOpenLobby();
+
+  /* 아이돌이 먼저 거는 전화 (static/ring.js)
+     ?ring=1   이 카드가 먼저 전화를 건다 — 받기를 누르면 그 탭으로 바로 통화
+     ?answer=1 다른 화면(만들기)에서 이미 받고 넘어왔다 — 곧장 통화를 연다.
+               브라우저가 탭 없이 소리를 막으면 한 번만 눌러 달라고 한다.
+     아래쪽 let 선언(scanning 등)이 끝난 뒤에 돌도록 한 박자 미룬다. */
+  setTimeout(function(){
+    const q = new URLSearchParams(location.search);
+    const clean = () => history.replaceState(null, '', location.pathname);
+    if (q.has('ring')) {
+      clean();
+      setTimeout(() => AidolRing.show({
+        name: CARD.name, image: CARD.image_path,
+        label: CARD.face_status === 'ready' ? '영상통화' : '음성통화',
+        onAccept: startCall,
+      }), 1200);
+    } else if (q.has('answer')) {
+      clean();
+      let blocked = false;
+      try { const t = new AudioContext(); blocked = t.state === 'suspended'; t.close(); } catch {}
+      if (!blocked) return startCall();
+      const b = document.createElement('button');
+      b.className = 'tap-answer';
+      b.innerHTML = `<b>${CARD.name}에게 연결됐어요</b><span>화면을 누르면 목소리가 들려요</span>`;
+      b.onclick = () => { b.remove(); startCall(); };
+      document.body.appendChild(b);
+    }
+  }, 0);
   setInterval(checkOpenLobby, 5000);
 
   /* ───────── 카드 스캔 ───────── */

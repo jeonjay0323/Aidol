@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b1c1e">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
+{% block css %}{% endblock %}
+<link rel="stylesheet" href="/static/site.css?v=yellow-1">
+<title>{% block title %}LUKIDS{% endblock %}</title>
+{% block head %}{% endblock %}
+</head>
+<body class="site">
+<script>
+  // /demo 에서 들어왔으면 시연 모드 — 메뉴 대신 "처음으로" 하나만
+  try { if (sessionStorage.getItem('lukids.demo')) document.body.classList.add('demo'); } catch {}
+</script>
+
+<nav class="site-nav" aria-label="주 메뉴">
+  <div class="site-nav-in">
+    <a class="site-logo" href="/" onclick="if(document.body.classList.contains('demo')){location.href='/demo';return false}"><i></i>LUKIDS</a>
+    <a class="site-home" href="/demo">처음으로</a>
+    <div class="site-links">
+      {% set menu = [("home", "/", "", "소개"), ("make", "/make", "01", "제작"), ("print", "/print", "02", "인쇄"),
+                     ("gallery", "/gallery", "03", "전시"), ("call", "/call", "04", "통화")] %}
+      {% for key, href, n, label in menu %}
+      <a href="{{ href }}" {% if page == key %}class="on" aria-current="page"{% endif %}>{% if n %}<span class="n">{{ n }}</span>{% endif %}{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</nav>
+
+{% block body %}{% endblock %}
+
+<script>
+  // 이 기기에서 만든 카드. 인쇄 페이지와 전시의 "내가 만든" 필터가 쓴다.
+  // 저장이 막힌 브라우저(사생활 보호 모드)에서도 페이지는 돌아가야 한다.
+  const MINE = {
+    key: 'lukids.mine',
+    all(){ try { return JSON.parse(localStorage.getItem(this.key) || '[]'); } catch { return []; } },
+    add(id){ try { const a = this.all().filter(x => x !== id); a.unshift(id);
+                   localStorage.setItem(this.key, JSON.stringify(a.slice(0, 50))); } catch {} },
+    has(id){ return this.all().includes(id); },
+  };
+</script>
+{% block script %}{% endblock %}
+</body>
+</html>
