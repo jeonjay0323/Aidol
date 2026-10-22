@@ -12,6 +12,7 @@ import logging
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlencode
 
 import segno
 from dotenv import load_dotenv
@@ -268,6 +269,28 @@ async def printable_card(request: Request, card_id: str):
     })
 
 
+@app.get("/label/{card_id}.png")
+async def label_png(request: Request, card_id: str):
+    """4×6 인쇄 카드 이미지(1181×1748, 300dpi). /label/{id} 보다 먼저 등록해야 한다.
+    ?grade= &en= &msg= &stat= 로 바꾼 값을 받는다. ?download=1 이면 파일로 내려받는다."""
+    from . import card_png, card_print
+    card = card_or_404(card_id)
+    path = card.get("photo_path") or ""
+    if path.startswith("/thumb/"):
+        photo = db.get_thumb(card_id)
+    elif path.startswith("/static/"):
+        f = HERE / path.split("?")[0].lstrip("/")
+        photo = f.read_bytes() if f.exists() else None
+    else:
+        photo = None
+    q = request.query_params
+    png = await asyncio.to_thread(card_png.render, card_print.values(card, q), card["name"], photo,
+                                  f"{base_url(request)}/c/{card_id}")
+    how = "attachment" if q.get("download") else "inline"
+    return Response(png, media_type="image/png", headers={
+        "Content-Disposition": f'{how}; filename="luki2s-{card_id}.png"', "Cache-Control": "no-store"})
+
+
 @app.get("/label/{card_id}", response_class=HTMLResponse)
 async def printable_label(request: Request, card_id: str):
     """만들기 화면에서 나온 카드를 4×6(100×148mm) 인쇄 카드로. 캐논 SELPHY CP1500 에 AirPrint 로 뽑는다."""
@@ -278,7 +301,9 @@ async def printable_label(request: Request, card_id: str):
     return templates.TemplateResponse("label.html", {
         "request": request, "card": card, "qr_url": f"/qr/{card_id}.png",
         "v": card_print.values(card, q),
+        "qs": urlencode({k: q[k] for k in ("grade", "en", "msg", "stat") if q.get(k)}),
         "embed": q.get("embed") not in (None, "0"),
+        "layer": q.get("layer") if q.get("layer") in ("base", "over", "geom") else None,
     })
 
 

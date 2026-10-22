@@ -108,17 +108,29 @@
   body.embed .page{display:block;min-height:0;padding:0}
   body.embed .side{display:none}
 
+  /* 서버 PNG(card_png.py)용 고정 레이어를 뽑을 때만 쓴다 — tools/make_print_layers.py
+     base: 사진 · 바뀌는 글자를 뺀 바닥, over: 사진 위에 올라가는 프레임 · 등급 (투명 배경) */
+  body.layer-base .photo, body.layer-base .frame, body.layer-base .border, body.layer-base .grade-row,
+  body.layer-base .name, body.layer-base .en, body.layer-base .msg, body.layer-base #stat,
+  body.layer-base .fill, body.layer-base .qr .code{visibility:hidden}
+  body.layer-over .card{background:none}
+  body.layer-over .card > :not(.frame):not(.border):not(.grade-row){visibility:hidden}
+
+  /* 화면 · 인쇄는 서버가 그린 PNG(/label/{id}.png) 한 장을 쓴다. 카드 HTML 은 레이어를 뽑을 때만 그린다 */
+  .png{display:block;width:100%;height:100%;background:#555}
+  .side .row2{display:flex;gap:10px}
+  .side .row2 .pbtn{flex:1;text-align:center;text-decoration:none;font-size:15px;padding:13px}
+
   @media print{
     @page{size:100mm 148mm;margin:0}
     html,body{width:100mm;height:148mm;background:#fff;overflow:hidden}
     .page{display:block;min-height:0;padding:0}
     .side{display:none}
-    /* 1181px → 100mm (378px) */
-    .stage{width:100mm;height:148mm;overflow:visible;--s:.32004 !important}
+    .stage{width:100mm;height:148mm}
   }
 </style>
 </head>
-<body{% if embed %} class="embed"{% endif %}>
+<body class="{% if embed %}embed{% endif %}{% if layer %} embed layer-{{ layer }}{% endif %}">
 
 <!-- 아이콘 — 피그마 phone-call-sharp · sparkle 인스턴스를 24칸 격자 그대로 -->
 <svg width="0" height="0" style="position:absolute">
@@ -141,6 +153,7 @@
 
 <div class="page">
 <section class="stage">
+{% if layer %}
   <div class="card g-{{ v.grade }}" id="card">
     <img class="dither" src="/static/print/dithering.png" alt="">
     <div class="info">
@@ -175,6 +188,9 @@
       </div>
     </div>
   </div>
+{% else %}
+  <img class="png" id="png" src="/label/{{ card.card_id }}.png?{{ qs }}" alt="{{ card.name }} 인쇄 카드">
+{% endif %}
 </section>
 
 <section class="side">
@@ -188,38 +204,59 @@
   <label>영문 이름 <input id="f-en" value="{{ v.en }}" maxlength="16"></label>
   <label>한마디 (세 줄까지) <textarea id="f-msg" rows="3">{{ v.msg }}</textarea></label>
   <label>다정함 <input id="f-stat" type="number" min="0" max="100" value="{{ v.stat }}"></label>
-  <button class="pbtn" type="button" id="print-btn">인쇄하기</button>
+  <button class="pbtn" type="button" id="share-btn">사진으로 인쇄 · 저장</button>
+  <div class="row2">
+    <a class="pbtn ghost" id="dl" href="/label/{{ card.card_id }}.png?{{ qs }}&download=1" download>이미지 받기</a>
+    <button class="pbtn ghost" type="button" id="print-btn">브라우저 인쇄</button>
+  </div>
   <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
-  <p class="note">인쇄 창에서 프린터 SELPHY CP1500 · 용지 엽서(100×148) · 테두리 없음 · 배율 100%.</p>
+  <p class="note">폰: "사진으로 인쇄 · 저장" → 공유 창에서 "프린트"(또는 이미지 저장 후 사진 앱에서 프린트)
+    → SELPHY CP1500 · 4×6 · 테두리 없음.<br>맥 · 전시 노트북: 브라우저 인쇄 → 엽서(100×148) · 테두리 없음 · 배율 100%.</p>
 </section>
 </div>
 
 <script>
-  const card = document.getElementById('card');
   const $ = id => document.getElementById(id);
+  const ID = {{ card.card_id | tojson }};
+  const card = $('card'), png = $('png');
 
-  // 손으로 고친 값을 카드에 바로 반영한다
-  $('f-grade').onchange = e => {
-    const g = e.target.value;
-    card.className = 'card g-' + g;
-    $('grade').dataset.g = g.toUpperCase();
-    $('grade').firstElementChild.textContent = g.toUpperCase();
-    card.querySelectorAll('[data-part]').forEach(img => { img.src = `/static/print/${g}/${img.dataset.part}.svg`; });
-  };
+  // 고친 값으로 서버 PNG 를 다시 받는다
+  const query = () => new URLSearchParams({ grade: $('f-grade').value, en: $('f-en').value,
+                                            msg: $('f-msg').value, stat: $('f-stat').value }).toString();
+  let timer;
+  function refresh(){
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const q = query();
+      if (png) png.src = `/label/${ID}.png?${q}`;
+      $('dl').href = `/label/${ID}.png?${q}&download=1`;
+      file = null;
+    }, 350);
+  }
+  ['f-grade', 'f-en', 'f-msg', 'f-stat'].forEach(id => $(id).addEventListener('input', refresh));
+
+  // 아이폰은 공유 창의 '프린트'가 사진 인쇄라 테두리 없이 꽉 찬다. 누른 순간 share() 해야 해서 미리 받아 둔다
+  let file = null;
+  async function prepare(){
+    try {
+      const blob = await fetch(`/label/${ID}.png?${query()}`).then(r => r.blob());
+      file = new File([blob], `luki2s-${ID}.png`, { type: 'image/png' });
+    } catch {}
+  }
+  $('share-btn').addEventListener('click', async () => {
+    if (!file) await prepare();
+    if (file && navigator.canShare && navigator.canShare({ files: [file] }))
+      navigator.share({ files: [file] }).catch(() => {});
+    else window.open(`/label/${ID}.png?${query()}`, '_blank');   // 공유가 안 되는 브라우저는 이미지를 연다
+  });
   $('print-btn').addEventListener('click', () => { try { window.print(); } catch (e) { console.warn(e); } });
-  $('f-en').oninput = e => { $('en').textContent = e.target.value; };
-  $('f-msg').oninput = e => { $('msg').textContent = e.target.value; };
-  $('f-stat').oninput = e => {
-    const n = Math.max(0, Math.min(100, +e.target.value || 0));
-    $('stat').textContent = n;
-    $('fill').style.width = Math.round(n * 7.6) + 'px';   // 피그마: 90 → 684px
-  };
 
-  // 폰트 · 사진 · QR 이 다 뜬 뒤에 인쇄해야 첫 장이 기본 글꼴로 나가지 않는다 (station.html 이 기다린다)
+  // 이미지가 다 뜬 뒤에 인쇄한다 (station.html 이 기다린다)
   window.labelReady = Promise.all([
     document.fonts.ready,
     ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })),
   ]);
+  if (png && !document.body.classList.contains('embed')) labelReady.then(prepare);
 
   function fit(){
     let s;
@@ -234,6 +271,14 @@
   }
   fit(); addEventListener('resize', fit);
 
+  // 서버 PNG 가 글자를 같은 자리에 쓰도록 위치를 뽑는다 (?layer=geom)
+  if (card && document.body.classList.contains('layer-geom')) labelReady.then(() => {
+    const c = card.getBoundingClientRect(), k = 1181 / c.width, r = {};
+    for (const sel of ['.name', '.en', '.msg', '#stat', '.track', '.fill', '.qr .code', '.photo'])
+      { const b = document.querySelector(sel).getBoundingClientRect();
+        r[sel] = [b.left - c.left, b.top - c.top, b.width, b.height].map(v => +(v * k).toFixed(2)); }
+    const pre = document.createElement('pre'); pre.id = 'geom'; pre.textContent = JSON.stringify(r); document.body.append(pre);
+  });
   if (new URLSearchParams(location.search).has('print')) labelReady.then(() => setTimeout(() => print(), 200));
 </script>
 </body>
