@@ -52,8 +52,8 @@
   /* 사진 — 모서리 40px 를 깎은 사각형 + 바깥 8px 그라디언트 테두리 */
   .ph-edge{left:76px;top:185px;width:1029px;height:862px;
            background:linear-gradient(to bottom,var(--ph),#fff);
-           clip-path:polygon(36.69px 0,calc(100% - 36.69px) 0,100% 36.69px,100% calc(100% - 36.69px),
-                             calc(100% - 36.69px) 100%,36.69px 100%,0 calc(100% - 36.69px),0 36.69px)}
+           clip-path:polygon(44.69px 0,calc(100% - 44.69px) 0,100% 44.69px,100% calc(100% - 44.69px),
+                             calc(100% - 44.69px) 100%,44.69px 100%,0 calc(100% - 44.69px),0 44.69px)}
   .photo{left:84px;top:193px;width:1013px;height:846px;object-fit:cover;object-position:50% 22%;background:#d9d9d9;
          clip-path:polygon(40px 0,calc(100% - 40px) 0,100% 40px,100% calc(100% - 40px),
                            calc(100% - 40px) 100%,40px 100%,0 calc(100% - 40px),0 40px)}
@@ -65,7 +65,8 @@
   .grade-row{left:96px;top:84px;display:flex;gap:34px;align-items:flex-start}
   .grade{position:relative;isolation:isolate;font:400 200px/normal "NeoDunggeunmo",monospace;color:#fff;white-space:nowrap}
   .grade::before{
-    content:attr(data-g);position:absolute;left:0;top:0;z-index:-1;
+    /* 배경이 테두리까지 깔리게 상자를 테두리 두께(20px)만큼 넓힌다 */
+    content:attr(data-g);position:absolute;left:-20px;top:-20px;padding:20px;z-index:-1;
     color:transparent;-webkit-text-stroke:40px transparent;
     background:linear-gradient(to top,var(--gl0),var(--gl1));-webkit-background-clip:text;background-clip:text;
   }
