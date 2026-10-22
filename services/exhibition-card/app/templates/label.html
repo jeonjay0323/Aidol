@@ -87,9 +87,10 @@
 
   /* ── 화면 ── */
   .page{min-height:100vh;display:flex;gap:48px;justify-content:center;align-items:center;padding:32px}
-  .stage{width:calc(1181px * var(--s,.4));height:calc(1748px * var(--s,.4));flex:none}
+  /* 카드는 1181px 로 그린 뒤 줄이므로, 줄이기 전 크기가 화면을 밀거나 버튼을 덮지 않게 자른다 */
+  .stage{position:relative;overflow:hidden;width:calc(1181px * var(--s,.4));height:calc(1748px * var(--s,.4));flex:none}
   .stage .card{transform:scale(var(--s,.4));transform-origin:top left}
-  .side{display:flex;flex-direction:column;gap:14px;width:min(360px,100%);font-size:15px}
+  .side{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px;width:min(360px,100%);font-size:15px}
   .side b{font-size:26px;color:#fff}
   .side label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#aaa}
   .side input,.side select,.side textarea{font:16px "Apple SD Gothic Neo",sans-serif;padding:10px 12px;border-radius:10px;
@@ -99,7 +100,8 @@
   .pbtn{padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
         background:linear-gradient(90deg,#d9d453,#e63bc0 55%,#8b3be6);color:#fff;cursor:pointer}
   .pbtn.ghost{background:#555}
-  @media (max-aspect-ratio:1/1){ .page{flex-direction:column} }
+  @media (max-aspect-ratio:1/1){ .page{flex-direction:column;gap:28px;padding:24px 16px} }
+  html,body{overflow-x:hidden}
 
   /* 인쇄 페이지 · 자동 인쇄 창의 미리보기(iframe) — 카드만 프레임 너비에 맞춘다 */
   body.embed{background:transparent;overflow:hidden}
@@ -112,7 +114,7 @@
     .page{display:block;min-height:0;padding:0}
     .side{display:none}
     /* 1181px → 100mm (378px) */
-    .stage{width:100mm;height:148mm;--s:.32004 !important}
+    .stage{width:100mm;height:148mm;overflow:visible;--s:.32004 !important}
   }
 </style>
 </head>
@@ -186,7 +188,7 @@
   <label>영문 이름 <input id="f-en" value="{{ v.en }}" maxlength="16"></label>
   <label>한마디 (세 줄까지) <textarea id="f-msg" rows="3">{{ v.msg }}</textarea></label>
   <label>다정함 <input id="f-stat" type="number" min="0" max="100" value="{{ v.stat }}"></label>
-  <button class="pbtn" onclick="window.print()">인쇄하기</button>
+  <button class="pbtn" type="button" id="print-btn">인쇄하기</button>
   <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
   <p class="note">인쇄 창에서 프린터 SELPHY CP1500 · 용지 엽서(100×148) · 테두리 없음 · 배율 100%.</p>
 </section>
@@ -204,6 +206,7 @@
     $('grade').firstElementChild.textContent = g.toUpperCase();
     card.querySelectorAll('[data-part]').forEach(img => { img.src = `/static/print/${g}/${img.dataset.part}.svg`; });
   };
+  $('print-btn').addEventListener('click', () => { try { window.print(); } catch (e) { console.warn(e); } });
   $('f-en').oninput = e => { $('en').textContent = e.target.value; };
   $('f-msg').oninput = e => { $('msg').textContent = e.target.value; };
   $('f-stat').oninput = e => {
