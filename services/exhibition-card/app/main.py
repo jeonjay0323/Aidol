@@ -268,37 +268,17 @@ async def printable_card(request: Request, card_id: str):
     })
 
 
-@app.get("/label/{card_id}.png")
-async def label_png(request: Request, card_id: str, mono: bool = False, dpi: int = 300):
-    """라벨 이미지 — 라벨 프린터 앱(Aiyin 등)에 넘긴다. /label/{id} 보다 먼저 등록해야 한다."""
-    from . import label_png as L
-    card = card_or_404(card_id)
-    path = card.get("photo_path") or ""
-    if path.startswith("/thumb/"):
-        photo = db.get_thumb(card_id)
-    elif path.startswith("/static/"):
-        f = HERE / path.split("?")[0].lstrip("/")
-        photo = f.read_bytes() if f.exists() else None
-    else:
-        photo = None
-    png = await asyncio.to_thread(L.render, photo, card["name"], card.get("tags"), card_id,
-                                  f"{base_url(request)}/c/{card_id}", mono, max(150, min(dpi, 600)))
-    try:
-        db.log_event("label_image", card_id=card_id, meta={"mono": mono, "dpi": dpi})
-    except Exception as e:
-        logging.warning(f"label_image 로그 실패: {e}")
-    return Response(png, media_type="image/png", headers={
-        "Content-Disposition": f'inline; filename="lukids-{card_id}{"-mono" if mono else ""}.png"'})
-
-
 @app.get("/label/{card_id}", response_class=HTMLResponse)
 async def printable_label(request: Request, card_id: str):
-    """만들기 화면에서 나온 카드용 60×40mm 라벨. 세로로 디자인하고 인쇄할 때 눕힌다."""
+    """만들기 화면에서 나온 카드를 4×6(100×148mm) 인쇄 카드로. 캐논 SELPHY CP1500 에 AirPrint 로 뽑는다."""
+    from . import card_print
     card = card_or_404(card_id)
     card["image_path"] = card["photo_path"]
+    q = request.query_params
     return templates.TemplateResponse("label.html", {
         "request": request, "card": card, "qr_url": f"/qr/{card_id}.png",
-        "embed": "embed" in request.query_params,
+        "v": card_print.values(card, q),
+        "embed": q.get("embed") not in (None, "0"),
     })
 
 
@@ -400,25 +380,6 @@ async def call_page(request: Request):
 async def station_page(request: Request):
     """인쇄 대기 화면 — 프린터가 연결된 노트북에 띄워 두면 새 카드 라벨을 자동으로 뽑는다."""
     return templates.TemplateResponse("station.html", {"request": request, "base": base_url(request)})
-
-
-@app.post("/api/btlog")
-async def api_btlog(request: Request):
-    """블루투스 인쇄 로그(bt-print.js). 실물 프린터 문제를 원격으로 보려고 서버 로그에 남긴다."""
-    try:
-        body = (await request.body())[:600].decode("utf-8", "replace")
-        logging.getLogger("btlog").info(body)
-    except Exception:
-        pass
-    return Response(status_code=204)
-
-
-@app.get("/printer", response_class=HTMLResponse)
-async def printer_page(request: Request):
-    """블루투스 라벨 프린터 연결 · 설정 · 시험 인쇄 (static/bt-print.js)."""
-    made = gallery_cards()
-    sample = made[0]["cardId"] if made else next((c["cardId"] for c in lineup()), "")
-    return templates.TemplateResponse("printer.html", {"request": request, "page": "print", "sample": sample})
 
 
 @app.get("/admin", response_class=HTMLResponse)

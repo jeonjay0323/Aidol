@@ -6,7 +6,7 @@
 버추얼 애니메이션 일러스트. 프롬프트는 여기서 조립한다.
 
 Simli 등록은 하지 않는다. 생성 → 확인 → 발급 → 인쇄로 바로 간다.
-라벨 용지가 60×40mm 라 사진은 세로 2:3(40×60) 으로 뽑고, 인쇄할 때 90° 돌린다.
+사진은 세로 2:3 으로 뽑는다. 4×6 인쇄 카드(label.html)는 사진 칸이 가로라 가운데 위쪽을 잘라 쓴다.
 """
 import io
 import logging
@@ -32,7 +32,7 @@ def project():
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-2.5-flash-image")
 # 생성기와 같은 순환. 429 가 나면 다음 지역으로 넘어간다.
 LOCATIONS = ["us-central1", "us-east4", "us-west1", "us-west4"]
-LABEL_ASPECT = "2:3"   # 라벨 40×60mm 세로
+LABEL_ASPECT = "2:3"   # 만들기 화면 결과 · 카드 썸네일 세로
 
 log = logging.getLogger("imagegen")
 

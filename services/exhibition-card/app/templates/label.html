@@ -3,209 +3,234 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ card.name }} — AIDOL LABEL</title>
+<title>{{ card.name }} — LUKI2S CARD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=block">
 <style>
-  /* 만들기 화면에서 나온 카드용 라벨. 디자인은 세로 40×60mm,
-     용지는 가로 60×40mm 라 인쇄할 때만 90° 돌린다. */
-  :root{
-    --paper:#ffffff;
-    --ink:#000000;
-    --w:40mm;
-    --h:60mm;
-  }
+  /* 4×6 인쇄 카드 — 캐논 SELPHY CP1500 엽서 용지(탭 뜯은 뒤 100×148mm).
+     디자인은 피그마 '루키즈_인쇄'(HxXQLteO8I3iDo9kqjUuqU) 1181×1748px(300dpi) 그대로 px 로 그리고,
+     인쇄할 때만 100mm 폭으로 줄인다. 테두리 없이 뽑으면 프린터가 가장자리를 2~3mm 잘라 내므로 도련은 넣지 않는다. */
+  @font-face{font-family:"NeoDunggeunmo";src:url("/static/fonts/neodgm.woff2") format("woff2");font-display:block}
+  @font-face{font-family:"Paperlogy";src:url("/static/fonts/Paperlogy-7Bold.ttf") format("truetype");font-weight:700;font-display:block}
+
+  /* 등급별 색 — 피그마 sss · s · a · n 프레임 */
+  .card.g-sss{--ink:#5332d8;--bg0:#9f5fff;--bg1:#f7f2ff;--bar:#cfafff;--gl0:#cfafff;--gl1:#9f5fff;--ph:#cfafff}
+  .card.g-s  {--ink:#db15a3;--bg0:#ff8bde;--bg1:#fff1fb;--bar:#ff8bde;--gl0:#ff8bde;--gl1:#ff8bde;--ph:#ff8bde}
+  .card.g-a  {--ink:#3475ff;--bg0:#89c8ff;--bg1:#f7fbff;--bar:#89c8ff;--gl0:#89c8ff;--gl1:#3d7bff;--ph:#89c8ff}
+  .card.g-n  {--ink:#595959;--bg0:#bababa;--bg1:#f7fbff;--bar:#d9d9d9;--gl0:#bababa;--gl1:#595959;--ph:#bababa}
+
   *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:#3a3a3a;
-    font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
-    display:flex;flex-direction:column;align-items:center;gap:24px;
-    padding:40px 20px;
-  }
-  /* 화면: 왼쪽 라벨 사진 · 오른쪽 버튼. 좁으면 위아래로 */
-  body:not(.embed){min-height:100vh;flex-direction:row;justify-content:center;gap:56px;padding:32px}
-  .pic{flex:none}
-  .side{display:flex;flex-direction:column;gap:20px;width:min(380px,100%)}
-  .side .meta{text-align:left;font-size:16px;line-height:1.7}
-  .side .meta b{display:block;font-size:26px;color:#fff;margin-bottom:2px}
-  .side .btns{max-width:none}
-  @media (max-aspect-ratio:1/1){
-    body:not(.embed){flex-direction:column;gap:24px;padding:24px 16px}
-    .side .meta{text-align:center}
-  }
+  body{background:#3a3a3a;font-family:"Apple SD Gothic Neo","Pretendard",sans-serif;color:#ddd}
 
-  /* 화면에서만 확대 */
-  /* 크기를 라벨로 묶어야 한다 — 안 묶으면 부모 너비만큼 늘어난 채로 확대돼 옆 버튼을 덮는다 */
-  .stage{width:var(--w);height:var(--h);transform:scale(var(--s,2));transform-origin:top left}
-  .stage-space{height:calc(60mm * var(--s,2));width:calc(40mm * var(--s,2))}
-
-  .label{
-    width:var(--w);height:var(--h);position:relative;overflow:hidden;
-    background:var(--ink);
+  .card{
+    position:relative;width:1181px;height:1748px;overflow:hidden;
+    background:linear-gradient(to bottom,var(--bg0),var(--bg1));
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
-  .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+  .card > *{position:absolute}
+  .dither{left:0;top:0;width:1181px;height:1748px;object-fit:cover;mix-blend-mode:lighten}
 
-  .top{
-    position:absolute;top:1.6mm;left:1.6mm;right:1.6mm;
-    display:flex;justify-content:space-between;align-items:center;
+  /* 이름 · 영문 이름 · 한마디 + QR */
+  .info{left:84px;top:1098px;width:1013px;display:flex;gap:266px;align-items:center}
+  .who{width:440px;flex:none;display:flex;flex-direction:column;gap:40px;color:var(--ink);
+       filter:drop-shadow(0 0 6px rgba(255,255,255,.9))}
+  .names{display:flex;flex-direction:column;gap:24px;white-space:nowrap}
+  .name{font:700 80px/normal "Paperlogy",sans-serif}
+  .en{font:400 40px/normal "IBM Plex Mono",monospace;text-transform:uppercase}
+  .msg{font:400 40px/48px "NeoDunggeunmo",monospace;text-transform:uppercase;white-space:pre-line;word-break:keep-all}
+
+  .qr{position:relative;width:304px;height:368px;flex:none}
+  .qr .bg{position:absolute;left:-4px;top:-4px;width:312px;height:376px}
+  .qr .code{position:absolute;left:42px;top:42px;width:220px;height:220px;image-rendering:pixelated;object-fit:cover}
+  .qr .call{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);display:flex;gap:16px;align-items:center;
+            font:400 36px/normal "NeoDunggeunmo",monospace;color:var(--ink);white-space:nowrap}
+  .qr .call svg{width:38px;height:38px;fill:var(--ink);shape-rendering:crispEdges}
+
+  .logo{left:961px;top:117px;width:136px;height:42px}
+
+  /* 사진 — 모서리 40px 를 깎은 사각형 + 바깥 8px 그라디언트 테두리 */
+  .ph-edge{left:76px;top:185px;width:1029px;height:862px;
+           background:linear-gradient(to bottom,var(--ph),#fff);
+           clip-path:polygon(36.69px 0,calc(100% - 36.69px) 0,100% 36.69px,100% calc(100% - 36.69px),
+                             calc(100% - 36.69px) 100%,36.69px 100%,0 calc(100% - 36.69px),0 36.69px)}
+  .photo{left:84px;top:193px;width:1013px;height:846px;object-fit:cover;object-position:50% 22%;background:#d9d9d9;
+         clip-path:polygon(40px 0,calc(100% - 40px) 0,100% 40px,100% calc(100% - 40px),
+                           calc(100% - 40px) 100%,40px 100%,0 calc(100% - 40px),0 40px)}
+
+  .frame{left:0;top:0;width:1181px;height:1748px}
+  .border{left:34px;top:34px;width:1113px;height:1680px}
+
+  /* 등급 — 흰 글자 + 바깥 20px 그라디언트 테두리 */
+  .grade-row{left:96px;top:84px;display:flex;gap:34px;align-items:flex-start}
+  .grade{position:relative;isolation:isolate;font:400 200px/normal "NeoDunggeunmo",monospace;color:#fff;white-space:nowrap}
+  .grade::before{
+    content:attr(data-g);position:absolute;left:0;top:0;z-index:-1;
+    color:transparent;-webkit-text-stroke:40px transparent;
+    background:linear-gradient(to top,var(--gl0),var(--gl1));-webkit-background-clip:text;background-clip:text;
   }
-  .chip{
-    background:var(--ink);color:var(--paper);border-radius:.8mm;
-    padding:.5mm 1.2mm;font-size:2mm;font-weight:900;letter-spacing:.2mm;
-  }
-  .serial{font-size:1.6mm;font-weight:700;letter-spacing:.2mm;color:#fff;
-          text-shadow:0 0 .6mm rgba(0,0,0,.7)}
+  .grade span{position:relative}
+  .sparkles{padding-top:20px;display:flex;gap:12px}
+  .sparkles svg{width:68px;height:68px;fill:#fff;shape-rendering:crispEdges}
 
-  /* 하단 — 이름과 QR. 사진 위로 어둡게 깔아 어떤 사진이든 읽히게 */
-  .foot{
-    position:absolute;left:0;right:0;bottom:0;padding:6mm 1.6mm 1.6mm;
-    display:flex;align-items:flex-end;gap:1.4mm;
-    background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.55) 60%,transparent 100%);
-  }
-  .who{flex:1;min-width:0}
-  .name{
-    font-size:6.4mm;font-weight:900;color:var(--paper);line-height:1;letter-spacing:-.25mm;
-    -webkit-text-stroke:.6mm var(--ink);paint-order:stroke fill;
-    white-space:nowrap;overflow:hidden;text-overflow:clip;
-  }
-  .tags{margin-top:.9mm;font-size:1.7mm;font-weight:700;color:var(--paper);opacity:.85;
-        white-space:nowrap;overflow:hidden}
-  /* 66자 주소 = 버전5 · 37모듈 + 여백 4. 16mm 면 모듈당 0.39mm */
-  .qr{width:16mm;flex:none;background:#fff;border-radius:.6mm;padding:.4mm .4mm .6mm}
-  .qr small{display:block;text-align:center;font-size:1.45mm;line-height:1.2;font-weight:800;color:#000;margin-top:.2mm;letter-spacing:-.05mm;white-space:nowrap}
-  .qr img{width:100%;display:block;image-rendering:pixelated}
+  /* 스탯 */
+  .stats{left:84px;right:84px;bottom:100px;display:flex;flex-direction:column;gap:43px;
+         font:400 32px/normal "NeoDunggeunmo",monospace;color:var(--ink);text-transform:uppercase;white-space:nowrap}
+  .stats .head{display:flex;gap:35px;align-items:center}
+  .stats .rule{width:895px;height:2px;background:var(--ink)}
+  .stats .row{display:flex;gap:40px;align-items:center}
+  .stats .key{display:flex;gap:20px;align-items:center}
+  .stats .key img{width:52px;height:52px}
+  .stats .track{position:relative;width:733px;height:33px;border:1px solid #fff;border-radius:999px;overflow:hidden;flex:none}
+  .stats .fill{position:absolute;left:-1px;top:0;height:31px;border-radius:999px;background:var(--bar)}
 
-  .meta{color:#ddd;font-size:13px;text-align:center;line-height:1.8}
-  .meta code{background:#222;padding:2px 7px;border-radius:4px;color:#8fd}
-
-  /* 인쇄 페이지의 미리보기(iframe). 라벨만 2배로 */
-  body.embed{background:transparent;padding:0;gap:0;overflow:hidden;align-items:flex-start}
-  body.embed .stage{transform:scale(2) !important;transform-origin:top left}
-  body.embed .stage-space{height:calc(60mm * 2) !important;width:calc(40mm * 2)}
-  body.embed .meta{display:none}
-
-  .btns{display:flex;gap:10px;width:100%;max-width:360px}
-  .btns.col{flex-direction:column}
-  .btns .row{display:flex;gap:10px}
-  .btns .row .pbtn{flex:1;text-align:center;text-decoration:none;font-size:15px;padding:13px}
-  .mono{color:#ddd;font:500 15px "Apple SD Gothic Neo",sans-serif;display:flex;align-items:center;gap:8px;justify-content:center}
-  .mono input{width:20px;height:20px}
-  .how{color:#aaa;font:400 13px/1.6 "Apple SD Gothic Neo",sans-serif;text-align:center;word-break:keep-all}
-  .pbtn{flex:1;padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
+  /* ── 화면 ── */
+  .page{min-height:100vh;display:flex;gap:48px;justify-content:center;align-items:center;padding:32px}
+  .stage{width:calc(1181px * var(--s,.4));height:calc(1748px * var(--s,.4));flex:none}
+  .stage .card{transform:scale(var(--s,.4));transform-origin:top left}
+  .side{display:flex;flex-direction:column;gap:14px;width:min(360px,100%);font-size:15px}
+  .side b{font-size:26px;color:#fff}
+  .side label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#aaa}
+  .side input,.side select,.side textarea{font:16px "Apple SD Gothic Neo",sans-serif;padding:10px 12px;border-radius:10px;
+       border:1px solid #555;background:#222;color:#fff}
+  .side textarea{resize:vertical;min-height:96px}
+  .side .note{font-size:13px;line-height:1.6;color:#aaa;word-break:keep-all}
+  .pbtn{padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
         background:linear-gradient(90deg,#d9d453,#e63bc0 55%,#8b3be6);color:#fff;cursor:pointer}
-  .pbtn.ghost{background:#555;color:#fff}
-  body.embed .btns{display:none}
+  .pbtn.ghost{background:#555}
+  @media (max-aspect-ratio:1/1){ .page{flex-direction:column} }
+
+  /* 인쇄 페이지 · 자동 인쇄 창의 미리보기(iframe) — 카드만 프레임 너비에 맞춘다 */
+  body.embed{background:transparent;overflow:hidden}
+  body.embed .page{display:block;min-height:0;padding:0}
+  body.embed .side{display:none}
 
   @media print{
-    .btns{display:none}
-    @page{size:60mm 40mm;margin:0}
-    html,body{width:60mm;height:40mm;background:#fff;padding:0;display:block;overflow:hidden}
-    .stage-space{height:auto;width:auto}
+    @page{size:100mm 148mm;margin:0}
+    html,body{width:100mm;height:148mm;background:#fff;overflow:hidden}
+    .page{display:block;min-height:0;padding:0}
     .side{display:none}
-    .meta{display:none}
-    /* 세로 라벨을 가로 용지에 눕힌다. 카드 윗면이 용지 왼쪽으로 간다 */
-    .stage{width:40mm;transform:translateY(40mm) rotate(-90deg);transform-origin:top left}
-    .label{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    /* 1181px → 100mm (378px) */
+    .stage{width:100mm;height:148mm;--s:.32004 !important}
   }
 </style>
 </head>
 <body{% if embed %} class="embed"{% endif %}>
 
-<section class="pic">
-<div class="stage-space">
-<div class="stage">
-  <div class="label">
-    {% if card.image_path %}<img class="photo" src="{{ card.image_path }}" alt="">{% endif %}
-    <div class="top">
-      <span class="chip">LUKIDS</span>
-      <span class="serial">{{ card.card_id }}</span>
-    </div>
-    <div class="foot">
+<!-- 아이콘 — 피그마 phone-call-sharp · sparkle 인스턴스를 24칸 격자 그대로 -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-call" viewBox="0 0 24 24">
+    <rect x="2" y="1" width="9" height="2"/><rect x="9" y="3" width="2" height="6"/><rect x="7" y="7" width="2" height="4"/>
+    <rect x="4" y="12" width="2" height="2"/><rect x="2" y="3" width="2" height="9"/><rect x="9" y="11" width="2" height="2"/>
+    <rect x="11" y="13" width="2" height="2"/><rect x="13" y="15" width="4" height="2"/><rect x="15" y="13" width="6" height="2"/>
+    <rect x="21" y="13" width="2" height="9"/><rect x="6" y="14" width="2" height="2"/><rect x="8" y="16" width="2" height="2"/>
+    <rect x="10" y="18" width="2" height="2"/><rect x="12" y="20" width="9" height="2"/><rect x="13" y="2" width="5" height="2"/>
+    <rect x="20" y="6" width="2" height="5"/><rect x="18" y="4" width="2" height="2"/><rect x="13" y="6" width="3" height="2"/>
+    <rect x="16" y="8" width="2" height="3"/>
+  </symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24">
+    <rect x="11" y="1" width="2" height="4"/><rect x="11" y="19" width="2" height="4"/><rect x="9" y="5" width="2" height="4"/>
+    <rect x="9" y="15" width="2" height="4"/><rect x="13" y="5" width="2" height="4"/><rect x="13" y="15" width="2" height="4"/>
+    <rect x="5" y="9" width="4" height="2"/><rect x="15" y="9" width="4" height="2"/><rect x="1" y="11" width="4" height="2"/>
+    <rect x="19" y="11" width="4" height="2"/><rect x="5" y="13" width="4" height="2"/><rect x="15" y="13" width="4" height="2"/>
+  </symbol>
+</svg>
+
+<div class="page">
+<section class="stage">
+  <div class="card g-{{ v.grade }}" id="card">
+    <img class="dither" src="/static/print/dithering.png" alt="">
+    <div class="info">
       <div class="who">
-        <div class="name">{{ card.name }}</div>
-        <div class="tags">{{ card.tags | join(" · ") }}</div>
+        <div class="names">
+          <p class="name">{{ card.name }}</p>
+          <p class="en" id="en">{{ v.en }}</p>
+        </div>
+        <p class="msg" id="msg">{{ v.msg }}</p>
       </div>
-      <div class="qr"><img src="{{ qr_url }}" alt="스캔용 QR"><small>스캔하고 통화하세요</small></div>
+      <div class="qr">
+        <img class="bg" data-part="qr-bg" src="/static/print/{{ v.grade }}/qr-bg.svg" alt="">
+        <img class="code" src="{{ qr_url }}" alt="스캔용 QR">
+        <div class="call"><svg><use href="#i-call"/></svg>통화하기</div>
+      </div>
+    </div>
+    <img class="logo" src="/static/print/logo.svg" alt="LUKI2S">
+    <div class="ph-edge"></div>
+    {% if card.image_path %}<img class="photo" src="{{ card.image_path }}" alt="">{% else %}<div class="photo"></div>{% endif %}
+    <img class="frame" data-part="frame" src="/static/print/{{ v.grade }}/frame.svg" alt="">
+    <img class="border" data-part="border" src="/static/print/{{ v.grade }}/border.svg" alt="">
+    <div class="grade-row">
+      <p class="grade" id="grade" data-g="{{ v.grade | upper }}"><span>{{ v.grade | upper }}</span></p>
+      <div class="sparkles"><svg><use href="#i-sparkle"/></svg><svg><use href="#i-sparkle"/></svg><svg><use href="#i-sparkle"/></svg></div>
+    </div>
+    <div class="stats">
+      <div class="head"><span>stats</span><i class="rule"></i></div>
+      <div class="row">
+        <div class="key"><img data-part="heart" src="/static/print/{{ v.grade }}/heart.svg" alt="">다정함</div>
+        <div class="track"><i class="fill" id="fill" style="width:{{ (v.stat * 7.6) | round | int }}px"></i></div>
+        <span id="stat">{{ v.stat }}</span>
+      </div>
     </div>
   </div>
-</div>
-</div>
 </section>
 
 <section class="side">
-<div class="meta">
   <b>{{ card.name }}</b>
-  카드 번호 {{ card.card_id }}<br>
-  라벨 40 × 60 mm → 용지 60 × 40 mm 가로로 인쇄
-</div>
-<!-- 인쇄 창이 자동으로 안 뜨는 기기(아이패드 등)와, 인쇄 뒤 원래 화면으로 돌아가기 -->
-<div class="btns col">
-  <!-- 블루투스 라벨 프린터(Aiyin 앱)는 브라우저 인쇄가 안 된다 — 라벨 이미지를 앱으로 넘긴다 -->
-  <!-- 블루투스로 바로 (Bluefy 등 Web Bluetooth 되는 브라우저). 설정은 /printer 에서 맞춘다 -->
-  <button class="pbtn" id="bt-btn" onclick="btPrint()" hidden>블루투스로 바로 인쇄</button>
-  <p class="how" id="bt-msg" hidden></p>
-  <a class="pbtn ghost" id="bt-setup" href="/printer" target="_blank" hidden style="text-align:center;text-decoration:none">프린터 설정 · 통로 찾기</a>
-  <button class="pbtn" id="share-btn" onclick="shareLabel()">Aiyin 앱으로 보내기</button>
-  <label class="mono"><input type="checkbox" id="mono" onchange="prepare()"> 흑백 프린터용(감열지)</label>
-  <div class="row">
-    <a class="pbtn ghost" id="save-link" href="/label/{{ card.card_id }}.png" target="_blank">이미지만 열기</a>
-    <button class="pbtn ghost" onclick="window.print()">브라우저 인쇄</button>
-  </div>
+  <span class="note">카드 번호 {{ card.card_id }} · 4×6 (100 × 148 mm)</span>
+  <label>등급
+    <select id="f-grade">
+      {% for g in ["sss", "s", "a", "n"] %}<option value="{{ g }}"{% if g == v.grade %} selected{% endif %}>{{ g | upper }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>영문 이름 <input id="f-en" value="{{ v.en }}" maxlength="16"></label>
+  <label>한마디 (세 줄까지) <textarea id="f-msg" rows="3">{{ v.msg }}</textarea></label>
+  <label>다정함 <input id="f-stat" type="number" min="0" max="100" value="{{ v.stat }}"></label>
+  <button class="pbtn" onclick="window.print()">인쇄하기</button>
   <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
-  <p class="how" id="how">공유 창에서 Aiyin 을 고르세요. 목록에 없으면 "이미지 저장" 후 Aiyin 앱에서 사진으로 불러와 60×40 라벨로 인쇄합니다.</p>
-</div>
+  <p class="note">인쇄 창에서 프린터 SELPHY CP1500 · 용지 엽서(100×148) · 테두리 없음 · 배율 100%.</p>
 </section>
+</div>
 
-<script src="/static/bt-print.js?v=bt-7"></script>
 <script>
-  // 라벨 이미지를 미리 받아 둔다. iOS 는 누른 순간에 바로 share() 해야 해서 기다릴 틈이 없다
-  const ID = {{ card.card_id | tojson }};
-  let file = null;
-  async function prepare(){
-    file = null;
-    const mono = document.getElementById('mono').checked;
-    const url = `/label/${ID}.png${mono ? '?mono=1' : ''}`;
-    document.getElementById('save-link').href = url;
-    try {
-      const blob = await fetch(url).then(r => r.blob());
-      file = new File([blob], `lukids-${ID}${mono ? '-mono' : ''}.png`, { type: 'image/png' });
-    } catch {}
-  }
-  function shareLabel(){
-    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'LUKIDS 라벨' }).catch(() => {});
-    } else {
-      // 공유가 안 되는 브라우저(데스크톱 등) — 이미지를 새 창으로 열어 저장하게 한다
-      window.open(document.getElementById('save-link').href, '_blank');
+  const card = document.getElementById('card');
+  const $ = id => document.getElementById(id);
+
+  // 손으로 고친 값을 카드에 바로 반영한다
+  $('f-grade').onchange = e => {
+    const g = e.target.value;
+    card.className = 'card g-' + g;
+    $('grade').dataset.g = g.toUpperCase();
+    $('grade').firstElementChild.textContent = g.toUpperCase();
+    card.querySelectorAll('[data-part]').forEach(img => { img.src = `/static/print/${g}/${img.dataset.part}.svg`; });
+  };
+  $('f-en').oninput = e => { $('en').textContent = e.target.value; };
+  $('f-msg').oninput = e => { $('msg').textContent = e.target.value; };
+  $('f-stat').oninput = e => {
+    const n = Math.max(0, Math.min(100, +e.target.value || 0));
+    $('stat').textContent = n;
+    $('fill').style.width = Math.round(n * 7.6) + 'px';   // 피그마: 90 → 684px
+  };
+
+  // 폰트 · 사진 · QR 이 다 뜬 뒤에 인쇄해야 첫 장이 기본 글꼴로 나가지 않는다 (station.html 이 기다린다)
+  window.labelReady = Promise.all([
+    document.fonts.ready,
+    ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })),
+  ]);
+
+  function fit(){
+    let s;
+    if (document.body.classList.contains('embed')) s = innerWidth / 1181;
+    else {
+      const wide = innerWidth > innerHeight;
+      s = wide ? Math.min((innerHeight - 64) / 1748, (innerWidth - 360 - 140) / 1181)
+               : Math.min((innerWidth - 64) / 1181, (innerHeight - 560) / 1748);
+      s = Math.max(.15, Math.min(.6, s));
     }
+    document.documentElement.style.setProperty('--s', s.toFixed(4));
   }
-  if (!document.body.classList.contains('embed')) prepare();
-  // 블루투스가 되는 브라우저면 바로 인쇄를 맨 위로, 앱 공유는 보조로
-  // 2026-10-07: DPP-Ai01W 는 FF02 로 받기는 하지만 TSPL · ESC/POS 를 실행하지 않는다(자체 명령으로 추정).
-  // 시연에서 헷갈리지 않게 블루투스 버튼은 /printer 에서 '되는 설정'을 찾은 기기에서만 보인다.
-  let btOk = false; try { btOk = localStorage.getItem('lukids.bt-ok') === '1'; } catch {}
-  if (btOk && window.LukidsBT && LukidsBT.supported()) {
-    document.getElementById('bt-btn').hidden = false;
-    document.getElementById('bt-setup').hidden = false;
-    document.getElementById('share-btn').classList.add('ghost');
-  }
-  async function btPrint(){
-    const msg = document.getElementById('bt-msg'), b = document.getElementById('bt-btn');
-    msg.hidden = false; msg.textContent = '프린터에 연결하는 중…'; b.disabled = true;
-    try {
-      await LukidsBT.printCard(ID);
-      msg.textContent = '보냈어요. 라벨이 안 나오면 /printer 에서 설정을 맞춰 주세요.';
-    } catch (e) { msg.textContent = '인쇄 실패: ' + e.message; }
-    b.disabled = false;
-  }
-  // 미리보기는 버튼까지 한 화면에 들어오게 화면 높이에 맞춘다 (60mm ≈ 227px)
-  function fitPreview(){
-    // 라벨 40×60mm ≈ 151×227px. 넓으면 왼쪽 칸 높이에, 좁으면(세로로 쌓임) 화면 너비에 맞춘다
-    const wide = innerWidth > innerHeight;   // 가로 화면이면 나란히, 세로면 위아래
-    let s = wide ? Math.min((innerHeight - 64) / 227, (innerWidth - 380 - 120) / 151)
-                   : Math.min((innerWidth - 32) / 151, (innerHeight - 470) / 227);
-    s = Math.max(1, Math.min(4, s));
-    document.documentElement.style.setProperty('--s', s.toFixed(2));
-  }
-  fitPreview(); addEventListener('resize', fitPreview);
+  fit(); addEventListener('resize', fit);
+
+  if (new URLSearchParams(location.search).has('print')) labelReady.then(() => setTimeout(() => print(), 200));
 </script>
 </body>
 </html>

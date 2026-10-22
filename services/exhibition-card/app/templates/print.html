@@ -12,8 +12,8 @@
     padding:16px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
   }
   .lb.pick{border-color:var(--primary-normal)}
-  /* 40×60mm 라벨을 2배로 — label.html?embed 가 같은 크기로 그린다 */
-  .lb iframe{width:calc(40mm * 2);height:calc(60mm * 2);border:0;border-radius:2px;display:block;
+  /* 4×6 카드 미리보기 — label.html?embed 가 프레임 너비에 맞춰 그린다 */
+  .lb iframe{width:200px;aspect-ratio:1181/1748;border:0;border-radius:2px;display:block;
              background:var(--bg-elevated-alt)}
   .lb .who{display:flex;flex-direction:column;height:100%;min-width:0;padding-top:4px}
   .lb .name{font-family:var(--brand);font-weight:700;font-size:18px;line-height:26px;color:var(--label-strong)}
@@ -70,19 +70,20 @@
         <div class="find-msg" id="find-msg" role="status"></div>
       </div>
       <div class="spec">
-        <h3>라벨 규격</h3>
+        <h3>카드 규격</h3>
         <dl>
-          <dt>용지</dt><dd>60 × 40 mm 감열 라벨</dd>
-          <dt>디자인</dt><dd>40 × 60 mm 세로, 인쇄 시 90° 회전</dd>
-          <dt>QR</dt><dd>16 mm · 카드 화면 주소</dd>
+          <dt>프린터</dt><dd>캐논 SELPHY CP1500 (AirPrint)</dd>
+          <dt>용지</dt><dd>4 × 6 엽서 · 탭 뜯은 뒤 100 × 148 mm</dd>
+          <dt>디자인</dt><dd>1181 × 1748 px (300 dpi) 세로 · 도련 없음</dd>
+          <dt>QR</dt><dd>18.6 mm · 카드 화면 주소</dd>
         </dl>
       </div>
       <div class="spec">
         <h3>인쇄 순서</h3>
         <ol>
-          <li>인쇄하기를 누르면 새 창에 라벨이 열려요</li>
+          <li>인쇄하기를 누르면 새 창에 카드가 열려요</li>
           <li>사진과 QR 이 뜨면 인쇄 창이 자동으로 떠요</li>
-          <li>용지 60 × 40 mm, 여백 없음으로 출력</li>
+          <li>SELPHY CP1500 · 엽서 · 테두리 없음 · 배율 100% 로 출력</li>
         </ol>
       </div>
     </aside>
