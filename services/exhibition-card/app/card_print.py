@@ -1,7 +1,7 @@
 """
 4×6 인쇄 카드(label.html)에 들어가는 값.
 피그마 '루키즈_인쇄'(HxXQLteO8I3iDo9kqjUuqU)의 카드는 등급 · 영문 이름 · 한마디 · 스탯 하나를 보여 주는데
-카드 DB 에는 이 값이 없다. 카드 번호로 정해서 같은 카드는 몇 번을 뽑아도 같게 나오게 한다.
+카드 DB 에는 이 값이 없다(등급만 stats.grade 로 정해 둘 수 있다). 카드 번호로 정해서 같은 카드는 몇 번을 뽑아도 같게 나오게 한다.
 인쇄 화면에서 손으로 바꿀 수 있고, 주소 뒤에 ?grade= &en= &msg= &stat= 로 넘겨도 된다.
 """
 import hashlib
@@ -62,7 +62,8 @@ def romanize(name):
 def values(card, query):
     """인쇄 카드에 들어갈 값. 주소의 값이 있으면 그것을 쓴다."""
     cid = card["card_id"]
-    grade = (query.get("grade") or "").lower()
+    # 등급: 주소 > 발급할 때 정한 값(stats.grade) > 카드 번호
+    grade = (query.get("grade") or (card.get("stats") or {}).get("grade") or "").lower()
     try:
         stat = max(0, min(100, int(query.get("stat", ""))))
     except ValueError:
