@@ -13,7 +13,7 @@ EXPR_DIR = Path(__file__).parent / "static" / "expr"
 FACES = ["base", "laugh", "surprised", "thinking", "shy", "sad"]
 
 # 공식 카드 이름 → 폴더. 로컬 · 운영의 카드 id 가 달라 이름으로 찾는다
-SLUGS = {"하루": "haru", "시온": "sion", "하늘": "haneul", "도하": "doha", "린": "rin"}
+SLUGS = {"하루": "haru", "시온": "sion", "하늘": "haneul", "도하": "doha", "린": "rin", "유성": "yuseong"}
 
 
 def of(card):
