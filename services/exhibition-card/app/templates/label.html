@@ -100,6 +100,7 @@
   .pbtn{padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
         background:linear-gradient(90deg,#d9d453,#e63bc0 55%,#8b3be6);color:#fff;cursor:pointer}
   .pbtn.ghost{background:#555}
+  .pbtn:disabled{background:#444;color:#888;cursor:default}
   @media (max-aspect-ratio:1/1){ .page{flex-direction:column;gap:28px;padding:24px 16px} }
   html,body{overflow-x:hidden}
 
@@ -243,13 +244,35 @@
       file = new File([blob], `luki2s-${ID}.png`, { type: 'image/png' });
     } catch {}
   }
+  // 한 카드는 한 번만 뽑는다 — 누르면 두 버튼 다 잠그고, 새로고침해도 이 기기에서는 잠긴 채로 둔다
+  const LOCK = 'luki2s.printed.' + ID;
+  const BTNS = ['share-btn', 'print-btn'];
+  function lock(){
+    BTNS.forEach(id => { $(id).disabled = true; });
+    $('share-btn').textContent = '인쇄했어요';
+    try { localStorage.setItem(LOCK, '1'); } catch {}
+  }
+  let locked = false; try { locked = localStorage.getItem(LOCK) === '1'; } catch {}
+  if (locked) lock();
+
   $('share-btn').addEventListener('click', async () => {
+    if ($('share-btn').disabled) return;
+    BTNS.forEach(id => { $(id).disabled = true; });          // 공유 창이 뜨는 동안 두 번 눌리지 않게
     if (!file) await prepare();
-    if (file && navigator.canShare && navigator.canShare({ files: [file] }))
-      navigator.share({ files: [file] }).catch(() => {});
-    else window.open(`/label/${ID}.png?${query()}`, '_blank');   // 공유가 안 되는 브라우저는 이미지를 연다
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      // 공유 창에서 프린트 · 저장을 마치면 잠그고, 닫기(취소)면 다시 누를 수 있게 둔다
+      navigator.share({ files: [file] }).then(lock)
+        .catch(() => { BTNS.forEach(id => { $(id).disabled = false; }); });
+    } else {
+      window.open(`/label/${ID}.png?${query()}`, '_blank');   // 공유가 안 되는 브라우저는 이미지를 연다
+      lock();
+    }
   });
-  $('print-btn').addEventListener('click', () => { try { window.print(); } catch (e) { console.warn(e); } });
+  $('print-btn').addEventListener('click', () => {
+    if ($('print-btn').disabled) return;
+    lock();
+    try { window.print(); } catch (e) { console.warn(e); }
+  });
 
   // 이미지가 다 뜬 뒤에 인쇄한다 (station.html 이 기다린다)
   window.labelReady = Promise.all([
