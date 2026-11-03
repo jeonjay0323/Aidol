@@ -81,7 +81,7 @@ static/            통화 클라이언트 · jsQR
 `POST /api/generate` 가 JPEG 을 돌려주고(저장 안 함), 고른 한 장을 `POST /api/cards`
 에 `register_face=false` 로 실어 발급한다. 사진은 Firestore `thumbs` 에 들어가서
 인스턴스가 재시작돼도 `/label/{id}?print=1` 로 다시 인쇄할 수 있다.
-인쇄는 2×3인치 포토 카드다 — 아래 "인쇄 카드".
+인쇄는 54×86mm 포토 카드다 — 아래 "인쇄 카드".
 연구 조건 A 는 직접 쓰는 칸을 숨긴다(고르기만).
 
 ## 사이트 — 중간 보고용 프로토타입
@@ -133,11 +133,11 @@ Gemini Live 의 출력 자막(`output_audio_transcription`)을 브라우저로 �
 (아이돌이 말할 때 움직인다) · 스피커 · 음소거 · 끊기. 브라우저는 수화기/스피커를 고를 수 없어서
 스피커 버튼은 소리 크게(기본)와 작게(30%)를 오간다. Simli · VRM 영상 통화 화면은 그대로다.
 
-### 인쇄 카드 (2×3인치)
+### 인쇄 카드 (SELPHY CP1500 · 54×86mm)
 
-`/label/{id}` 가 피그마 '루키즈_인쇄'(`HxXQLteO8I3iDo9kqjUuqU`) 카드를 그린다. 2×3인치(50.8×76.2mm)
-용지에 테두리 없음 · 100% 로 뽑는다. 디자인은 피그마 1181×1748px 좌표 그대로 그리고, `card_png.py` 가 좌우 8px 를
-잘라 2:3 으로 맞춘 뒤 1200×1800px(600dpi) PNG 로 내보낸다. 도련은 넣지 않는다. 에셋은 `static/print/`(등급별 sss · s · a · n), 글꼴은 Neo둥근모 · Paperlogy · IBM Plex Mono.
+`/label/{id}` 가 피그마 '루키즈_인쇄'(`HxXQLteO8I3iDo9kqjUuqU`) 카드를 그린다. SELPHY CP1500 카드
+용지(54×86mm)에 테두리 없음 · 100% 로 뽑는다. 디자인은 피그마 1181×1748px 좌표 그대로 그리고, `card_png.py` 가 사진과
+이름 사이 빈 띠만 늘려 용지 비율에 맞춘 뒤 1276×2032px(600dpi) PNG 로 내보낸다. 도련은 넣지 않는다. 에셋은 `static/print/`(등급별 sss · s · a · n), 글꼴은 Neo둥근모 · Paperlogy · IBM Plex Mono.
 
 카드마다 바뀌는 값은 사진 · 이름 · QR 이고, 등급 · 영문 이름 · 한마디 · 다정함은 DB 에 없어서
 `app/card_print.py` 가 카드 번호로 정한다(같은 카드는 늘 같게). 인쇄 화면 오른쪽에서 고칠 수 있고

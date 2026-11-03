@@ -8,9 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=block">
 <style>
-  /* 2×3인치(50.8×76.2mm) 인쇄 카드.
+  /* SELPHY CP1500 카드 용지(54×86mm) 인쇄 카드.
      디자인은 피그마 '루키즈_인쇄'(HxXQLteO8I3iDo9kqjUuqU) 1181×1748px 그대로 px 로 그리고(레이어 추출용),
-     화면 · 인쇄는 card_png.py 가 좌우 8px 를 잘라 2:3 으로 만든 PNG 를 쓴다. 도련은 넣지 않는다. */
+     화면 · 인쇄는 card_png.py 가 용지 비율로 늘린 PNG 를 쓴다. 도련은 넣지 않는다. */
   @font-face{font-family:"NeoDunggeunmo";src:url("/static/fonts/neodgm.woff2") format("woff2");font-display:block}
   @font-face{font-family:"Paperlogy";src:url("/static/fonts/Paperlogy-7Bold.ttf") format("truetype");font-weight:700;font-display:block}
 
@@ -89,7 +89,7 @@
   .page{min-height:100vh;display:flex;gap:48px;justify-content:center;align-items:center;padding:32px}
   /* 카드는 1181px 로 그린 뒤 줄이므로, 줄이기 전 크기가 화면을 밀거나 버튼을 덮지 않게 자른다 */
   .stage{position:relative;overflow:hidden;width:calc(1181px * var(--s,.4));height:calc(1748px * var(--s,.4));flex:none}
-  .stage.crop{width:calc(1165px * var(--s,.4))}
+  .stage.crop{height:calc(1181px * 86 / 54 * var(--s,.4))}
   .stage .card{transform:scale(var(--s,.4));transform-origin:top left}
   .side{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px;width:min(360px,100%);font-size:15px}
   .side b{font-size:26px;color:#fff}
@@ -124,11 +124,11 @@
   .side .row2 .pbtn{flex:1;text-align:center;text-decoration:none;font-size:15px;padding:13px}
 
   @media print{
-    @page{size:2in 3in;margin:0}
-    html,body{width:2in;height:3in;background:#fff;overflow:hidden}
+    @page{size:54mm 86mm;margin:0}
+    html,body{width:54mm;height:86mm;background:#fff;overflow:hidden}
     .page{display:block;min-height:0;padding:0}
     .side{display:none}
-    .stage,.stage.crop{width:2in;height:3in}
+    .stage,.stage.crop{width:54mm;height:86mm}
   }
 </style>
 </head>
@@ -197,7 +197,7 @@
 
 <section class="side">
   <b>{{ card.name }}</b>
-  <span class="note">카드 번호 {{ card.card_id }} · 2×3인치 (50.8 × 76.2 mm)</span>
+  <span class="note">카드 번호 {{ card.card_id }} · SELPHY 카드 용지 (54 × 86 mm)</span>
   <label>등급
     <select id="f-grade">
       {% for g in ["sss", "s", "a", "n"] %}<option value="{{ g }}"{% if g == v.grade %} selected{% endif %}>{{ g | upper }}</option>{% endfor %}
@@ -206,14 +206,13 @@
   <label>영문 이름 <input id="f-en" value="{{ v.en }}" maxlength="16"></label>
   <label>한마디 (세 줄까지) <textarea id="f-msg" rows="3">{{ v.msg }}</textarea></label>
   <label>다정함 <input id="f-stat" type="number" min="0" max="100" value="{{ v.stat }}"></label>
-  <button class="pbtn" type="button" id="share-btn">사진으로 인쇄 · 저장</button>
+  <button class="pbtn" type="button" id="share-btn">인쇄하기</button>
   <div class="row2">
     <a class="pbtn ghost" id="dl" href="/label/{{ card.card_id }}.png?{{ qs }}&download=1" download>이미지 받기</a>
-    <button class="pbtn ghost" type="button" id="print-btn">브라우저 인쇄</button>
   </div>
   <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
-  <p class="note">폰: "사진으로 인쇄 · 저장" → 공유 창에서 "프린트"(또는 이미지 저장 후 사진 앱에서 프린트)
-    → 2×3인치 · 테두리 없음.<br>맥 · 전시 노트북: 브라우저 인쇄 → 2×3인치(50.8×76.2) · 테두리 없음 · 배율 100%.</p>
+  <p class="note">인쇄 창에서 대상 SELPHY CP1500 · 용지 54×86mm · 테두리 없음 · 배율 100% 로 고르세요.<br>
+    폰: 공유 창에서 "프린트" → SELPHY CP1500 · 54×86mm.</p>
 </section>
 </div>
 
@@ -247,7 +246,7 @@
   }
   // 한 카드는 한 번만 뽑는다 — 누르면 두 버튼 다 잠그고, 새로고침해도 이 기기에서는 잠긴 채로 둔다
   const LOCK = 'luki2s.printed.' + ID;
-  const BTNS = ['share-btn', 'print-btn'];
+  const BTNS = ['share-btn'];
   function lock(){
     BTNS.forEach(id => { $(id).disabled = true; });
     $('share-btn').textContent = '인쇄했어요';
@@ -258,6 +257,12 @@
 
   $('share-btn').addEventListener('click', async () => {
     if ($('share-btn').disabled) return;
+    // 컴퓨터는 바로 인쇄 창을 연다. 맥 크롬도 공유를 지원하지만 거기엔 프린터가 없다
+    if (!matchMedia('(pointer: coarse)').matches) {
+      lock();
+      try { window.print(); } catch (e) { console.warn(e); }
+      return;
+    }
     BTNS.forEach(id => { $(id).disabled = true; });          // 공유 창이 뜨는 동안 두 번 눌리지 않게
     if (!file) await prepare();
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -269,11 +274,6 @@
       lock();
     }
   });
-  $('print-btn').addEventListener('click', () => {
-    if ($('print-btn').disabled) return;
-    lock();
-    try { window.print(); } catch (e) { console.warn(e); }
-  });
 
   // 이미지가 다 뜬 뒤에 인쇄한다 (station.html 이 기다린다)
   window.labelReady = Promise.all([
@@ -283,13 +283,13 @@
   if (png && !document.body.classList.contains('embed')) labelReady.then(prepare);
 
   function fit(){
-    const CW = card ? 1181 : 1165;   // 레이어는 피그마 폭 그대로, PNG 는 좌우를 자른 폭
+    const CH = card ? 1748 : 1181 * 86 / 54;   // 레이어는 피그마 높이, PNG 는 용지 비율
     let s;
-    if (document.body.classList.contains('embed')) s = innerWidth / CW;
+    if (document.body.classList.contains('embed')) s = innerWidth / 1181;
     else {
       const wide = innerWidth > innerHeight;
-      s = wide ? Math.min((innerHeight - 64) / 1748, (innerWidth - 360 - 140) / CW)
-               : Math.min((innerWidth - 64) / CW, (innerHeight - 560) / 1748);
+      s = wide ? Math.min((innerHeight - 64) / CH, (innerWidth - 360 - 140) / 1181)
+               : Math.min((innerWidth - 64) / 1181, (innerHeight - 560) / CH);
       s = Math.max(.15, Math.min(.6, s));
     }
     document.documentElement.style.setProperty('--s', s.toFixed(4));

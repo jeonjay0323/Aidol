@@ -271,7 +271,7 @@ async def printable_card(request: Request, card_id: str):
 
 @app.get("/label/{card_id}.png")
 async def label_png(request: Request, card_id: str):
-    """2×3인치 인쇄 카드 이미지(1200×1800, 600dpi). /label/{id} 보다 먼저 등록해야 한다.
+    """54×86mm 인쇄 카드 이미지(1276×2032, 600dpi). /label/{id} 보다 먼저 등록해야 한다.
     ?grade= &en= &msg= &stat= 로 바꾼 값을 받는다. ?download=1 이면 파일로 내려받는다."""
     from . import card_png, card_print
     card = card_or_404(card_id)
@@ -293,7 +293,7 @@ async def label_png(request: Request, card_id: str):
 
 @app.get("/label/{card_id}", response_class=HTMLResponse)
 async def printable_label(request: Request, card_id: str):
-    """만들기 화면에서 나온 카드를 2×3인치(50.8×76.2mm) 인쇄 카드로."""
+    """만들기 화면에서 나온 카드를 SELPHY CP1500 카드 용지(54×86mm) 인쇄 카드로."""
     from . import card_print
     card = card_or_404(card_id)
     card["image_path"] = card["photo_path"]

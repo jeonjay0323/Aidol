@@ -1,6 +1,7 @@
 """
-2×3인치 인쇄 카드를 PNG 한 장으로 그린다 (1200×1800, 600dpi).
-디자인은 피그마 그대로 1181×1748 좌표로 그린 뒤, 2:3 에 맞게 좌우를 8px 씩 잘라(1165×1748) 줄이는 대신 키운다.
+SELPHY CP1500 카드 용지(54×86mm)용 인쇄 카드를 PNG 한 장으로 그린다 (1276×2032, 600dpi).
+디자인은 피그마 그대로 1181×1748 좌표로 그린 뒤, 용지가 더 길쭉하므로 사진과 이름 사이 빈 띠만 늘린다.
+사진 · 글자 · QR 은 비율이 그대로고 잘리는 것도 없다.
 아이폰 사파리는 웹 페이지를 인쇄할 때 웹 글꼴 · 효과가 빠지고 @page 크기를 무시해 여백이 생긴다.
 그래서 인쇄는 이 이미지로 한다 — 사진첩에 저장해 사진처럼 뽑으면 테두리 없이 꽉 찬다.
 
@@ -18,10 +19,11 @@ HERE = Path(__file__).parent
 PRINT = HERE / "static" / "print"
 FONTS = HERE / "static" / "fonts"
 W, H = 1181, 1748             # 피그마 좌표
-CROP = (8, 0, 1173, 1748)     # 2:3 — 좌우 8px 를 잘라도 테두리 · 내용은 남는다
-OUT = (1200, 1800)            # 2×3인치
+OUT = (1276, 2032)            # 54×86mm
 DPI = 600
-K = OUT[1] / H
+K = OUT[0] / W
+SEAM = (1056, 1088)           # 사진 아래 ~ 이름 위 — 배경과 테두리 옆선만 있는 띠
+EXTRA = round(OUT[1] / K) - H # 이 띠에 더하는 높이
 
 INK = {"sss": "#5332d8", "s": "#db15a3", "a": "#3475ff", "n": "#595959"}
 BAR = {"sss": "#cfafff", "s": "#ff8bde", "a": "#89c8ff", "n": "#d9d9d9"}
@@ -120,11 +122,17 @@ def render(v, name, photo, qr_url):
     if fw > 0:
         d.rounded_rectangle((fx, fy, fx + fw, fy + fh), radius=fh / 2, fill=BAR[g])
 
-    card = card.convert("RGB").crop(CROP).resize(OUT, Image.LANCZOS)
+    card = card.convert("RGB")
+    a, b = SEAM
+    tall = Image.new("RGB", (W, H + EXTRA))
+    tall.paste(card.crop((0, 0, W, a)), (0, 0))
+    tall.paste(card.crop((0, a, W, b)).resize((W, b - a + EXTRA), Image.BICUBIC), (0, a))
+    tall.paste(card.crop((0, b, W, H)), (0, b + EXTRA))
+    card = tall.resize(OUT, Image.LANCZOS)
 
     # QR 은 줄인 뒤에 얹어 칸 가장자리를 또렷하게 둔다
     qx, qy, qs = QR
-    card.paste(_qr(qr_url, round(qs * K)), (round((qx - CROP[0]) * K), round(qy * K)))
+    card.paste(_qr(qr_url, round(qs * K)), (round(qx * K), round((qy + EXTRA) * K)))
 
     out = io.BytesIO()
     card.save(out, "PNG", dpi=(DPI, DPI))
