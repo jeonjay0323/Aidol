@@ -422,8 +422,35 @@ async function issueCard(){
 // 인쇄용 카드 페이지를 새 창으로 열면 사진이 다 뜬 뒤 인쇄 창이 뜬다.
 // 발급 직후 자동으로 열지 않는 건, await 뒤의 window.open 을 사파리가 팝업으로 막기 때문.
 function printCard(){
+  clearInterval(nextTimer);
   window.open(`/label/${CREATE.cardId}?print=1`, '_blank');
 }
+
+/* ───────── 다음 카드 ─────────
+   전시장에서는 한 사람이 카드를 뽑으면 다음 사람이 바로 만들 수 있어야 한다.
+   인쇄 탭이 닫히면 잠시 뒤 새 만들기 화면으로 돌아간다. 다시 인쇄를 누르면 멈춘다. */
+const NEXT_CARD_SEC = 30;
+let nextTimer = null;
+
+function newCard(){
+  clearInterval(nextTimer);
+  location.href = '/make';
+}
+
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'label-printed') return;
+  if (!CREATE.cardId || e.data.id !== CREATE.cardId) return;
+  let left = NEXT_CARD_SEC;
+  const sub = document.getElementById('result-sub');
+  const show = () => { sub.textContent = `${left}초 뒤 새 카드 화면으로 돌아가요`; };
+  clearInterval(nextTimer);
+  show();
+  nextTimer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) return newCard();
+    show();
+  }, 1000);
+});
 
 
 /* ───────── 아이돌이 먼저 거는 전화 ─────────

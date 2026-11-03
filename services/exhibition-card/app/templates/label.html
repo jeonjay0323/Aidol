@@ -305,6 +305,14 @@
     const pre = document.createElement('pre'); pre.id = 'geom'; pre.textContent = JSON.stringify(r); document.body.append(pre);
   });
   if (new URLSearchParams(location.search).has('print')) labelReady.then(() => setTimeout(() => print(), 200));
+
+  // 만들기 화면에서 연 인쇄 탭은 인쇄 창을 닫으면 함께 닫고, 만들기 화면에 알린다 (다음 카드로)
+  if (window.opener && new URLSearchParams(location.search).has('print')) {
+    addEventListener('afterprint', () => {
+      try { window.opener.postMessage({ type: 'label-printed', id: ID }, location.origin); } catch {}
+      window.close();
+    });
+  }
 </script>
 </body>
 </html>

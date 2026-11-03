@@ -120,6 +120,10 @@
   <div id="result-done" hidden>
     <button class="cta" onclick="printCard()">카드 인쇄하고 통화하기</button>
     <div class="after">
+      <a class="act" href="#" onclick="newCard(); return false">
+        <span><b>새 카드 만들기</b><small>다음 사람이 바로 만들 수 있어요</small></span>
+        <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
+      </a>
       <a class="act no-demo" href="#" onclick="location.href='/gallery?card=' + CREATE.cardId; return false">
         <span><b>전시에서 보기</b><small>만든 아이돌이 전시 페이지에 올라갔어요</small></span>
         <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
