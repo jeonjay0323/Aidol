@@ -201,7 +201,7 @@ window.AidolCall = (() => {
     outGain = playCtx.createGain();
     outGain.gain.value = 1;
     analyser.connect(outGain).connect(playCtx.destination);
-    nextPlayTime = 0; activeSources = 0; muted = false;
+    nextPlayTime = 0; activeSources = 0; muted = true;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws/call/${cardId}`);
@@ -268,6 +268,7 @@ window.AidolCall = (() => {
   }
 
   function toggleMute() { muted = !muted; return muted; }
+  function setMuted(v) { muted = v; }
 
   // 스피커 켬(기본) = 원래 크기, 끔 = 귀에 대고 들을 만한 크기. 끔이면 true
   function toggleSpeaker() {
@@ -310,5 +311,5 @@ window.AidolCall = (() => {
     return buf;
   }
 
-  return { start, end, toggleMute, toggleCam, toggleSpeaker };
+  return { start, end, toggleMute, setMuted, toggleCam, toggleSpeaker };
 })();

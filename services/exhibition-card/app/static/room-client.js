@@ -167,7 +167,7 @@ window.AidolRoom = (() => {
     analyser = playCtx.createAnalyser();
     analyser.fftSize = 1024;
     analyser.connect(playCtx.destination);
-    nextPlayTime = 0; activeSources = 0; muted = false; members = {}; speaking = null;
+    nextPlayTime = 0; activeSources = 0; muted = true; members = {}; speaking = null;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws/room`);
@@ -244,6 +244,7 @@ window.AidolRoom = (() => {
   }
 
   function toggleMute() { muted = !muted; return muted; }
+  function setMuted(v) { muted = v; }
 
   function float32ToPCM16(f32) {
     const buf = new ArrayBuffer(f32.length * 2), view = new DataView(buf);
@@ -265,5 +266,5 @@ window.AidolRoom = (() => {
     return buf;
   }
 
-  return { start, end, target, toggleMute };
+  return { start, end, target, toggleMute, setMuted };
 })();

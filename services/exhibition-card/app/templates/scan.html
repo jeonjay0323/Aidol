@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=pink-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=duo-limit-1">
+<link rel="stylesheet" href="/static/scan.css?v=mic-off-1">
 </head>
 <body>
 
@@ -187,7 +187,7 @@
     <h2 class="cg-title">{{ card.name }}에게<br>말을 걸어보세요</h2>
     <p class="cg-sub">내 말을 듣고 바로 대답해요.</p>
     <ol class="cg-steps">
-      <li><span>1</span><div><b>마이크 앞에서 편하게 말해요</b><small>버튼을 누를 필요 없이 그냥 말하면 돼요</small></div></li>
+      <li><span>1</span><div><b>마이크 버튼을 켜고 말해요</b><small>아래 마이크 버튼을 누른 뒤 편하게 말하면 돼요</small></div></li>
       <li><span>2</span><div><b>말이 끝나면 잠깐 기다려요</b><small>이제 대답할 차례예요</small></div></li>
       <li><span>3</span><div><b>다 놀았으면 끊기</b><small>오른쪽 화면 아래 끊기 버튼을 눌러요</small></div></li>
     </ol>
@@ -210,7 +210,7 @@
       <div class="self" id="self-solo"><video id="selfcam" autoplay playsinline muted></video><span>내 화면</span></div>
     </div>
     <div class="caption" id="cap-solo">
-      안녕, 와줘서 고마워.<br><em>말을 걸어보세요</em>
+      안녕, 와줘서 고마워.<br><em>마이크를 켜고 말을 걸어보세요</em>
     </div>
   </div>
   <!-- 음성 통화 — 전화 앱처럼 이름 · 파형 · 스피커 · 끊기만 -->
@@ -298,10 +298,10 @@
 </script>
 <script src="/static/jsQR.js"></script>
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
-<script src="/static/call-client.js?v=expr-1"></script>
+<script src="/static/call-client.js?v=mic-off-1"></script>
 <script src="/static/ring.js?v=demo-1"></script>
 <script src="/static/create.js?v=next-1"></script>
-<script src="/static/room-client.js?v=duo-limit-1"></script>
+<script src="/static/room-client.js?v=mic-off-1"></script>
 <script>
   const CARD = {{ card_json | safe }};
   const invited = [];   // 멀티콜에 초대된 카드 id
@@ -477,9 +477,22 @@
 
   /* ───────── 통화 ───────── */
   let timer = null, seconds = 0, current = null;
-  // 통화는 3분까지. 켜 둔 채 자리를 뜨면 요금이 계속 나가므로 버튼을 눌러야 다시 연결한다
-  const CALL_LIMIT_SEC = 180;
-  let timedOut = false, callAgainFn = null;
+  // 통화는 100분까지. 켜 둔 채 자리를 뜨면 요금이 계속 나가므로 그 뒤엔 버튼을 눌러야 다시 연결한다
+  const CALL_LIMIT_SEC = 6000;
+  // Cloud Run 연결과 Simli 세션은 60분이 상한이라, 그 전에 조용히 다시 연결해 100분을 잇는다
+  const SEGMENT_SEC = 3540;
+  let timedOut = false, callAgainFn = null, rollBase = 0, segStart = 0;
+
+  // 마이크는 꺼진 채로 시작한다. 켜면 다시 연결해도 켜진 채로 둔다
+  let micOff = true;
+  const micHint = () => micOff ? '마이크를 켜고 말을 걸어보세요' : '말을 걸어보세요';
+  function syncMic(){
+    document.querySelectorAll('[onclick^="toggleMic"]').forEach(btn => {
+      if (btn.classList.contains('vbtn')) btn.classList.toggle('on', micOff);
+      btn.querySelector('use').setAttribute('href', micOff ? '#g-mic-off' : '#g-mic');
+      btn.setAttribute('aria-pressed', micOff ? 'true' : 'false');
+    });
+  }
 
   let micDenied = false;
   function openCall(id){
@@ -489,7 +502,8 @@
     // 통화는 .screen 위에 덮이므로 아래 화면(로딩 포함)을 반드시 정리한다
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
     document.getElementById(id).classList.add('on');
-    seconds = 0;
+    seconds = rollBase; segStart = rollBase; rollBase = 0;
+    syncMic();
     const el = document.getElementById(id === 'c-solo' ? 't-solo' : 't-multi');
     clearInterval(timer);
     timer = setInterval(()=>{
@@ -498,12 +512,24 @@
       const s = String(seconds%60).padStart(2,'0');
       el.textContent = `${m}:${s}`;
       if (seconds >= CALL_LIMIT_SEC) { timeUp(); return; }
+      if (seconds - segStart >= SEGMENT_SEC) { rollover(); return; }
       if (id === 'c-solo' && !micDenied) document.getElementById('vt-solo').textContent = `${m}:${s}`;
     },1000);
   }
-  function timeUp(){
+  function againFn(){
     const duo = document.getElementById('c-multi').classList.contains('duo');
-    callAgainFn = current === 'c-multi' && !duo ? startMulti : startCall;
+    return current === 'c-multi' && !duo ? startMulti : startCall;
+  }
+  function rollover(){
+    const fn = againFn();
+    rollBase = seconds;
+    timedOut = true;
+    endCall();
+    timedOut = false;
+    fn();
+  }
+  function timeUp(){
+    callAgainFn = againFn();
     timedOut = true;
     endCall();
     timedOut = false;
@@ -511,9 +537,11 @@
   }
   function callAgain(){
     document.getElementById('call-again').classList.remove('on');
+    micOff = true;
     callAgainFn && callAgainFn();
   }
   function endCall(){
+    if (!timedOut) micOff = true;
     const was = current;              // 솔로였는지 멀티였는지에 따라 묻는 게 다르다
     const secs = seconds;
     AidolCall.end();
@@ -619,7 +647,7 @@
       },
       onVideo(){ document.getElementById('feed-ph').style.display = 'none'; },
       onSelfVideo(){ document.getElementById('self-solo').classList.add('on'); },
-      onMicReady(){ setCaption('안녕, 와줘서 고마워.', '말을 걸어보세요'); },
+      onMicReady(){ AidolCall.setMuted(micOff); setCaption('안녕, 와줘서 고마워.', micHint()); setGuide(micHint(), ''); },
       onMicDenied(){
         setCaption('', '마이크 권한을 허용해야 대화할 수 있어요');
         micDenied = true; document.getElementById('vt-solo').textContent = '마이크를 허용해 주세요';
@@ -628,7 +656,7 @@
         document.getElementById('feed-solo').classList.toggle('talking', on);
         document.getElementById('vcall').classList.toggle('talking', on);
         if (on) setGuide('대답하는 중…', 'talk');
-        else if (!micDenied) setGuide('말을 걸어보세요', '');
+        else if (!micDenied) setGuide(micHint(), '');
       },
       onUserSpeaking(on){ if(on){ setCaption('', '듣고 있어요…'); Face.listen(); Sub.reset(); } },
       onText(text){ Face.hear(text); Sub.add(text); },
@@ -783,7 +811,7 @@
         if (v) { v.srcObject = stream; v.style.display = 'block'; v.play().catch(()=>{});
                  const l = document.querySelector('#cell-me .label'); if (l) l.style.display = 'none'; }
       },
-      onMicReady(){ setMultiCaption('', '말을 걸어보세요 · 얼굴을 탭하면 그 사람에게 말합니다'); },
+      onMicReady(){ AidolRoom.setMuted(micOff); setMultiCaption('', micHint() + ' · 얼굴을 탭하면 그 사람에게 말합니다'); },
       onMicDenied(){ setMultiCaption('', '마이크 권한을 허용해야 대화할 수 있어요'); },
       onTurn(cid){
         document.querySelectorAll('.cell').forEach(c => c.classList.remove('turn'));
@@ -805,7 +833,7 @@
   }
 
   function resetFeed(){
-    document.getElementById('cap-solo').innerHTML = '안녕, 와줘서 고마워.<br><em>말을 걸어보세요</em>';
+    document.getElementById('cap-solo').innerHTML = '안녕, 와줘서 고마워.<br><em>마이크를 켜고 말을 걸어보세요</em>';
     document.getElementById('self-solo').style.opacity = '';
   }
 
@@ -848,10 +876,10 @@
     btn.setAttribute('aria-pressed', quiet ? 'false' : 'true');
   }
   function toggleMic(btn){
-    const off = (current === 'c-multi') ? AidolRoom.toggleMute() : AidolCall.toggleMute();
-    if (btn.classList.contains('vbtn')) btn.classList.toggle('on', off);
-    btn.querySelector('use').setAttribute('href', off ? '#g-mic-off' : '#g-mic');
-    btn.setAttribute('aria-pressed', off ? 'true' : 'false');
+    micOff = (current === 'c-multi') ? AidolRoom.toggleMute() : AidolCall.toggleMute();
+    syncMic();
+    if (current === 'c-multi') setMultiCaption('', micHint());
+    else { setCaption('', micHint()); if (!micDenied) setGuide(micHint(), ''); }
   }
   function toggleCam(btn){
     const off = AidolCall.toggleCam();
