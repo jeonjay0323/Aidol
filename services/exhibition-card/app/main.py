@@ -437,8 +437,8 @@ async def simli_token(payload: dict):
             "apiVersion": "v2",
             "handleSilence": True,
             "audioInputFormat": "pcm16",
-            "maxSessionLength": 1800,
-            "maxIdleTime": 300,
+            "maxSessionLength": 3600,   # Cloud Run 요청 상한과 같다
+            "maxIdleTime": 3600,      # 말없이 있어도 얼굴이 끊기지 않게
         },
         timeout=30,
     )

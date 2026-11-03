@@ -177,23 +177,25 @@ window.AidolRoom = (() => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'joined') {
         hooks.onJoined && hooks.onJoined(msg.members);
-        for (const m of msg.members) {
+        // 얼굴을 동시에 연결한다. 하나씩 기다리면 그만큼 마이크가 늦게 켜진다
+        await Promise.all(msg.members.map(async (m) => {
           if (m.avatar && m.avatar.type === 'vrm') {
             try {
               const el = getVideoEl(m.cardId);
               const vrm = await AidolVRM.mount(el.parentElement, m.avatar.url,
                 () => (speaking === m.cardId ? analyser : null),
                 { colors: m.avatar.colors });
-              if (!active) { vrm.dispose(); continue; }
+              if (!active) { vrm.dispose(); return; }
               members[m.cardId] = { vrm };
               hooks.onVideo && hooks.onVideo(m.cardId);
             } catch (err) { console.warn('VRM 실패', m.name, err); }
-            continue;
+            return;
           }
-          if (!m.faceId) continue;
+          if (!m.faceId) return;
           try { await initSimli(m.cardId, m.faceId, getVideoEl(m.cardId)); }
           catch (err) { console.warn('Simli 실패', m.name, err); }
-        }
+        }));
+        if (!active) return;
         try { await startMic(); hooks.onMicReady && hooks.onMicReady(); }
         catch (err) { hooks.onMicDenied && hooks.onMicDenied(err); }
       } else if (msg.type === 'turn_start') {

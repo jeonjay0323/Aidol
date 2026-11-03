@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=pink-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=pink-1">
+<link rel="stylesheet" href="/static/scan.css?v=duo-limit-1">
 </head>
 <body>
 
@@ -182,13 +182,14 @@
 <div class="call" id="c-solo">
   <!-- 넓은 화면(전시 모니터 · 아이패드 가로)에서만 왼쪽에 안내를 띄운다. 폰에서는 숨는다 -->
   <aside class="call-guide" aria-label="통화 안내">
+    <img class="cg-logo" src="/static/logo.svg" alt="LUKI2S">
     <div class="cg-kicker"><i></i>LIVE CALL</div>
     <h2 class="cg-title">{{ card.name }}에게<br>말을 걸어보세요</h2>
     <p class="cg-sub">내 말을 듣고 바로 대답해요.</p>
     <ol class="cg-steps">
       <li><span>1</span><div><b>마이크 앞에서 편하게 말해요</b><small>버튼을 누를 필요 없이 그냥 말하면 돼요</small></div></li>
       <li><span>2</span><div><b>말이 끝나면 잠깐 기다려요</b><small>이제 대답할 차례예요</small></div></li>
-      <li><span>3</span><div><b>다 놀았으면 끊기</b><small>오른쪽 화면 아래 빨간 끊기 버튼을 눌러요</small></div></li>
+      <li><span>3</span><div><b>다 놀았으면 끊기</b><small>오른쪽 화면 아래 끊기 버튼을 눌러요</small></div></li>
     </ol>
     <div class="cg-try">
       <div class="cg-label">이렇게 말해보세요</div>
@@ -272,6 +273,10 @@
 </div>
 
 <!-- 통화가 끝나면 한 문항만 묻는다. 전시장에서 회수되는 유일한 주관 지표. -->
+<div class="call-again" id="call-again" role="dialog" aria-modal="true" aria-label="통화 시간이 끝났어요">
+  <button class="ca-btn" onclick="callAgain()">대화 나누기</button>
+</div>
+
 <div class="survey" id="survey">
   <div class="dim" onclick="skipSurvey()"></div>
   <div class="sheet">
@@ -296,7 +301,7 @@
 <script src="/static/call-client.js?v=expr-1"></script>
 <script src="/static/ring.js?v=demo-1"></script>
 <script src="/static/create.js?v=next-1"></script>
-<script src="/static/room-client.js?v=sync-1"></script>
+<script src="/static/room-client.js?v=duo-limit-1"></script>
 <script>
   const CARD = {{ card_json | safe }};
   const invited = [];   // 멀티콜에 초대된 카드 id
@@ -472,6 +477,9 @@
 
   /* ───────── 통화 ───────── */
   let timer = null, seconds = 0, current = null;
+  // 통화는 3분까지. 켜 둔 채 자리를 뜨면 요금이 계속 나가므로 버튼을 눌러야 다시 연결한다
+  const CALL_LIMIT_SEC = 180;
+  let timedOut = false, callAgainFn = null;
 
   let micDenied = false;
   function openCall(id){
@@ -489,8 +497,21 @@
       const m = String(Math.floor(seconds/60)).padStart(2,'0');
       const s = String(seconds%60).padStart(2,'0');
       el.textContent = `${m}:${s}`;
+      if (seconds >= CALL_LIMIT_SEC) { timeUp(); return; }
       if (id === 'c-solo' && !micDenied) document.getElementById('vt-solo').textContent = `${m}:${s}`;
     },1000);
+  }
+  function timeUp(){
+    const duo = document.getElementById('c-multi').classList.contains('duo');
+    callAgainFn = current === 'c-multi' && !duo ? startMulti : startCall;
+    timedOut = true;
+    endCall();
+    timedOut = false;
+    document.getElementById('call-again').classList.add('on');
+  }
+  function callAgain(){
+    document.getElementById('call-again').classList.remove('on');
+    callAgainFn && callAgainFn();
   }
   function endCall(){
     const was = current;              // 솔로였는지 멀티였는지에 따라 묻는 게 다르다
@@ -503,7 +524,7 @@
     current = null;
     go('s-card');
     // 너무 짧은 통화는 묻지 않는다 — 답이 통화가 아니라 이탈을 반영한다
-    if (was && secs >= 20 && !DEMO) askSurvey(was === 'c-multi' ? 'multi' : 'solo');
+    if (was && secs >= 20 && !DEMO && !timedOut) askSurvey(was === 'c-multi' ? 'multi' : 'solo');
   }
 
   /* ───────── 통화 직후 한 문항 ─────────
@@ -568,9 +589,23 @@
       (line ? line + '<br>' : '') + (hint ? '<em>' + hint + '</em>' : '');
   }
 
-  function startCall(){
+  // 함께 나올 아이돌. 시온 카드로 걸면 하루가, 다른 카드로 걸면 시온이 함께 나온다. 카드 id 는 환경마다 달라 이름으로 찾는다
+  async function duoPartner(){
+    const want = CARD.name === '시온' ? '하루' : '시온';
+    try {
+      const d = await (await fetch('/api/cards?source=official')).json();
+      const c = (Array.isArray(d) ? d : d.cards || []).find(x => x.name === want && x.face_status === 'ready');
+      return c && c.card_id !== CARD.card_id ? c.card_id : null;
+    } catch { return null; }
+  }
+
+  async function startCall(){
     document.getElementById('load-msg').textContent = CARD.name + '에게 거는 중';
     go('s-load');
+    if (CARD.face_status === 'ready' && matchMedia('(min-width:900px)').matches) {
+      const partner = await duoPartner();
+      if (partner) return startRoom([CARD.card_id, partner], CARD.name + '에게 거는 중', true);
+    }
     Sub.reset();
     AidolCall.start(CARD.card_id, document.getElementById('avatar'), {
       onConnected(msg){
@@ -698,8 +733,13 @@
     }
     hint.hidden = true;
     clearInterval(lobbyTimer);
-    const ids = [CARD.card_id, ...invited];
-    document.getElementById('load-msg').textContent = '멀티콜을 여는 중';
+    startRoom([CARD.card_id, ...invited], '멀티콜을 여는 중', false);
+  }
+
+  // duo: 넓은 화면의 2분할. 왼쪽에 다른 아이돌, 오른쪽에 이 카드의 아이돌
+  function startRoom(ids, loadMsg, duo){
+    document.getElementById('c-multi').classList.toggle('duo', duo);
+    document.getElementById('load-msg').textContent = loadMsg;
     go('s-load');
     const grid = document.getElementById('grid'), cells = {};
 
@@ -728,7 +768,8 @@
         me.innerHTML = '<video id="selfcam-multi" autoplay playsinline muted></video>'
                      + '<span class="label">내 화면</span><span class="who">나</span>';
         grid.appendChild(me);
-        document.getElementById('multi-title').textContent = `멀티콜 · ${members.length + 1}명`;
+        document.getElementById('multi-title').textContent =
+          duo ? members.map(m => m.name).join(' · ') : `멀티콜 · ${members.length + 1}명`;
         openCall('c-multi');
         setMultiCaption('', '연결 중…');
       },
