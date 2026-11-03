@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=pink-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=mic-off-1">
+<link rel="stylesheet" href="/static/scan.css?v=popup-1">
 </head>
 <body>
 
@@ -528,19 +528,27 @@
     timedOut = false;
     fn();
   }
+  // 시간이 끝나면 연결만 끊고 통화 화면은 그대로 둔다 — 팝업 뒤로 통화 화면이 보인다
+  let holdScreen = false;
   function timeUp(){
     callAgainFn = againFn();
-    timedOut = true;
-    endCall();
-    timedOut = false;
+    clearInterval(timer);
+    holdScreen = true;
+    AidolCall.end();
+    AidolRoom.end();
+    holdScreen = false;
     document.getElementById('call-again').classList.add('on');
   }
   function callAgain(){
     document.getElementById('call-again').classList.remove('on');
     micOff = true;
+    timedOut = true;
+    endCall();
+    timedOut = false;
     callAgainFn && callAgainFn();
   }
   function endCall(){
+    if (holdScreen) return;
     if (!timedOut) micOff = true;
     const was = current;              // 솔로였는지 멀티였는지에 따라 묻는 게 다르다
     const secs = seconds;

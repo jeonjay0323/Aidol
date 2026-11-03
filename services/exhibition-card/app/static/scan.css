@@ -366,7 +366,7 @@
 
   /* 3분이 지나면 뜨는 재연결 화면 */
   .call-again{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.82)}
+    background:rgba(0,0,0,.45)}
   .call-again.on{display:flex}
   .ca-btn{padding:20px 56px;border:none;border-radius:var(--r-pill);cursor:pointer;
     background:var(--primary-normal);color:var(--static-white);
