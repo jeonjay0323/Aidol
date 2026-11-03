@@ -1,5 +1,6 @@
 """
-4×6 인쇄 카드를 PNG 한 장으로 그린다 (1181×1748, 300dpi).
+2×3인치 인쇄 카드를 PNG 한 장으로 그린다 (1200×1800, 600dpi).
+디자인은 피그마 그대로 1181×1748 좌표로 그린 뒤, 2:3 에 맞게 좌우를 8px 씩 잘라(1165×1748) 줄이는 대신 키운다.
 아이폰 사파리는 웹 페이지를 인쇄할 때 웹 글꼴 · 효과가 빠지고 @page 크기를 무시해 여백이 생긴다.
 그래서 인쇄는 이 이미지로 한다 — 사진첩에 저장해 사진처럼 뽑으면 테두리 없이 꽉 찬다.
 
@@ -16,8 +17,11 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 HERE = Path(__file__).parent
 PRINT = HERE / "static" / "print"
 FONTS = HERE / "static" / "fonts"
-W, H = 1181, 1748
-DPI = 300
+W, H = 1181, 1748             # 피그마 좌표
+CROP = (8, 0, 1173, 1748)     # 2:3 — 좌우 8px 를 잘라도 테두리 · 내용은 남는다
+OUT = (1200, 1800)            # 2×3인치
+DPI = 600
+K = OUT[1] / H
 
 INK = {"sss": "#5332d8", "s": "#db15a3", "a": "#3475ff", "n": "#595959"}
 BAR = {"sss": "#cfafff", "s": "#ff8bde", "a": "#89c8ff", "n": "#d9d9d9"}
@@ -69,10 +73,15 @@ def _chamfer(w, h, c, scale=4):
 
 
 def _qr(url, size):
-    qr = segno.make(url, error="m")
+    """칸을 정수 px 로 맞춰 그린다. 카드가 작아 칸이 뭉개지면 안 찍히므로 오류 복구는 L 로 낮춰 칸을 키운다."""
+    qr = segno.make(url, error="l", boost_error=False)
+    modules = qr.symbol_size(scale=1, border=2)[0]
     buf = io.BytesIO()
-    qr.save(buf, kind="png", scale=1, border=2, dark="#000000", light="#ffffff")
-    return Image.open(buf).convert("RGB").resize((size, size), Image.NEAREST)
+    qr.save(buf, kind="png", scale=size // modules, border=2, dark="#000000", light="#ffffff")
+    code = Image.open(buf).convert("RGB")
+    out = Image.new("RGB", (size, size), "#ffffff")
+    out.paste(code, ((size - code.width) // 2, (size - code.height) // 2))
+    return out
 
 
 def render(v, name, photo, qr_url):
@@ -111,9 +120,12 @@ def render(v, name, photo, qr_url):
     if fw > 0:
         d.rounded_rectangle((fx, fy, fx + fw, fy + fh), radius=fh / 2, fill=BAR[g])
 
+    card = card.convert("RGB").crop(CROP).resize(OUT, Image.LANCZOS)
+
+    # QR 은 줄인 뒤에 얹어 칸 가장자리를 또렷하게 둔다
     qx, qy, qs = QR
-    card.paste(_qr(qr_url, qs), (qx, qy))
+    card.paste(_qr(qr_url, round(qs * K)), (round((qx - CROP[0]) * K), round(qy * K)))
 
     out = io.BytesIO()
-    card.convert("RGB").save(out, "PNG", dpi=(DPI, DPI))
+    card.save(out, "PNG", dpi=(DPI, DPI))
     return out.getvalue()

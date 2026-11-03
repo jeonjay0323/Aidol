@@ -8,9 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=block">
 <style>
-  /* 4×6 인쇄 카드 — 캐논 SELPHY CP1500 엽서 용지(탭 뜯은 뒤 100×148mm).
-     디자인은 피그마 '루키즈_인쇄'(HxXQLteO8I3iDo9kqjUuqU) 1181×1748px(300dpi) 그대로 px 로 그리고,
-     인쇄할 때만 100mm 폭으로 줄인다. 테두리 없이 뽑으면 프린터가 가장자리를 2~3mm 잘라 내므로 도련은 넣지 않는다. */
+  /* 2×3인치(50.8×76.2mm) 인쇄 카드.
+     디자인은 피그마 '루키즈_인쇄'(HxXQLteO8I3iDo9kqjUuqU) 1181×1748px 그대로 px 로 그리고(레이어 추출용),
+     화면 · 인쇄는 card_png.py 가 좌우 8px 를 잘라 2:3 으로 만든 PNG 를 쓴다. 도련은 넣지 않는다. */
   @font-face{font-family:"NeoDunggeunmo";src:url("/static/fonts/neodgm.woff2") format("woff2");font-display:block}
   @font-face{font-family:"Paperlogy";src:url("/static/fonts/Paperlogy-7Bold.ttf") format("truetype");font-weight:700;font-display:block}
 
@@ -89,6 +89,7 @@
   .page{min-height:100vh;display:flex;gap:48px;justify-content:center;align-items:center;padding:32px}
   /* 카드는 1181px 로 그린 뒤 줄이므로, 줄이기 전 크기가 화면을 밀거나 버튼을 덮지 않게 자른다 */
   .stage{position:relative;overflow:hidden;width:calc(1181px * var(--s,.4));height:calc(1748px * var(--s,.4));flex:none}
+  .stage.crop{width:calc(1165px * var(--s,.4))}
   .stage .card{transform:scale(var(--s,.4));transform-origin:top left}
   .side{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px;width:min(360px,100%);font-size:15px}
   .side b{font-size:26px;color:#fff}
@@ -123,11 +124,11 @@
   .side .row2 .pbtn{flex:1;text-align:center;text-decoration:none;font-size:15px;padding:13px}
 
   @media print{
-    @page{size:100mm 148mm;margin:0}
-    html,body{width:100mm;height:148mm;background:#fff;overflow:hidden}
+    @page{size:2in 3in;margin:0}
+    html,body{width:2in;height:3in;background:#fff;overflow:hidden}
     .page{display:block;min-height:0;padding:0}
     .side{display:none}
-    .stage{width:100mm;height:148mm}
+    .stage,.stage.crop{width:2in;height:3in}
   }
 </style>
 </head>
@@ -153,7 +154,7 @@
 </svg>
 
 <div class="page">
-<section class="stage">
+<section class="stage{% if not layer %} crop{% endif %}">
 {% if layer %}
   <div class="card g-{{ v.grade }}" id="card">
     <img class="dither" src="/static/print/dithering.png" alt="">
@@ -196,7 +197,7 @@
 
 <section class="side">
   <b>{{ card.name }}</b>
-  <span class="note">카드 번호 {{ card.card_id }} · 4×6 (100 × 148 mm)</span>
+  <span class="note">카드 번호 {{ card.card_id }} · 2×3인치 (50.8 × 76.2 mm)</span>
   <label>등급
     <select id="f-grade">
       {% for g in ["sss", "s", "a", "n"] %}<option value="{{ g }}"{% if g == v.grade %} selected{% endif %}>{{ g | upper }}</option>{% endfor %}
@@ -212,7 +213,7 @@
   </div>
   <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
   <p class="note">폰: "사진으로 인쇄 · 저장" → 공유 창에서 "프린트"(또는 이미지 저장 후 사진 앱에서 프린트)
-    → SELPHY CP1500 · 4×6 · 테두리 없음.<br>맥 · 전시 노트북: 브라우저 인쇄 → 엽서(100×148) · 테두리 없음 · 배율 100%.</p>
+    → 2×3인치 · 테두리 없음.<br>맥 · 전시 노트북: 브라우저 인쇄 → 2×3인치(50.8×76.2) · 테두리 없음 · 배율 100%.</p>
 </section>
 </div>
 
@@ -282,12 +283,13 @@
   if (png && !document.body.classList.contains('embed')) labelReady.then(prepare);
 
   function fit(){
+    const CW = card ? 1181 : 1165;   // 레이어는 피그마 폭 그대로, PNG 는 좌우를 자른 폭
     let s;
-    if (document.body.classList.contains('embed')) s = innerWidth / 1181;
+    if (document.body.classList.contains('embed')) s = innerWidth / CW;
     else {
       const wide = innerWidth > innerHeight;
-      s = wide ? Math.min((innerHeight - 64) / 1748, (innerWidth - 360 - 140) / 1181)
-               : Math.min((innerWidth - 64) / 1181, (innerHeight - 560) / 1748);
+      s = wide ? Math.min((innerHeight - 64) / 1748, (innerWidth - 360 - 140) / CW)
+               : Math.min((innerWidth - 64) / CW, (innerHeight - 560) / 1748);
       s = Math.max(.15, Math.min(.6, s));
     }
     document.documentElement.style.setProperty('--s', s.toFixed(4));
