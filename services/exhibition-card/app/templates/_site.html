@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1b1c1e">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
+<link rel="stylesheet" href="/static/tokens.css?v=pink-1">
 {% block css %}{% endblock %}
-<link rel="stylesheet" href="/static/site.css?v=yellow-1">
+<link rel="stylesheet" href="/static/site.css?v=pink-1">
 <title>{% block title %}LUKIDS{% endblock %}</title>
 {% block head %}{% endblock %}
 </head>
@@ -19,7 +19,7 @@
 
 <nav class="site-nav" aria-label="주 메뉴">
   <div class="site-nav-in">
-    <a class="site-logo" href="/" onclick="if(document.body.classList.contains('demo')){location.href='/demo';return false}"><i></i>LUKIDS</a>
+    <a class="site-logo" href="/" onclick="if(document.body.classList.contains('demo')){location.href='/demo';return false}"><img src="/static/logo.svg" alt="LUKI2S"></a>
     <a class="site-home" href="/demo">처음으로</a>
     <div class="site-links">
       {% set menu = [("home", "/", "", "소개"), ("make", "/make", "01", "제작"), ("print", "/print", "02", "인쇄"),
