@@ -201,7 +201,7 @@ window.AidolCall = (() => {
     outGain = playCtx.createGain();
     outGain.gain.value = 1;
     analyser.connect(outGain).connect(playCtx.destination);
-    nextPlayTime = 0; activeSources = 0; muted = true;
+    nextPlayTime = 0; activeSources = 0; muted = false;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws/call/${cardId}`);

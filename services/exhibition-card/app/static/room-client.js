@@ -167,7 +167,7 @@ window.AidolRoom = (() => {
     analyser = playCtx.createAnalyser();
     analyser.fftSize = 1024;
     analyser.connect(playCtx.destination);
-    nextPlayTime = 0; activeSources = 0; muted = true; members = {}; speaking = null;
+    nextPlayTime = 0; activeSources = 0; muted = false; members = {}; speaking = null;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws/room`);

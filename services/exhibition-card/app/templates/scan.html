@@ -484,7 +484,7 @@
   let timedOut = false, callAgainFn = null, rollBase = 0, segStart = 0;
 
   // 마이크는 꺼진 채로 시작한다. 켜면 다시 연결해도 켜진 채로 둔다
-  let micOff = true;
+  let micOff = false;
   const micHint = () => micOff ? '마이크를 켜고 말을 걸어보세요' : '말을 걸어보세요';
   function syncMic(){
     document.querySelectorAll('[onclick^="toggleMic"]').forEach(btn => {
@@ -541,7 +541,7 @@
   }
   function callAgain(){
     document.getElementById('call-again').classList.remove('on');
-    micOff = true;
+    micOff = false;
     timedOut = true;
     endCall();
     timedOut = false;
@@ -549,7 +549,7 @@
   }
   function endCall(){
     if (holdScreen) return;
-    if (!timedOut) micOff = true;
+    if (!timedOut) micOff = false;
     const was = current;              // 솔로였는지 멀티였는지에 따라 묻는 게 다르다
     const secs = seconds;
     AidolCall.end();
