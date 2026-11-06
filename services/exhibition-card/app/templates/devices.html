@@ -62,17 +62,18 @@ async function load(){
   try { d = await fetch('/api/presence', {cache: 'no-store'}).then(r => r.json()); } catch { return; }
   const now = Date.parse(d.now), showOld = document.getElementById('show-old').checked;
   const rows = d.devices.map(v => ({...v, age: (now - Date.parse(v.seen)) / 1000}))
-    .filter(v => showOld || v.age < 3600);
+    .filter(v => showOld || v.age < 3600)
+    .sort((a, b) => (a.age >= 40) - (b.age >= 40) || a.hidden - b.hidden || a.age - b.age);
   const list = document.getElementById('list');
   if (!rows.length) { list.innerHTML = '<p class="empty">켜져 있는 기기가 없어요</p>'; return; }
   list.innerHTML = rows.map(v => {
     const live = v.age < 40 && !v.hidden, bg = v.age < 40 && v.hidden;
-    const state = live ? '켜짐' : bg ? '다른 앱 · 탭으로 가려짐' : '꺼짐 · ' + ago(v.age);
+    const state = live ? '켜짐' : bg ? '뒤에 가려진 탭' : '꺼짐 · ' + ago(v.age);
     const s = scr(v.screen);
     return `<div class="dev ${live ? 'live' : bg ? 'bg' : 'off'}">
       <span class="dot"></span>
       <div class="info">
-        <b>${esc(v.label || v.kind + ' · ' + v.device_id.slice(0, 4))}</b>
+        <b>${esc(v.label || v.kind + ' · ' + v.device_id.slice(0, 4) + ' · 탭 ' + (v.device_id.split('-')[1] || '').slice(0, 3))}</b>
         <div class="where">${esc(page(v.path))}${s ? ' — ' + esc(s) : ''}</div>
         <small>${esc(state)} · ${esc(v.kind)} ${esc(v.size)} · ${esc(v.path)}</small>
       </div>

@@ -8,6 +8,10 @@
     dev = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/[^A-Za-z0-9]/g, '').slice(0, 16);
     localStorage.setItem(KEY, dev);
   }
+  // 한 기기에 창 · 탭이 여럿이면 탭마다 따로 보인다(같은 탭은 새로고침해도 유지)
+  let tab = sessionStorage.getItem(KEY + '-tab');
+  if (!tab) { tab = Math.random().toString(36).slice(2, 8); sessionStorage.setItem(KEY + '-tab', tab); }
+  const id = dev + '-' + tab;
 
   const ua = navigator.userAgent;
   const kind = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'iPad'
@@ -19,7 +23,7 @@
 
   function payload(hidden) {
     return JSON.stringify({
-      device: dev, path: location.pathname + location.search, title: document.title,
+      device: id, path: location.pathname + location.search, title: document.title,
       screen: screen(), kind, size: innerWidth + '×' + innerHeight,
       hidden: hidden ?? document.hidden,
     });
