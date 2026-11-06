@@ -247,3 +247,16 @@ def count_scans_by_card():
             "SELECT card_id, COUNT(*) c FROM events WHERE type='scan' AND card_id IS NOT NULL GROUP BY card_id"
         ).fetchall()
     return {r["card_id"]: r["c"] for r in rows}
+
+
+# ── 기기 현황 ──────────────────────────────────────────
+# 로컬 개발용. 프로세스 메모리에만 둔다.
+_presence = {}
+
+
+def set_presence(device_id, data):
+    _presence.setdefault(device_id, {}).update(data)
+
+
+def list_presence():
+    return [dict(v, device_id=k) for k, v in _presence.items()]

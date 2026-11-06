@@ -415,6 +415,48 @@ async def admin(request: Request):
     })
 
 
+# ── 기기 현황 — 전시장 기기마다 지금 띄운 화면 ─────────────────
+_DEVICE_ID = re.compile(r"^[A-Za-z0-9_-]{6,40}$")
+
+
+@app.post("/api/presence")
+async def presence_beat(request: Request):
+    """각 페이지가 15초마다, 그리고 화면이 바뀔 때마다 보낸다."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "json")
+    dev = str(body.get("device") or "")
+    if not _DEVICE_ID.match(dev):
+        raise HTTPException(400, "device")
+    keep = {k: str(body.get(k) or "")[:200] for k in ("path", "title", "screen", "kind", "size")}
+    keep["hidden"] = bool(body.get("hidden"))
+    keep["seen"] = db.now()
+    await asyncio.to_thread(db.set_presence, dev, keep)
+    return {"ok": True}
+
+
+@app.post("/api/presence/{device_id}/label")
+async def presence_label(device_id: str, label: str = Form("")):
+    if not _DEVICE_ID.match(device_id):
+        raise HTTPException(400, "device")
+    await asyncio.to_thread(db.set_presence, device_id, {"label": label.strip()[:40]})
+    return {"ok": True}
+
+
+@app.get("/api/presence")
+async def presence_list():
+    rows = await asyncio.to_thread(db.list_presence)
+    rows.sort(key=lambda r: r.get("seen") or "", reverse=True)
+    return {"now": db.now(), "devices": rows}
+
+
+@app.get("/devices", response_class=HTMLResponse)
+async def devices_page(request: Request):
+    """기기별 지금 화면. 5초마다 새로 읽는다."""
+    return templates.TemplateResponse("devices.html", {"request": request})
+
+
 @app.get("/qr/{card_id}.png")
 async def qr_png(request: Request, card_id: str):
     card_or_404(card_id)

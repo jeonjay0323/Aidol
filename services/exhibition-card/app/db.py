@@ -12,6 +12,7 @@ if os.getenv("DB_BACKEND", "sqlite").lower() == "firestore":
         new_card_id, now, pending_faces, set_face, set_media, set_custom,
         set_thumb, get_thumb,
         log_event, list_events, count_scans_by_card,
+        set_presence, list_presence,
     )
 else:
     from .db_sqlite import (  # noqa: F401
@@ -19,4 +20,5 @@ else:
         new_card_id, now, pending_faces, set_face, set_media, set_custom,
         set_thumb, get_thumb,
         log_event, list_events, count_scans_by_card,
+        set_presence, list_presence,
     )

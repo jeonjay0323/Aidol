@@ -193,3 +193,13 @@ def count_scans_by_card():
         if cid:
             counts[cid] = counts.get(cid, 0) + 1
     return counts
+
+
+# ── 기기 현황 ──────────────────────────────────────────
+# 전시장 기기마다 지금 어떤 화면인지. 기기 하나당 문서 하나를 덮어쓴다.
+def set_presence(device_id, data):
+    client().collection("presence").document(device_id).set(data, merge=True)
+
+
+def list_presence():
+    return [dict(d.to_dict(), device_id=d.id) for d in client().collection("presence").stream()]

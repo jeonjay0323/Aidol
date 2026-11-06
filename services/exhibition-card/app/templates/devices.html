@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>기기 현황 — AIDOL</title>
+<style>
+  :root{--bg:#17110c;--surface:#221812;--paper:#e8d6bb;--dim:rgba(232,214,187,.55);
+        --line:rgba(232,214,187,.12);--ok:#3ecf8e;--wait:#e0a93c;--err:#d8452f}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--paper);
+       font-family:"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;
+       padding:28px 20px 60px;line-height:1.6}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+  .sub{font-size:13px;color:var(--dim);margin-bottom:24px}
+  .dev{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+       padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:center}
+  .dev.off{opacity:.45}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--err)}
+  .dev.live .dot{background:var(--ok)} .dev.bg .dot{background:var(--wait)}
+  .info{flex:1;min-width:0}
+  .info b{font-size:16px;font-weight:800;display:block}
+  .info .where{font-size:14px}
+  .info small{font-size:12px;color:var(--dim);display:block;font-family:ui-monospace,monospace;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  button,a.btn{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;
+    border-radius:9px;border:1px solid var(--line);background:none;color:var(--paper);
+    cursor:pointer;text-decoration:none;white-space:nowrap}
+  .empty{color:var(--dim);font-size:14px}
+  label{font-size:13px;color:var(--dim);display:inline-flex;gap:6px;align-items:center;margin-bottom:16px}
+</style>
+
+<div class="wrap">
+  <h1>기기 현황</h1>
+  <p class="sub">전시장 기기마다 지금 띄운 화면 · 5초마다 갱신 · <a class="btn" href="/admin">카드 관리</a></p>
+  <label><input type="checkbox" id="show-old"> 1시간 넘게 꺼진 기기도 보기</label>
+  <div id="list"><p class="empty">불러오는 중…</p></div>
+</div>
+
+<script>
+const PAGES = [
+  [/^\/make/, '제작'], [/^\/c\//, '카드 · 통화'], [/^\/label\//, '인쇄 카드'], [/^\/station/, '인쇄 대기'],
+  [/^\/print/, '인쇄'], [/^\/demo/, '데모'], [/^\/gallery/, '전시'], [/^\/lineup/, '라인업'],
+  [/^\/card\//, '카드'], [/^\/admin/, '관리'], [/^\/$/, '소개'],
+];
+const SCREENS = {
+  's-card': '카드 화면', 's-lobby': '로비', 's-scan': '스캔', 's-custom': '꾸미기', 's-load': '연결 중',
+  'c-solo': '1:1 통화 중', 'c-multi': '2인 통화 중', 'call-again': '통화 시간 종료 팝업', 'survey': '설문',
+  's-create': '종류 고르기', 's-create-look': '외모 고르기', 's-create-name': '이름 · 성격',
+  's-create-result': '결과 · 인쇄',
+};
+const page = p => (PAGES.find(([r]) => r.test(p)) || [, p])[1];
+const scr = s => (s || '').split(',').filter(Boolean).map(x => SCREENS[x] || x).join(' + ');
+function ago(sec){
+  if (sec < 60) return Math.round(sec) + '초 전';
+  if (sec < 3600) return Math.round(sec / 60) + '분 전';
+  return Math.round(sec / 3600) + '시간 전';
+}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function load(){
+  let d;
+  try { d = await fetch('/api/presence', {cache: 'no-store'}).then(r => r.json()); } catch { return; }
+  const now = Date.parse(d.now), showOld = document.getElementById('show-old').checked;
+  const rows = d.devices.map(v => ({...v, age: (now - Date.parse(v.seen)) / 1000}))
+    .filter(v => showOld || v.age < 3600);
+  const list = document.getElementById('list');
+  if (!rows.length) { list.innerHTML = '<p class="empty">켜져 있는 기기가 없어요</p>'; return; }
+  list.innerHTML = rows.map(v => {
+    const live = v.age < 40 && !v.hidden, bg = v.age < 40 && v.hidden;
+    const state = live ? '켜짐' : bg ? '다른 앱 · 탭으로 가려짐' : '꺼짐 · ' + ago(v.age);
+    const s = scr(v.screen);
+    return `<div class="dev ${live ? 'live' : bg ? 'bg' : 'off'}">
+      <span class="dot"></span>
+      <div class="info">
+        <b>${esc(v.label || v.kind + ' · ' + v.device_id.slice(0, 4))}</b>
+        <div class="where">${esc(page(v.path))}${s ? ' — ' + esc(s) : ''}</div>
+        <small>${esc(state)} · ${esc(v.kind)} ${esc(v.size)} · ${esc(v.path)}</small>
+      </div>
+      <button data-id="${esc(v.device_id)}" data-label="${esc(v.label || '')}" onclick="rename(this.dataset.id, this.dataset.label)">이름</button>
+    </div>`;
+  }).join('');
+}
+async function rename(id, cur){
+  const name = window.prompt('이 기기 이름 (예: 입구 아이패드)', cur);
+  if (name === null) return;
+  const fd = new FormData(); fd.append('label', name);
+  await fetch(`/api/presence/${id}/label`, {method: 'POST', body: fd});
+  load();
+}
+document.getElementById('show-old').onchange = load;
+load(); setInterval(load, 5000);
+</script>
