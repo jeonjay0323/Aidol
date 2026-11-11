@@ -1,0 +1,10 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="1113" height="1680" viewBox="0 0 1113 1680" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path id="card_border_02" d="M5 5H1108V1675H5V5Z" stroke-width="10" stroke-linejoin="bevel" stroke="url(#paint0_linear_0_112)"/>
+<defs>
+<linearGradient id="paint0_linear_0_112" x1="556.5" y1="5" x2="556.5" y2="1675" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="0.504808" stop-color="#FF8BDE"/>
+<stop offset="1" stop-color="white"/>
+</linearGradient>
+</defs>
+</svg>

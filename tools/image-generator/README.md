@@ -33,7 +33,7 @@ python3 prep_refs.py            # 레퍼런스 워터마크 제거 (레퍼런스
 
 ## 실행 환경
 
-GCP `aidol-505503` (khu202698@gmail.com) · `gemini-2.5-flash-image` · Vertex AI 활성화 완료.
+GCP `project-d4a769de-d13f-4a6a-a22` (khuvd2026@gmail.com) · `gemini-2.5-flash-image` · Vertex AI 활성화 완료.
 6개 지역 순환, 실패 시 다른 지역으로 3회 자동 재시도 (429·소켓 타임아웃 대응).
 `asia-northeast1`은 이 모델 미지원이라 제외.
 

@@ -19,7 +19,7 @@ from pathlib import Path
 
 import segno
 
-BASE_URL = "https://aidol-card-294218538342.asia-northeast3.run.app"
+BASE_URL = "https://aidol-card-938904157102.asia-northeast3.run.app"
 HERE = Path(__file__).parent.parent
 OUT = HERE / "qr"
 

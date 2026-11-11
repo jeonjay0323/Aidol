@@ -1,0 +1,134 @@
+{% extends "_site.html" %}
+{% block title %}아이돌 전시 · LUKIDS{% endblock %}
+
+{% block body %}
+<svg style="display:none" aria-hidden="true"><defs>
+  <g id="g-x" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></g>
+</defs></svg>
+
+<main class="site-main">
+  <div class="site-head">
+    <div class="site-step">03 · 아이돌 구경</div>
+    <h1>관람객이 만든 아이돌</h1>
+    <p>만들기에서 발급된 카드는 모두 이곳에 걸립니다. 카드를 눌러 프로필을 보고, 그 아이돌과 통화할 수 있어요.</p>
+  </div>
+
+  <div class="site-chips" id="chips" role="tablist" aria-label="필터">
+    <button data-f="all" class="on">전체<span class="c" id="n-all"></span></button>
+    <button data-f="real">실물<span class="c" id="n-real"></span></button>
+    <button data-f="virtual">버추얼<span class="c" id="n-virtual"></span></button>
+    <button data-f="mine" id="chip-mine" hidden>이 기기에서 만든<span class="c" id="n-mine"></span></button>
+  </div>
+
+  <div class="site-grid" id="grid"></div>
+  <div class="site-empty" id="empty" hidden>
+    아직 걸린 아이돌이 없어요.<br>첫 번째 아이돌을 만들어 보세요.
+    <div><a class="site-btn" href="/make">아이돌 만들기</a></div>
+  </div>
+</main>
+
+<div class="site-sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-name">
+  <div class="dim" onclick="closeSheet()"></div>
+  <div class="box">
+    <button class="x" aria-label="닫기" onclick="closeSheet()"><svg viewBox="0 0 24 24"><use href="#g-x"/></svg></button>
+    <div class="pic"><img id="sh-img" alt=""></div>
+    <div class="info">
+      <div class="site-step" id="sh-kind"></div>
+      <h2 id="sh-name"></h2>
+      <div class="tags" id="sh-tags"></div>
+      <dl>
+        <dt>카드 번호</dt><dd id="sh-id"></dd>
+        <dt>만든 날</dt><dd id="sh-date"></dd>
+        <dt>통화</dt><dd id="sh-mode"></dd>
+      </dl>
+      <div class="site-stats" id="sh-stats"></div>
+      <div class="acts">
+        <a class="site-btn" id="sh-call" href="#">통화하기</a>
+        <a class="site-btn line" id="sh-print" href="#" hidden>라벨 인쇄하기</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  let CARDS = {{ cards_json | safe }};
+  let filter = 'all';
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const day = iso => iso ? iso.slice(0, 10).replaceAll('-', '.') : '—';
+
+  function visible(){
+    if (filter === 'mine') return CARDS.filter(c => MINE.has(c.cardId));
+    if (filter === 'all') return CARDS;
+    return CARDS.filter(c => c.kind === filter);
+  }
+
+  function render(){
+    const mine = CARDS.filter(c => MINE.has(c.cardId)).length;
+    document.getElementById('chip-mine').hidden = !mine;
+    document.getElementById('n-all').textContent = CARDS.length;
+    document.getElementById('n-real').textContent = CARDS.filter(c => c.kind === 'real').length;
+    document.getElementById('n-virtual').textContent = CARDS.filter(c => c.kind === 'virtual').length;
+    document.getElementById('n-mine').textContent = mine;
+
+    const list = visible();
+    document.getElementById('empty').hidden = list.length > 0;
+    document.getElementById('grid').innerHTML = list.map(c => `
+      <button class="site-card" onclick="openSheet('${c.cardId}')">
+        <div class="ph">
+          ${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy">` : ''}
+          <span class="kind ${c.kind === 'virtual' ? 'v' : ''}">${c.kind === 'virtual' ? '버추얼' : '실물'}</span>
+        </div>
+        <div class="body">
+          <div class="name">${esc(c.name)}</div>
+          <div class="tags">${esc(c.tags.join(' · '))}</div>
+          <div class="date">${day(c.createdAt)} · ${c.cardId}</div>
+        </div>
+      </button>`).join('');
+  }
+
+  document.querySelectorAll('#chips button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#chips button').forEach(x => x.classList.toggle('on', x === b));
+    filter = b.dataset.f;
+    render();
+  });
+
+  function openSheet(id){
+    const c = CARDS.find(x => x.cardId === id);
+    if (!c) return;
+    document.getElementById('sh-img').src = c.image || '';
+    document.getElementById('sh-kind').textContent = c.kind === 'virtual' ? '버추얼 아이돌' : '실물 아이돌';
+    document.getElementById('sh-name').textContent = c.name;
+    document.getElementById('sh-tags').textContent = c.tags.join(' · ');
+    document.getElementById('sh-id').textContent = c.cardId;
+    document.getElementById('sh-date').textContent = day(c.createdAt);
+    document.getElementById('sh-mode').textContent = c.faceStatus === 'ready' ? '영상통화' : '음성통화';
+    document.getElementById('sh-stats').innerHTML = Object.entries(c.stats).map(([k, v]) =>
+      `<div><span>${esc(k)}</span><i><b style="width:${Math.min(100, v / 8 * 100)}%"></b></i></div>`).join('');
+    document.getElementById('sh-call').href = '/c/' + c.cardId;
+    const pr = document.getElementById('sh-print');
+    pr.hidden = !MINE.has(c.cardId);   // 인쇄는 만든 사람만
+    pr.href = '/print?card=' + c.cardId;
+    document.getElementById('sheet').classList.add('on');
+    history.replaceState(null, '', '?card=' + c.cardId);
+  }
+  function closeSheet(){
+    document.getElementById('sheet').classList.remove('on');
+    history.replaceState(null, '', location.pathname);
+  }
+  addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+  // 전시장 모니터에 띄워 두면 새로 만든 아이돌이 저절로 걸린다
+  setInterval(async () => {
+    try {
+      const next = await fetch('/api/gallery').then(r => r.json());
+      if (next.length !== CARDS.length) { CARDS = next; render(); }
+    } catch {}
+  }, 20000);
+
+  render();
+  const want = new URLSearchParams(location.search).get('card');
+  if (want) openSheet(want);
+</script>
+{% endblock %}

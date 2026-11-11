@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ card.name }} — LUKI2S CARD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=block">
+<style>
+  /* SELPHY CP1500 카드 용지(54×86mm) 인쇄 카드.
+     디자인은 피그마 '루키즈_인쇄'(HxXQLteO8I3iDo9kqjUuqU) 1181×1748px 그대로 px 로 그리고(레이어 추출용),
+     화면 · 인쇄는 card_png.py 가 용지 비율로 늘린 PNG 를 쓴다. 도련은 넣지 않는다. */
+  @font-face{font-family:"NeoDunggeunmo";src:url("/static/fonts/neodgm.woff2") format("woff2");font-display:block}
+  @font-face{font-family:"Paperlogy";src:url("/static/fonts/Paperlogy-7Bold.ttf") format("truetype");font-weight:700;font-display:block}
+
+  /* 등급별 색 — 피그마 sss · s · a · n 프레임 */
+  .card.g-sss{--ink:#5332d8;--bg0:#9f5fff;--bg1:#f7f2ff;--bar:#cfafff;--gl0:#cfafff;--gl1:#9f5fff;--ph:#cfafff}
+  .card.g-s  {--ink:#db15a3;--bg0:#ff8bde;--bg1:#fff1fb;--bar:#ff8bde;--gl0:#ff8bde;--gl1:#ff8bde;--ph:#ff8bde}
+  .card.g-a  {--ink:#3475ff;--bg0:#89c8ff;--bg1:#f7fbff;--bar:#89c8ff;--gl0:#89c8ff;--gl1:#3d7bff;--ph:#89c8ff}
+  .card.g-n  {--ink:#595959;--bg0:#bababa;--bg1:#f7fbff;--bar:#d9d9d9;--gl0:#bababa;--gl1:#595959;--ph:#bababa}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#3a3a3a;font-family:"Apple SD Gothic Neo","Pretendard",sans-serif;color:#ddd}
+
+  .card{
+    position:relative;width:1181px;height:1748px;overflow:hidden;
+    background:linear-gradient(to bottom,var(--bg0),var(--bg1));
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .card > *{position:absolute}
+  .dither{left:0;top:0;width:1181px;height:1748px;object-fit:cover;mix-blend-mode:lighten}
+
+  /* 이름 · 영문 이름 · 한마디 + QR */
+  .info{left:84px;top:1098px;width:1013px;display:flex;gap:266px;align-items:center}
+  .who{width:440px;flex:none;display:flex;flex-direction:column;gap:40px;color:var(--ink);
+       filter:drop-shadow(0 0 6px rgba(255,255,255,.9))}
+  .names{display:flex;flex-direction:column;gap:24px;white-space:nowrap}
+  .name{font:700 80px/normal "Paperlogy",sans-serif}
+  .en{font:400 40px/normal "IBM Plex Mono",monospace;text-transform:uppercase}
+  .msg{font:400 40px/48px "NeoDunggeunmo",monospace;text-transform:uppercase;white-space:pre-line;word-break:keep-all}
+
+  .qr{position:relative;width:304px;height:368px;flex:none}
+  .qr .bg{position:absolute;left:-4px;top:-4px;width:312px;height:376px}
+  .qr .code{position:absolute;left:42px;top:42px;width:220px;height:220px;image-rendering:pixelated;object-fit:cover}
+  .qr .call{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);display:flex;gap:16px;align-items:center;
+            font:400 36px/normal "NeoDunggeunmo",monospace;color:var(--ink);white-space:nowrap}
+  .qr .call svg{width:38px;height:38px;fill:var(--ink);shape-rendering:crispEdges}
+
+  .logo{left:961px;top:117px;width:136px;height:42px}
+
+  /* 사진 — 모서리 40px 를 깎은 사각형 + 바깥 8px 그라디언트 테두리 */
+  .ph-edge{left:76px;top:185px;width:1029px;height:862px;
+           background:linear-gradient(to bottom,var(--ph),#fff);
+           clip-path:polygon(44.69px 0,calc(100% - 44.69px) 0,100% 44.69px,100% calc(100% - 44.69px),
+                             calc(100% - 44.69px) 100%,44.69px 100%,0 calc(100% - 44.69px),0 44.69px)}
+  .photo{left:84px;top:193px;width:1013px;height:846px;object-fit:cover;object-position:50% 22%;background:#d9d9d9;
+         clip-path:polygon(40px 0,calc(100% - 40px) 0,100% 40px,100% calc(100% - 40px),
+                           calc(100% - 40px) 100%,40px 100%,0 calc(100% - 40px),0 40px)}
+
+  .frame{left:0;top:0;width:1181px;height:1748px}
+  .border{left:34px;top:34px;width:1113px;height:1680px}
+
+  /* 등급 — 흰 글자 + 바깥 20px 그라디언트 테두리 */
+  .grade-row{left:96px;top:84px;display:flex;gap:34px;align-items:flex-start}
+  .grade{position:relative;isolation:isolate;font:400 200px/normal "NeoDunggeunmo",monospace;color:#fff;white-space:nowrap}
+  .grade::before{
+    /* 배경이 테두리까지 깔리게 상자를 테두리 두께(20px)만큼 넓힌다 */
+    content:attr(data-g);position:absolute;left:-20px;top:-20px;padding:20px;z-index:-1;
+    color:transparent;-webkit-text-stroke:40px transparent;
+    background:linear-gradient(to top,var(--gl0),var(--gl1));-webkit-background-clip:text;background-clip:text;
+  }
+  .grade span{position:relative}
+  .sparkles{padding-top:20px;display:flex;gap:12px}
+  .sparkles svg{width:68px;height:68px;fill:#fff;shape-rendering:crispEdges}
+
+  /* 스탯 */
+  .stats{left:84px;right:84px;bottom:100px;display:flex;flex-direction:column;gap:43px;
+         font:400 32px/normal "NeoDunggeunmo",monospace;color:var(--ink);text-transform:uppercase;white-space:nowrap}
+  .stats .head{display:flex;gap:35px;align-items:center}
+  .stats .rule{width:895px;height:2px;background:var(--ink)}
+  .stats .row{display:flex;gap:40px;align-items:center}
+  .stats .key{display:flex;gap:20px;align-items:center}
+  .stats .key img{width:52px;height:52px}
+  .stats .track{position:relative;width:733px;height:33px;border:1px solid #fff;border-radius:999px;overflow:hidden;flex:none}
+  .stats .fill{position:absolute;left:-1px;top:0;height:31px;border-radius:999px;background:var(--bar)}
+
+  /* ── 화면 ── */
+  .page{min-height:100vh;display:flex;gap:48px;justify-content:center;align-items:center;padding:32px}
+  /* 카드는 1181px 로 그린 뒤 줄이므로, 줄이기 전 크기가 화면을 밀거나 버튼을 덮지 않게 자른다 */
+  .stage{position:relative;overflow:hidden;width:calc(1181px * var(--s,.4));height:calc(1748px * var(--s,.4));flex:none}
+  .stage.crop{height:calc(1181px * 86 / 54 * var(--s,.4))}
+  .stage .card{transform:scale(var(--s,.4));transform-origin:top left}
+  .side{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px;width:min(360px,100%);font-size:15px}
+  .side b{font-size:26px;color:#fff}
+  .side label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#aaa}
+  .side input,.side select,.side textarea{font:16px "Apple SD Gothic Neo",sans-serif;padding:10px 12px;border-radius:10px;
+       border:1px solid #555;background:#222;color:#fff}
+  .side textarea{resize:vertical;min-height:96px}
+  .side .note{font-size:13px;line-height:1.6;color:#aaa;word-break:keep-all}
+  .pbtn{padding:16px;border-radius:12px;border:none;font:700 17px "Apple SD Gothic Neo",sans-serif;
+        background:linear-gradient(90deg,#d9d453,#e63bc0 55%,#8b3be6);color:#fff;cursor:pointer}
+  .pbtn.ghost{background:#555}
+  .pbtn:disabled{background:#444;color:#888;cursor:default}
+  @media (max-aspect-ratio:1/1){ .page{flex-direction:column;gap:28px;padding:24px 16px} }
+  html,body{overflow-x:hidden}
+
+  /* 인쇄 페이지 · 자동 인쇄 창의 미리보기(iframe) — 카드만 프레임 너비에 맞춘다 */
+  body.embed{background:transparent;overflow:hidden}
+  body.embed .page{display:block;min-height:0;padding:0}
+  body.embed .side{display:none}
+
+  /* 서버 PNG(card_png.py)용 고정 레이어를 뽑을 때만 쓴다 — tools/make_print_layers.py
+     base: 사진 · 바뀌는 글자를 뺀 바닥, over: 사진 위에 올라가는 프레임 · 등급 (투명 배경) */
+  body.layer-base .photo, body.layer-base .frame, body.layer-base .border, body.layer-base .grade-row,
+  body.layer-base .name, body.layer-base .en, body.layer-base .msg, body.layer-base #stat,
+  body.layer-base .fill, body.layer-base .qr .code{visibility:hidden}
+  body.layer-over .card{background:none}
+  body.layer-over .card > :not(.frame):not(.border):not(.grade-row){visibility:hidden}
+
+  /* 화면 · 인쇄는 서버가 그린 PNG(/label/{id}.png) 한 장을 쓴다. 카드 HTML 은 레이어를 뽑을 때만 그린다 */
+  .png{display:block;width:100%;height:100%;background:#555}
+  .side .row2{display:flex;gap:10px}
+  .side .row2 .pbtn{flex:1;text-align:center;text-decoration:none;font-size:15px;padding:13px}
+
+  @media print{
+    @page{size:54mm 86mm;margin:0}
+    html,body{width:54mm;height:86mm;background:#fff;overflow:hidden}
+    .page{display:block;min-height:0;padding:0}
+    .side{display:none}
+    .stage,.stage.crop{width:54mm;height:86mm}
+  }
+</style>
+<script src="/static/presence.js?v=2" defer></script>
+</head>
+<body class="{% if embed %}embed{% endif %}{% if layer %} embed layer-{{ layer }}{% endif %}">
+
+<!-- 아이콘 — 피그마 phone-call-sharp · sparkle 인스턴스를 24칸 격자 그대로 -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-call" viewBox="0 0 24 24">
+    <rect x="2" y="1" width="9" height="2"/><rect x="9" y="3" width="2" height="6"/><rect x="7" y="7" width="2" height="4"/>
+    <rect x="4" y="12" width="2" height="2"/><rect x="2" y="3" width="2" height="9"/><rect x="9" y="11" width="2" height="2"/>
+    <rect x="11" y="13" width="2" height="2"/><rect x="13" y="15" width="4" height="2"/><rect x="15" y="13" width="6" height="2"/>
+    <rect x="21" y="13" width="2" height="9"/><rect x="6" y="14" width="2" height="2"/><rect x="8" y="16" width="2" height="2"/>
+    <rect x="10" y="18" width="2" height="2"/><rect x="12" y="20" width="9" height="2"/><rect x="13" y="2" width="5" height="2"/>
+    <rect x="20" y="6" width="2" height="5"/><rect x="18" y="4" width="2" height="2"/><rect x="13" y="6" width="3" height="2"/>
+    <rect x="16" y="8" width="2" height="3"/>
+  </symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24">
+    <rect x="11" y="1" width="2" height="4"/><rect x="11" y="19" width="2" height="4"/><rect x="9" y="5" width="2" height="4"/>
+    <rect x="9" y="15" width="2" height="4"/><rect x="13" y="5" width="2" height="4"/><rect x="13" y="15" width="2" height="4"/>
+    <rect x="5" y="9" width="4" height="2"/><rect x="15" y="9" width="4" height="2"/><rect x="1" y="11" width="4" height="2"/>
+    <rect x="19" y="11" width="4" height="2"/><rect x="5" y="13" width="4" height="2"/><rect x="15" y="13" width="4" height="2"/>
+  </symbol>
+</svg>
+
+<div class="page">
+<section class="stage{% if not layer %} crop{% endif %}">
+{% if layer %}
+  <div class="card g-{{ v.grade }}" id="card">
+    <img class="dither" src="/static/print/dithering.png" alt="">
+    <div class="info">
+      <div class="who">
+        <div class="names">
+          <p class="name">{{ card.name }}</p>
+          <p class="en" id="en">{{ v.en }}</p>
+        </div>
+        <p class="msg" id="msg">{{ v.msg }}</p>
+      </div>
+      <div class="qr">
+        <img class="bg" data-part="qr-bg" src="/static/print/{{ v.grade }}/qr-bg.svg" alt="">
+        <img class="code" src="{{ qr_url }}" alt="스캔용 QR">
+        <div class="call"><svg><use href="#i-call"/></svg>통화하기</div>
+      </div>
+    </div>
+    <img class="logo" src="/static/print/logo.svg" alt="LUKI2S">
+    <div class="ph-edge"></div>
+    {% if card.image_path %}<img class="photo" src="{{ card.image_path }}" alt="">{% else %}<div class="photo"></div>{% endif %}
+    <img class="frame" data-part="frame" src="/static/print/{{ v.grade }}/frame.svg" alt="">
+    <img class="border" data-part="border" src="/static/print/{{ v.grade }}/border.svg" alt="">
+    <div class="grade-row">
+      <p class="grade" id="grade" data-g="{{ v.grade | upper }}"><span>{{ v.grade | upper }}</span></p>
+      <div class="sparkles"><svg><use href="#i-sparkle"/></svg><svg><use href="#i-sparkle"/></svg><svg><use href="#i-sparkle"/></svg></div>
+    </div>
+    <div class="stats">
+      <div class="head"><span>stats</span><i class="rule"></i></div>
+      <div class="row">
+        <div class="key"><img data-part="heart" src="/static/print/{{ v.grade }}/heart.svg" alt="">다정함</div>
+        <div class="track"><i class="fill" id="fill" style="width:{{ (v.stat * 7.6) | round | int }}px"></i></div>
+        <span id="stat">{{ v.stat }}</span>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <img class="png" id="png" src="/label/{{ card.card_id }}.png?{{ qs }}" alt="{{ card.name }} 인쇄 카드">
+{% endif %}
+</section>
+
+<section class="side">
+  <b>{{ card.name }}</b>
+  <span class="note">카드 번호 {{ card.card_id }} · SELPHY 카드 용지 (54 × 86 mm)</span>
+  <label>등급
+    <select id="f-grade">
+      {% for g in ["sss", "s", "a", "n"] %}<option value="{{ g }}"{% if g == v.grade %} selected{% endif %}>{{ g | upper }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>영문 이름 <input id="f-en" value="{{ v.en }}" maxlength="16"></label>
+  <label>한마디 (세 줄까지) <textarea id="f-msg" rows="3">{{ v.msg }}</textarea></label>
+  <label>다정함 <input id="f-stat" type="number" min="0" max="100" value="{{ v.stat }}"></label>
+  <button class="pbtn" type="button" id="share-btn">인쇄하기</button>
+  <div class="row2">
+    <a class="pbtn ghost" id="dl" href="/label/{{ card.card_id }}.png?{{ qs }}&download=1" download>이미지 받기</a>
+  </div>
+  <button class="pbtn ghost" onclick="window.close(); setTimeout(() => history.back(), 300)">닫고 돌아가기</button>
+  <p class="note">인쇄 창에서 대상 SELPHY CP1500 · 용지 54×86mm · 테두리 없음 · 배율 100% 로 고르세요.<br>
+    폰: 공유 창에서 "프린트" → SELPHY CP1500 · 54×86mm.</p>
+</section>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const ID = {{ card.card_id | tojson }};
+  const card = $('card'), png = $('png');
+
+  // 고친 값으로 서버 PNG 를 다시 받는다
+  const query = () => new URLSearchParams({ grade: $('f-grade').value, en: $('f-en').value,
+                                            msg: $('f-msg').value, stat: $('f-stat').value }).toString();
+  let timer;
+  function refresh(){
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const q = query();
+      if (png) png.src = `/label/${ID}.png?${q}`;
+      $('dl').href = `/label/${ID}.png?${q}&download=1`;
+      file = null;
+    }, 350);
+  }
+  ['f-grade', 'f-en', 'f-msg', 'f-stat'].forEach(id => $(id).addEventListener('input', refresh));
+
+  // 아이폰은 공유 창의 '프린트'가 사진 인쇄라 테두리 없이 꽉 찬다. 누른 순간 share() 해야 해서 미리 받아 둔다
+  let file = null;
+  async function prepare(){
+    try {
+      const blob = await fetch(`/label/${ID}.png?${query()}`).then(r => r.blob());
+      file = new File([blob], `luki2s-${ID}.png`, { type: 'image/png' });
+    } catch {}
+  }
+  // 한 카드는 한 번만 뽑는다 — 누르면 두 버튼 다 잠그고, 새로고침해도 이 기기에서는 잠긴 채로 둔다
+  const LOCK = 'luki2s.printed.' + ID;
+  const BTNS = ['share-btn'];
+  function lock(){
+    BTNS.forEach(id => { $(id).disabled = true; });
+    $('share-btn').textContent = '인쇄했어요';
+    try { localStorage.setItem(LOCK, '1'); } catch {}
+  }
+  let locked = false; try { locked = localStorage.getItem(LOCK) === '1'; } catch {}
+  if (locked) lock();
+
+  $('share-btn').addEventListener('click', async () => {
+    if ($('share-btn').disabled) return;
+    // 컴퓨터는 바로 인쇄 창을 연다. 맥 크롬도 공유를 지원하지만 거기엔 프린터가 없다
+    if (!matchMedia('(pointer: coarse)').matches) {
+      lock();
+      try { window.print(); } catch (e) { console.warn(e); }
+      return;
+    }
+    BTNS.forEach(id => { $(id).disabled = true; });          // 공유 창이 뜨는 동안 두 번 눌리지 않게
+    if (!file) await prepare();
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      // 공유 창에서 프린트 · 저장을 마치면 잠그고, 닫기(취소)면 다시 누를 수 있게 둔다
+      navigator.share({ files: [file] }).then(lock)
+        .catch(() => { BTNS.forEach(id => { $(id).disabled = false; }); });
+    } else {
+      window.open(`/label/${ID}.png?${query()}`, '_blank');   // 공유가 안 되는 브라우저는 이미지를 연다
+      lock();
+    }
+  });
+
+  // 이미지가 다 뜬 뒤에 인쇄한다 (station.html 이 기다린다)
+  window.labelReady = Promise.all([
+    document.fonts.ready,
+    ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })),
+  ]);
+  if (png && !document.body.classList.contains('embed')) labelReady.then(prepare);
+
+  function fit(){
+    const CH = card ? 1748 : 1181 * 86 / 54;   // 레이어는 피그마 높이, PNG 는 용지 비율
+    let s;
+    if (document.body.classList.contains('embed')) s = innerWidth / 1181;
+    else {
+      const wide = innerWidth > innerHeight;
+      s = wide ? Math.min((innerHeight - 64) / CH, (innerWidth - 360 - 140) / 1181)
+               : Math.min((innerWidth - 64) / 1181, (innerHeight - 560) / CH);
+      s = Math.max(.15, Math.min(.6, s));
+    }
+    document.documentElement.style.setProperty('--s', s.toFixed(4));
+  }
+  fit(); addEventListener('resize', fit);
+
+  // 서버 PNG 가 글자를 같은 자리에 쓰도록 위치를 뽑는다 (?layer=geom)
+  if (card && document.body.classList.contains('layer-geom')) labelReady.then(() => {
+    const c = card.getBoundingClientRect(), k = 1181 / c.width, r = {};
+    for (const sel of ['.name', '.en', '.msg', '#stat', '.track', '.fill', '.qr .code', '.photo'])
+      { const b = document.querySelector(sel).getBoundingClientRect();
+        r[sel] = [b.left - c.left, b.top - c.top, b.width, b.height].map(v => +(v * k).toFixed(2)); }
+    const pre = document.createElement('pre'); pre.id = 'geom'; pre.textContent = JSON.stringify(r); document.body.append(pre);
+  });
+  if (new URLSearchParams(location.search).has('print')) labelReady.then(() => setTimeout(() => print(), 200));
+
+  // 만들기 화면에서 연 인쇄 탭은 인쇄 창을 닫으면 함께 닫고, 만들기 화면에 알린다 (다음 카드로)
+  if (window.opener && new URLSearchParams(location.search).has('print')) {
+    addEventListener('afterprint', () => {
+      try { window.opener.postMessage({ type: 'label-printed', id: ID }, location.origin); } catch {}
+      window.close();
+    });
+  }
+</script>
+</body>
+</html>

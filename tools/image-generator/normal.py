@@ -25,7 +25,7 @@
 
 import base64, json, os, random, re, subprocess, sys, time, unicodedata, urllib.request, urllib.error
 
-PROJECT = "aidol-505503"
+PROJECT = "project-d4a769de-d13f-4a6a-a22"
 MODEL = "gemini-2.5-flash-image"
 LOCATIONS = ["us-central1", "us-east4", "us-west1", "us-west4",
              "europe-west1", "europe-west4"]
