@@ -107,7 +107,7 @@ window.AidolCall = (() => {
     micCtx = new AudioContext({ sampleRate: 16000 });
     const constraints = {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: selfEl ? { facingMode: 'user', width: { ideal: 640 } } : false,
+      video: selfEl && !window.NO_CAMERA ? { facingMode: 'user', width: { ideal: 640 } } : false,
     };
     try {
       micStream = await navigator.mediaDevices.getUserMedia(constraints);
