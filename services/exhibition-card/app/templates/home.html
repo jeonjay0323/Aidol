@@ -34,38 +34,31 @@
   .sec-h a{font-family:var(--brand);font-size:14px;color:var(--label-alt);flex:none}
   .sec-h a:hover{color:var(--label-normal)}
 
-  /* 네 기능 */
-  .feats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  @media (max-width:860px){ .feats{grid-template-columns:1fr 1fr} }
-  @media (max-width:480px){ .feats{grid-template-columns:1fr} }
-  .feat{
-    display:flex;flex-direction:column;min-height:210px;padding:22px 20px;border-radius:var(--r);
-    background:var(--bg-elevated);border:1px solid var(--line-solid-alt);transition:border-color .18s;
+  /* 이렇게 해요 — 세 단계 */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;counter-reset:st}
+  @media (max-width:760px){ .steps{grid-template-columns:1fr} }
+  .step{
+    counter-increment:st;display:flex;flex-direction:column;min-height:190px;padding:22px 20px;border-radius:var(--r);
+    background:var(--bg-elevated);border:1px solid var(--line-solid-alt);transition:border-color .18s;position:relative;
   }
-  .feat:hover{border-color:var(--primary-normal)}
-  .feat .n{font-family:var(--brand);font-weight:700;font-size:13px;color:var(--primary-normal)}
-  .feat b{font-family:var(--brand);font-weight:700;font-size:20px;line-height:28px;color:var(--label-strong);margin:10px 0 6px}
-  .feat span{font-size:14px;line-height:22px;color:var(--label-alt);word-break:keep-all}
-  .feat .go{margin-top:auto;padding-top:18px;font-family:var(--brand);font-size:13px;color:var(--label-neutral)}
+  .step:hover{border-color:var(--primary-normal)}
+  .step::before{content:"0" counter(st);font-family:var(--brand);font-weight:700;font-size:13px;color:var(--primary-normal)}
+  .step b{font-family:var(--brand);font-weight:700;font-size:20px;line-height:28px;color:var(--label-strong);margin:10px 0 6px}
+  .step span{font-size:14px;line-height:22px;color:var(--label-alt);word-break:keep-all}
+  .step .go{margin-top:auto;padding-top:18px;font-family:var(--brand);font-size:13px;color:var(--label-neutral)}
+  @media (min-width:761px){
+    .step:not(:last-child)::after{
+      content:"→";position:absolute;right:-12px;top:50%;transform:translate(50%,-50%);z-index:1;
+      font-family:var(--brand);font-size:16px;color:var(--label-assistive);
+    }
+  }
 
-  /* 경험의 순서 */
-  .loop{display:grid;grid-template-columns:repeat(4,1fr);counter-reset:l}
-  .loop div{counter-increment:l;padding:0 20px 0 0;position:relative}
-  .loop div::before{
-    content:counter(l);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;
-    background:var(--fill-normal);font-family:var(--brand);font-weight:700;font-size:14px;margin-bottom:14px;
-  }
-  .loop div:not(:last-child)::after{
-    content:"";position:absolute;top:16px;left:44px;right:12px;height:1px;background:var(--line-normal);
-  }
-  .loop b{display:block;font-family:var(--brand);font-weight:700;font-size:16px;line-height:24px;margin-bottom:4px}
-  .loop span{font-size:13px;line-height:20px;color:var(--label-alt);word-break:keep-all}
-  @media (max-width:760px){
-    .loop{grid-template-columns:1fr;gap:20px}
-    .loop div{display:grid;grid-template-columns:32px 1fr;gap:2px 14px;padding:0}
-    .loop div::before{grid-row:span 2;margin:0}
-    .loop div::after{display:none}
-  }
+  /* 숫자로 보는 루키즈 */
+  .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media (max-width:760px){ .nums{grid-template-columns:1fr 1fr} }
+  .num{padding:20px;border-radius:var(--r);background:var(--bg-elevated);border:1px solid var(--line-solid-alt)}
+  .num b{display:block;font-family:var(--brand);font-weight:700;font-size:32px;line-height:40px;color:var(--label-strong);font-variant-numeric:tabular-nums}
+  .num span{font-size:13px;line-height:20px;color:var(--label-alt)}
 
   /* 라인업 스트립 */
   .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
@@ -98,7 +91,7 @@
          텍스트에 머무는 캐릭터챗과 달리 얼굴과 목소리로 쌓는 관계를 실험합니다.</p>
       <div class="cta">
         <a class="site-btn" href="/make">내 아이돌 만들기</a>
-        <a class="site-btn line" href="/call">공식 아이돌과 통화</a>
+        <a class="site-btn line" href="/gallery?f=official">공식 아이돌과 통화</a>
       </div>
     </div>
     <div class="faces" aria-hidden="true">
@@ -107,39 +100,26 @@
   </section>
 
   <section class="sec">
-    <div class="sec-h"><div><h2>네 가지로 경험합니다</h2><p>만들고, 갖고, 보여주고, 이야기한다.</p></div></div>
-    <div class="feats">
-      <a class="feat" href="/make"><span class="n">01</span><b>아이돌 제작</b>
-        <span>실물 화보 또는 버추얼 일러스트. 조합을 고르고 원하는 모습을 직접 써서 생성합니다.</span>
+    <div class="sec-h"><div><h2>이렇게 해요</h2><p>만들고, 카드로 받고, 이야기한다.</p></div></div>
+    <div class="steps">
+      <a class="step" href="/make"><b>만들기</b>
+        <span>실물 화보 또는 버추얼 일러스트. 종류 · 얼굴상을 고르고 원하는 모습을 직접 써서 20초 안에 만듭니다.</span>
         <span class="go">만들러 가기 →</span></a>
-      <a class="feat" href="/print"><span class="n">02</span><b>아이돌 인쇄</b>
-        <span>내가 만든 아이돌을 54 × 86 mm 포토 카드로 뽑습니다. QR 을 찍으면 그 아이돌에게 다시 전화가 연결돼요.</span>
-        <span class="go">인쇄하러 가기 →</span></a>
-      <a class="feat" href="/gallery"><span class="n">03</span><b>아이돌 구경</b>
-        <span>관람객이 만든 아이돌은 모두 전시 페이지에 걸립니다. 다른 사람의 아이돌과도 통화할 수 있어요.</span>
-        <span class="go">구경하러 가기 →</span></a>
-      <a class="feat" href="/call"><span class="n">04</span><b>아이돌 통화</b>
-        <span>미리 준비된 공식 아이돌 다섯 명과 영상 · 음성으로 통화합니다. 여럿이 함께 부르는 멀티콜도 됩니다.</span>
-        <span class="go">통화하러 가기 →</span></a>
-    </div>
-  </section>
-
-  <section class="sec">
-    <div class="sec-h"><div><h2>전시장에서의 한 바퀴</h2><p>관람객 한 명이 부스에서 겪는 순서입니다.</p></div></div>
-    <div class="loop">
-      <div><b>만든다</b><span>종류 · 얼굴상 · 프롬프트를 정하고 20초 안에 사진이 나온다</span></div>
-      <div><b>갖는다</b><span>고른 한 장이 카드로 발급되고 바로 인쇄된다</span></div>
-      <div><b>걸린다</b><span>카드는 전시 벽(페이지)에 올라가 다른 관람객도 본다</span></div>
-      <div><b>이야기한다</b><span>카드 QR 을 찍으면 그 아이돌과 통화가 시작된다</span></div>
+      <a class="step" href="/make"><b>카드 받기</b>
+        <span>고른 한 장이 54 × 86 mm 포토 카드로 인쇄됩니다. 만든 아이돌은 전시에도 걸려요.</span>
+        <span class="go">만들고 인쇄하기 →</span></a>
+      <a class="step" href="/gallery"><b>통화하기</b>
+        <span>카드의 QR 을 찍거나 전시에서 카드를 누르면 그 아이돌에게 전화가 연결됩니다. 공식 아이돌과도 통화할 수 있어요.</span>
+        <span class="go">전시에서 통화하기 →</span></a>
     </div>
   </section>
 
   {% if lineup %}
   <section class="sec">
-    <div class="sec-h"><div><h2>공식 라인업</h2><p>지금 바로 통화할 수 있는 아이돌</p></div><a href="/call">모두 보기 →</a></div>
+    <div class="sec-h"><div><h2>공식 라인업</h2><p>지금 바로 통화할 수 있는 아이돌</p></div><a href="/gallery?f=official">모두 보기 →</a></div>
     <div class="strip">
       {% for c in lineup %}
-      <a class="mem" href="/c/{{ c.cardId }}">
+      <a class="mem" href="/gallery?card={{ c.cardId }}">
         {% if c.image %}<img src="{{ c.image }}" alt="" loading="lazy">{% endif %}
         <div><b>{{ c.name }}</b><small>{{ c.tags | join(" · ") }}</small></div>
       </a>
@@ -149,7 +129,7 @@
   {% endif %}
 
   <section class="sec">
-    <div class="sec-h"><div><h2>최근에 만들어진 아이돌</h2><p>관람객이 직접 만든 카드</p></div><a href="/gallery">전시 보기 →</a></div>
+    <div class="sec-h"><div><h2>방금 만들어진 아이돌</h2><p>사용자가 직접 만든 카드</p></div><a href="/gallery">전시 보기 →</a></div>
     {% if recent %}
     <div class="site-grid">
       {% for c in recent %}
@@ -164,6 +144,18 @@
     <div class="site-empty">아직 만들어진 아이돌이 없어요.<div><a class="site-btn" href="/make">첫 번째로 만들기</a></div></div>
     {% endif %}
   </section>
+
+  {% if stats %}
+  <section class="sec">
+    <div class="sec-h"><div><h2>숫자로 보는 루키즈</h2><p>지금까지 쌓인 기록</p></div></div>
+    <div class="nums">
+      <div class="num"><b>{{ "{:,}".format(stats.made) }}</b><span>만들어진 아이돌</span></div>
+      <div class="num"><b>{{ "{:,}".format(stats.calls) }}</b><span>통화</span></div>
+      <div class="num"><b>{{ "{:,}".format(stats.minutes) }}<small style="font-size:16px">분</small></b><span>함께 이야기한 시간</span></div>
+      <div class="num"><b>{{ "{:,}".format(stats.scans) }}</b><span>카드 QR 스캔</span></div>
+    </div>
+  </section>
+  {% endif %}
 
   <section class="sec">
     <div class="about">

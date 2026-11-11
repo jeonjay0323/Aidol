@@ -1,4 +1,4 @@
-/* 소개 · 제작 · 인쇄 · 전시 · 통화 다섯 페이지가 함께 쓰는 틀.
+/* 홈 · 전시 · 제작 세 페이지(와 인쇄)가 함께 쓰는 틀.
    색과 글자는 tokens.css(원티드 DS) 의 Semantic 토큰만 쓴다.
    scan.css 와 같이 실릴 수 있어 이름은 모두 site- 로 시작한다. */
 
@@ -40,12 +40,15 @@ body.site{
   font-family:var(--brand);font-size:11px;color:var(--label-assistive);margin-right:5px;
 }
 .site-links a.on .n{color:var(--primary-normal)}
+.site-nav-cta{margin-left:auto;flex:none}
+body.demo .site-nav-cta{display:none}
 
 @media (max-width:640px){
   .site-nav-in{gap:14px;padding:0 16px}
   .site-links{margin-right:-16px;padding-right:16px}
   .site-links a{padding:8px 9px}
   .site-links a .n{display:none}
+  .site-nav .site-nav-cta{display:none}
 }
 
 /* ── 페이지 머리 ── */
@@ -82,6 +85,7 @@ body.site{
 .site-btn.line:hover{background:var(--fill-alt)}
 .site-btn.sm{padding:8px 12px;font-size:13px;line-height:18px}
 .site-btn:disabled{opacity:.35;cursor:default}
+.site-btn[hidden]{display:none}
 .site-btn svg{width:16px;height:16px}
 
 /* ── 칩 · 필터 ── */
@@ -112,6 +116,7 @@ body.site{
   background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(4px);
 }
 .site-card .ph .kind.v{background:rgba(230,59,192,.92);color:#000}
+.site-card .ph .kind.o{background:var(--label-normal);color:var(--static-black)}
 .site-card .body{padding:12px 13px 14px}
 .site-card .name{font-family:var(--brand);font-weight:700;font-size:17px;line-height:24px;color:var(--label-strong)}
 .site-card .tags{

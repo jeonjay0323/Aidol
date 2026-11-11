@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 import segno
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -349,11 +349,57 @@ def gallery_cards():
     return [public_card(c) for c in db.list_cards(source="user")]
 
 
+# 전시에 걸지 않는 공식 카드 — 시험용이거나 쓰지 않기로 한 카드
+GALLERY_HIDE = {"유성", "테스트 버추얼"}
+
+
+def official_cards():
+    """전시에 함께 거는 공식 카드. 라인업 다섯 명을 먼저, 나머지 공식 카드는 그 뒤에."""
+    line = {p["name"]: p["line"] for p in LINEUP}
+    seen, out = set(), []
+    for c in db.list_cards(source="official"):
+        if c["name"] in seen or c["name"] in GALLERY_HIDE:
+            continue
+        seen.add(c["name"])
+        out.append({**public_card(c), "official": True, "line": line.get(c["name"], "")})
+    order = list(line)
+    out.sort(key=lambda c: order.index(c["name"]) if c["name"] in order else len(order))
+    return out
+
+
+def exhibit_cards():
+    """전시 페이지 — 공식 아이돌과 관람객 아이돌을 한 목록으로."""
+    return official_cards() + gallery_cards()
+
+
+# 홈의 숫자는 이벤트 전체를 훑어야 해서 10분 동안 재사용한다
+_home_stats = {"at": 0.0, "v": None}
+
+
+def home_stats():
+    import time
+    if _home_stats["v"] is not None and time.time() - _home_stats["at"] < 600:
+        return _home_stats["v"]
+    try:
+        s = _summarize()
+        v = {
+            "made": s["cards"]["user"],
+            "calls": s["call"]["sessions"] + s["room"]["sessions"],
+            "minutes": round(s["call"]["totalMinutes"]),
+            "scans": s["scan"]["events"],
+        }
+    except Exception as e:
+        logging.warning(f"홈 숫자 집계 실패: {e}")
+        v = None
+    _home_stats.update(at=time.time(), v=v)
+    return v
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {
         "request": request, "page": "home",
-        "lineup": lineup(), "recent": gallery_cards()[:6],
+        "lineup": lineup(), "recent": gallery_cards()[:8], "stats": home_stats(),
     })
 
 
@@ -381,7 +427,7 @@ async def print_page(request: Request):
 
 @app.get("/gallery", response_class=HTMLResponse)
 async def gallery_page(request: Request):
-    cards = gallery_cards()
+    cards = exhibit_cards()
     return templates.TemplateResponse("gallery.html", {
         "request": request, "page": "gallery",
         "cards_json": json.dumps(cards, ensure_ascii=False),
@@ -391,14 +437,13 @@ async def gallery_page(request: Request):
 @app.get("/api/gallery")
 async def api_gallery():
     """전시 페이지가 새로 만든 카드를 주기적으로 받아간다."""
-    return gallery_cards()
+    return exhibit_cards()
 
 
-@app.get("/call", response_class=HTMLResponse)
-async def call_page(request: Request):
-    return templates.TemplateResponse("lineup.html", {
-        "request": request, "page": "call", "lineup": lineup(),
-    })
+@app.get("/call")
+async def call_page():
+    """통화 메뉴는 전시로 합쳤다 — 공식 아이돌 필터로 보낸다."""
+    return RedirectResponse("/gallery?f=official", status_code=302)
 
 
 @app.get("/station", response_class=HTMLResponse)

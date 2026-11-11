@@ -410,6 +410,7 @@ async function issueCard(){
     document.getElementById('result-sub').textContent = '카드 번호 ' + j.cardId;
     document.getElementById('result-pick').hidden = true;
     document.getElementById('result-done').hidden = false;
+    window.onCardIssued && window.onCardIssued(j.cardId);   // 제작 페이지가 카드 미리보기를 띄운다
     // (2026-10-07) 발급 뒤 아이돌이 먼저 거는 전화는 껐다 — 시연에서 인쇄 흐름을 끊는다.
     // 다시 켜려면 여기서 scheduleRing(j.cardId, RING_DELAY) 를 부른다.
   } catch (e) {
