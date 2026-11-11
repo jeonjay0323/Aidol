@@ -139,6 +139,31 @@ function pickGrade(btn){
   renderLook();
 }
 
+/* 사진 업로드 — 고른 사진을 세로 2:3 로 잘라 JPEG 로 줄인다.
+   발급 API 가 JPEG 700KB 이하만 받는다(main.py api_cards). */
+function pickPhoto(input){
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(img.src);
+    const W = 1024, H = 1536, s = Math.max(W / img.width, H / img.height);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const sw = W / s, sh = H / s;
+    cv.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) * 0.2, sw, sh, 0, 0, W, H);
+    let q = 0.9, url;
+    do { url = cv.toDataURL('image/jpeg', q); q -= 0.1; } while (url.length * 0.75 > 680_000 && q > 0.3);
+    CREATE.image = url;
+    const el = document.getElementById('up-img');
+    el.src = url; el.hidden = false;
+    document.getElementById('up-empty').hidden = true;
+    hint('look-hint', '');
+  };
+  img.onerror = () => hint('look-hint', '이 사진은 열 수 없어요. 다른 사진을 골라주세요.');
+  img.src = URL.createObjectURL(f);
+  input.value = '';   // 같은 사진을 다시 골라도 바뀌게
+}
+
 function lookPool(){
   if (CREATE.kind === 'virtual') return MOODS;
   return CREATE.grade === 'epic' ? SPECIES : PRESETS;
@@ -146,7 +171,10 @@ function lookPool(){
 
 function renderLook(){
   const virtual = CREATE.kind === 'virtual', epic = CREATE.grade === 'epic';
-  document.getElementById('look-real').hidden = virtual;
+  const upload = CREATE.kind === 'upload';
+  document.getElementById('look-upload').hidden = !upload;
+  document.getElementById('look-gen').hidden = upload;
+  document.getElementById('look-real').hidden = virtual || upload;
   document.getElementById('hair-field').hidden = !virtual;
   document.querySelectorAll('#grade button')
     .forEach(b => b.classList.toggle('sel', b.dataset.grade === CREATE.grade));
@@ -237,8 +265,9 @@ function togglePreset(w){
 }
 
 function toName(){
-  const virtual = CREATE.kind === 'virtual';
-  if (!CREATE.look) {
+  const virtual = CREATE.kind === 'virtual', upload = CREATE.kind === 'upload';
+  if (upload && !CREATE.image) return hint('look-hint', '사진을 골라주세요.');
+  if (!upload && !CREATE.look) {
     return hint('look-hint', virtual ? '분위기를 골라주세요.'
                 : CREATE.grade === 'epic' ? '종족을 골라주세요.' : '얼굴상을 골라주세요.');
   }
@@ -276,6 +305,7 @@ function toName(){
 }
 
 function lookLabel(){
+  if (CREATE.kind === 'upload') return '—';
   return (lookPool().find(o => o.k === CREATE.look) || {}).label || '—';
 }
 function hairLabel(){
@@ -288,11 +318,12 @@ function syncReview(){
   CREATE.persona = CREATE.depth === 'C' ? pv.value.trim() : '';
   document.getElementById('persona-count').textContent = pv.value.length;
   const virtual = CREATE.kind === 'virtual', epic = CREATE.grade === 'epic';
+  const upload = CREATE.kind === 'upload';
   const rows = [
     ['이름',   CREATE.name || '—'],
-    ['종류',   virtual ? '버추얼' : epic ? '실물 · 에픽' : '실물 · 일상'],
+    ['종류',   upload ? '사진 업로드' : virtual ? '버추얼' : epic ? '실물 · 에픽' : '실물 · 일상'],
     ['성별',   CREATE.gender === 'f' ? '여자' : '남자'],
-    [virtual ? '분위기' : epic ? '종족' : '얼굴상', lookLabel()],
+    ...(upload ? [] : [[virtual ? '분위기' : epic ? '종족' : '얼굴상', lookLabel()]]),
     ...(virtual ? [['머리색', hairLabel()]] : []),
     ...(CREATE.prompt ? [['직접 쓴 모습', CREATE.prompt]] : []),
     ['목소리', voiceLabel()],
@@ -307,12 +338,20 @@ function toResult(){
   syncReview();
   if (!CREATE.name)  return hint('name-hint', '이름을 입력해주세요.');
   if (!CREATE.voice) return hint('name-hint', '목소리를 골라주세요.');
-  CREATE.image = null; CREATE.tries = 0; CREATE.cardId = null;
+  CREATE.tries = 0; CREATE.cardId = null;
   rang = false; clearTimeout(ringTimer);
   document.getElementById('result-pick').hidden = false;
   document.getElementById('result-done').hidden = true;
   go('s-create-result');
-  generate();
+  // 업로드한 사진은 만들지 않고 그대로 보여 준다
+  const upload = CREATE.kind === 'upload';
+  document.getElementById('regen-btn').hidden = upload;
+  if (!upload) { CREATE.image = null; return generate(); }
+  document.getElementById('gen-img').src = CREATE.image;
+  document.getElementById('result-q').textContent = '이 사진으로 만들까요?';
+  document.getElementById('result-sub').textContent = '바꾸려면 뒤로 가서 다시 고르세요';
+  hint('result-hint', '');
+  setBusy(false);
 }
 
 function backFromResult(){
@@ -357,13 +396,13 @@ async function generate(){
 
 // 통화 페르소나. tools/virtual_card.py 프리셋과 같은 틀로 맞춘다.
 function buildPersona(){
-  const virtual = CREATE.kind === 'virtual';
+  const virtual = CREATE.kind === 'virtual', upload = CREATE.kind === 'upload';
   const who = virtual ? '버추얼 아이돌' : '아이돌 연습생';
   const look = virtual ? `${lookLabel()} 분위기에 ${hairLabel()} 머리`
              : CREATE.grade === 'epic' ? `${lookLabel()} 컨셉` : `${lookLabel()} 얼굴`;
   return [
     `너는 ${who} '${CREATE.name}'이야. ${CREATE.gender === 'f' ? '여자' : '남자'}야.`,
-    `외모: ${look}.`,
+    upload ? '' : `외모: ${look}.`,
     CREATE.prompt ? `생김새: ${CREATE.prompt}` : '',
     CREATE.persona ? `성격: ${CREATE.persona}` : '밝고 다정하고, 상대 이야기에 리액션이 커.',
     '너를 만든 사람과 지금 처음 영상통화를 하는 중이야. 한 번에 한두 문장으로 짧게 말하고, '
@@ -372,6 +411,7 @@ function buildPersona(){
 }
 
 function buildTags(){
+  if (CREATE.kind === 'upload') return ['업로드'];
   if (CREATE.kind === 'virtual') return ['버추얼', lookLabel(), hairLabel() + ' 머리'];
   return [CREATE.grade === 'epic' ? '에픽' : '일상', lookLabel()];
 }
