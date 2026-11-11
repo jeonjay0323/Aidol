@@ -353,20 +353,9 @@
   }
 
   /* ── 통화 직후 한 문항 ── */
-  /* ══ 넓은 화면 통화 — 왼쪽에 다른 아이돌, 오른쪽에 이 카드의 아이돌. 내 화면은 구석에 ══ */
-  #c-multi.duo{max-width:none;background:#0b0b0c}
-  #c-multi.duo .grid{position:relative;grid-template-rows:1fr;min-height:0}
-  #c-multi.duo .cell:nth-child(1){order:2}
-  #c-multi.duo .cell:nth-child(2){order:1}
-  #c-multi.duo .cell img{opacity:1!important}
-  #c-multi.duo .cell .who{font-size:15px;padding:6px 12px}
-  #c-multi.duo #cell-me{position:absolute;right:16px;top:16px;width:200px;height:150px;z-index:3}
-  #c-multi.duo .caption{font-size:18px}
-  #c-multi.duo .call-bar .cbtn:first-child{display:none}
-
   /* 3분이 지나면 뜨는 재연결 화면 */
   .call-again{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.45)}
+    background:rgba(0,0,0,.82)}
   .call-again.on{display:flex}
   .ca-btn{padding:20px 56px;border:none;border-radius:var(--r-pill);cursor:pointer;
     background:var(--primary-normal);color:var(--static-white);
@@ -548,7 +537,14 @@
   .call.voice .vcall.expr{padding-top:calc(28px + env(safe-area-inset-top));padding-bottom:calc(32px + env(safe-area-inset-bottom))}
 
   /* 만들기 — 종류를 예시 사진으로 고른다 */
-  .kinds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+  .kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+  .grade.kind .ex.up,.up-empty{display:grid;place-items:center;color:var(--label-alt)}
+  .grade.kind .ex.up svg{width:34px;height:34px}
+  /* 업로드 미리보기 — 생성 결과와 같은 틀 */
+  .up-stage{display:block;cursor:pointer}
+  .up-stage img[hidden],.up-empty[hidden]{display:none}
+  .up-empty{position:absolute;inset:0;align-content:center;gap:10px;font-size:14px;font-weight:600}
+  .up-empty svg{width:40px;height:40px;margin:0 auto}
   .grade.kind{padding:8px 8px 14px;display:flex;flex-direction:column;text-align:center}
   .grade.kind .ex{display:block;aspect-ratio:3/4;border-radius:var(--r);overflow:hidden;margin-bottom:12px;background:var(--bg-elevated-alt)}
   .grade.kind .ex img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;transition:transform .25s}
@@ -643,7 +639,8 @@
 
   /* 종류 고르기 유도 — 아직 안 골랐으면 실물 → 버추얼 차례로 흰 테두리가 깜빡인다. 고르면 멈춘다 */
   #kinds:not(.chosen) .grade.kind{animation:kindHint 2.4s ease-in-out infinite}
-  #kinds:not(.chosen) .grade.kind:nth-child(2){animation-delay:1.2s}
+  #kinds:not(.chosen) .grade.kind:nth-child(2){animation-delay:.8s}
+  #kinds:not(.chosen) .grade.kind:nth-child(3){animation-delay:1.6s}
   @keyframes kindHint{
     0%,45%,100%{border-color:rgba(232,214,187,.11);box-shadow:none}
     15%,30%{border-color:rgba(255,255,255,.9);box-shadow:0 0 0 3px rgba(255,255,255,.14)}
