@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=yellow-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=ui2-4">
+<link rel="stylesheet" href="/static/scan.css?v=split-1">
 </head>
 <body>
 
@@ -180,6 +180,23 @@
 
 <!-- ══ 5. 1:1 영상통화 ══ -->
 <div class="call" id="c-solo">
+  <!-- 넓은 화면(전시 모니터 · 아이패드 가로)에서만 왼쪽에 안내를 띄운다. 폰에서는 숨는다 -->
+  <aside class="call-guide" aria-label="통화 안내">
+    <div class="cg-kicker"><i></i>LIVE CALL</div>
+    <h2 class="cg-title">{{ card.name }}에게<br>말을 걸어보세요</h2>
+    <p class="cg-sub">내 말을 듣고 바로 대답해요.</p>
+    <ol class="cg-steps">
+      <li><span>1</span><div><b>마이크 앞에서 편하게 말해요</b><small>버튼을 누를 필요 없이 그냥 말하면 돼요</small></div></li>
+      <li><span>2</span><div><b>말이 끝나면 잠깐 기다려요</b><small>이제 대답할 차례예요</small></div></li>
+      <li><span>3</span><div><b>다 놀았으면 끊기</b><small>오른쪽 화면 아래 빨간 끊기 버튼을 눌러요</small></div></li>
+    </ol>
+    <div class="cg-try">
+      <div class="cg-label">이렇게 말해보세요</div>
+      <div class="cg-chips"><span>“안녕! 오늘 뭐 했어?”</span><span>“요즘 무슨 노래 들어?”</span><span>“나 오늘 좀 힘들었어”</span></div>
+    </div>
+    <div class="cg-state" id="cg-state" role="status"><i></i><span>연결 중…</span></div>
+  </aside>
+  <div class="call-main">
   <div class="call-top">
     <span class="rec"><span class="dot"></span>LIVE</span>
     <span style="font-size:13px;font-weight:800">{{ card.name }}</span>
@@ -230,6 +247,7 @@
     <button class="cbtn" onclick="toggleMic(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-mic"/></svg>마이크</button>
     <button class="cbtn" onclick="toggleCam(this)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-cam"/></svg>카메라</button>
     <button class="cbtn end" onclick="endCall()" aria-label="통화 종료"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-x"/></svg></button>
+  </div>
   </div>
 </div>
 
@@ -536,6 +554,13 @@
   function setCaption(line, hint){
     document.getElementById('cap-solo').innerHTML =
       (line ? line + '<br>' : '') + (hint ? '<em>' + hint + '</em>' : '');
+    if (hint) setGuide(hint, hint === '듣고 있어요…' ? 'listen' : '');
+  }
+  // 왼쪽 안내의 지금 상태 한 줄 — 듣는 중 · 말하는 중에 따라 점 색이 바뀐다
+  function setGuide(text, mode){
+    const el = document.getElementById('cg-state');
+    el.querySelector('span').textContent = text;
+    el.className = 'cg-state' + (mode ? ' ' + mode : '');
   }
   const multiNames = {};
   function setMultiCaption(line, hint){
@@ -567,6 +592,8 @@
       onSpeaking(on){
         document.getElementById('feed-solo').classList.toggle('talking', on);
         document.getElementById('vcall').classList.toggle('talking', on);
+        if (on) setGuide('대답하는 중…', 'talk');
+        else if (!micDenied) setGuide('말을 걸어보세요', '');
       },
       onUserSpeaking(on){ if(on){ setCaption('', '듣고 있어요…'); Face.listen(); Sub.reset(); } },
       onText(text){ Face.hear(text); Sub.add(text); },
