@@ -437,6 +437,33 @@ async function sendShare(){
         logStep('share-send'); } catch {}
 }
 
+// 핸드폰에 저장 — 인쇄용과 같은 카드 PNG. 공유 창이 되면(아이폰 · 안드로이드) '이미지 저장'으로 사진첩에,
+// 안 되면 파일로 내려받는다
+async function saveCard(){
+  const el = document.querySelector('#save-card small');
+  const was = el.textContent;
+  el.textContent = '카드 이미지를 준비하는 중…';
+  try {
+    const blob = await fetch(`/label/${CREATE.cardId}.png`).then(r => { if (!r.ok) throw 0; return r.blob(); });
+    const file = new File([blob], `LUKIDS_${CREATE.name || CREATE.cardId}.png`, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      el.textContent = was;
+      try { await navigator.share({ files: [file], title: CREATE.name + ' 카드' }); logStep('save-card'); } catch {}
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = file.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    el.textContent = '저장했어요';
+    logStep('save-card');
+  } catch {
+    el.textContent = '저장하지 못했어요. 다시 눌러 주세요.';
+    return;
+  }
+  setTimeout(() => { el.textContent = was; }, 2500);
+}
+
 // 인쇄용 카드 페이지를 새 창으로 열면 사진이 다 뜬 뒤 인쇄 창이 뜬다.
 // 발급 직후 자동으로 열지 않는 건, await 뒤의 window.open 을 사파리가 팝업으로 막기 때문.
 function printCard(){
