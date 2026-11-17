@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google.genai import types
 
-from . import db, expr
+from . import db, expr, kids
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -36,6 +36,8 @@ def avatar_of(card):
     photo: Simli 얼굴이 준비된 경우 — 클라이언트가 Simli WebRTC에 붙는다
     vrm:   모델 파일 URL — 클라이언트가 three-vrm으로 직접 그린다
     """
+    if kids.KIDS_MODE:
+        return None   # 아이용 모드는 늘 음성 통화 (app/kids.py)
     if expr.of(card):
         return None   # 표정 세트가 있으면 큰 사진 + 표정 전환으로 (app/expr.py)
     if card["face_status"] != "ready":
@@ -64,9 +66,8 @@ def persona_of(card):
         extra.append(f"상대를 '{c['callme']}'(이)라고 불러.")
     if c.get("note"):
         extra.append(f"주인이 정해준 설정: {c['note']}")
-    if not extra:
-        return card["persona"]
-    return card["persona"] + "\n\n" + "\n".join(extra)
+    base = card["persona"] + ("\n\n" + "\n".join(extra) if extra else "")
+    return kids.apply(base)
 
 
 @router.websocket("/ws/call/{card_id}")
