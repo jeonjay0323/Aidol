@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=pink-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=chat-2">
+<link rel="stylesheet" href="/static/scan.css?v=grade-1">
 <script src="/static/presence.js?v=2" defer></script>
 </head>
 <body>
@@ -101,12 +101,20 @@
 
 <!-- ══ 채팅 — 대화 내용은 서버에 남기지 않는다(app/chat.py) ══ -->
 <section class="screen" id="s-chat">
-  <header><button class="back" aria-label="뒤로" onclick="go('s-card')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CHAT</div></header>
+  <header><button class="back" aria-label="뒤로" onclick="go('s-card')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CHAT</div>
+    <button type="button" class="chat-invite" id="invite-btn" onclick="openInvite()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg>초대</button></header>
   <div class="chat-who">
-    {% if card.image_path %}<img src="{{ card.image_path }}" alt="">{% endif %}
-    <div><b>{{ card.name }}</b><small>대화 내용은 저장되지 않아요</small></div>
+    <div class="chat-members" id="chat-members"></div>
+    <div><b id="chat-title">{{ card.name }}</b><small id="chat-sub">대화 내용은 저장되지 않아요</small></div>
   </div>
   <div class="chat-log" id="chat-log" aria-live="polite"></div>
+  <div class="invite-sheet" id="invite-sheet" hidden>
+    <div class="dim" onclick="closeInvite()"></div>
+    <div class="invite-box">
+      <div class="invite-h"><b>누구를 초대할까요?</b><button type="button" onclick="closeInvite()" aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-x"/></svg></button></div>
+      <div class="invite-list" id="invite-list"></div>
+    </div>
+  </div>
   <form class="chat-send" onsubmit="sendChat(event)">
     <input id="chat-input" type="text" maxlength="300" placeholder="메시지를 입력하세요" autocomplete="off" enterkeyhint="send">
     <button class="chat-btn" id="chat-btn">보내기</button>
@@ -350,7 +358,7 @@
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
 <script src="/static/call-client.js?v=kids-1"></script>
 <script src="/static/ring.js?v=demo-1"></script>
-<script src="/static/create.js?v=share-2"></script>
+<script src="/static/create.js?v=grade-1"></script>
 <script src="/static/room-client.js?v=kids-1"></script>
 <script>window.NO_CAMERA = {{ "true" if KIDS_MODE else "false" }};</script>
 <script>
@@ -386,30 +394,92 @@
     btn.disabled = false;
   }
 
-  /* ───────── 채팅 ───────── 지난 대화는 이 화면에만 들고 있다가 매번 같이 보낸다 */
+  /* ───────── 채팅 ─────────
+     지난 대화는 이 화면에만 들고 있다가 매번 같이 보낸다. 다른 아이돌을 초대하면 단체 채팅방이 된다 */
   const CHAT = [];
-  function chatBubble(role, text){
-    const d = document.createElement('div');
-    d.className = 'chat-msg ' + (role === 'model' ? 'idol' : 'me');
-    d.textContent = text;
+  const MEMBERS = [{ cardId: CARD.card_id, name: CARD.name, image: CARD.image_path }];
+  const MAX_MEMBERS = 4;
+  const josa = (name, a, b) => { const c = name.charCodeAt(name.length - 1) - 0xAC00; return c >= 0 && c < 11172 && c % 28 ? a : b; };
+  const memberName = id => (MEMBERS.find(m => m.cardId === id) || {}).name || '';
+
+  function chatBubble(role, text, who){
     const log = document.getElementById('chat-log');
+    let d;
+    if (role === 'note') {
+      d = document.createElement('div'); d.className = 'chat-note'; d.textContent = text;
+    } else {
+      d = document.createElement('div');
+      d.className = 'chat-msg ' + (role === 'model' ? 'idol' : 'me');
+      if (role === 'model' && MEMBERS.length > 1) {
+        const n = document.createElement('span'); n.className = 'chat-name'; n.textContent = memberName(who);
+        d.appendChild(n);
+      }
+      const t = document.createElement('span'); t.className = 'chat-text'; t.textContent = text;
+      d.appendChild(t);
+    }
     log.appendChild(d);
-    log.scrollTop = log.scrollHeight;
     d.scrollIntoView({ block:'end' });
     return d;
   }
+  function renderMembers(){
+    const box = document.getElementById('chat-members');
+    box.innerHTML = '';
+    MEMBERS.forEach(m => {
+      const i = document.createElement(m.image ? 'img' : 'span');
+      if (m.image) { i.src = m.image; i.alt = m.name; } else i.textContent = m.name[0];
+      i.title = m.name; box.appendChild(i);
+    });
+    document.getElementById('chat-title').textContent = MEMBERS.map(m => m.name).join(' · ');
+    document.getElementById('chat-sub').textContent = MEMBERS.length > 1
+      ? '단체 채팅방 · 이름을 부르면 그 아이돌이 먼저 답해요' : '대화 내용은 저장되지 않아요';
+    document.getElementById('invite-btn').hidden = MEMBERS.length >= MAX_MEMBERS;
+  }
   function openChat(){
     go('s-chat');
+    renderMembers();
     if (!CHAT.length) {
-      // 이름 끝 글자에 받침이 있으면 '이야', 없으면 '야'
-      const last = CARD.name.charCodeAt(CARD.name.length - 1) - 0xAC00;
-      const ya = last >= 0 && last < 11172 && last % 28 ? '이야' : '야';
-      const hi = '안녕! 나 ' + CARD.name + ya + '. 오늘 어땠어?';
-      CHAT.push({ role:'model', text:hi });
-      chatBubble('model', hi);
+      const hi = '안녕! 나 ' + CARD.name + josa(CARD.name, '이야', '야') + '. 오늘 어땠어?';
+      CHAT.push({ role:'model', text:hi, who:CARD.card_id });
+      chatBubble('model', hi, CARD.card_id);
     }
     setTimeout(() => document.getElementById('chat-input').focus(), 50);
   }
+
+  // 초대 — 공식 아이돌과 전시에 걸린 아이돌 중에서 고른다
+  async function openInvite(){
+    const sheet = document.getElementById('invite-sheet'), list = document.getElementById('invite-list');
+    list.innerHTML = '<p class="chat-note">불러오는 중…</p>';
+    sheet.hidden = false;
+    try {
+      const all = await fetch('/api/gallery').then(r => r.json());
+      const ids = MEMBERS.map(m => m.cardId);
+      const cand = all.filter(c => !ids.includes(c.cardId)).slice(0, 30);
+      list.innerHTML = '';
+      cand.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'invite-item';
+        b.innerHTML = (c.image ? '<img alt="">' : '<span class="ph"></span>') + '<b></b><small></small>';
+        if (c.image) b.querySelector('img').src = c.image;
+        b.querySelector('b').textContent = c.name;
+        b.querySelector('small').textContent = c.official ? '공식' : (c.kind === 'virtual' ? '버추얼' : '실물');
+        b.onclick = () => inviteToChat(c);
+        list.appendChild(b);
+      });
+      if (!cand.length) list.innerHTML = '<p class="chat-note">초대할 수 있는 아이돌이 없어요</p>';
+    } catch { list.innerHTML = '<p class="chat-note">목록을 불러오지 못했어요</p>'; }
+  }
+  function closeInvite(){ document.getElementById('invite-sheet').hidden = true; }
+  function inviteToChat(c){
+    closeInvite();
+    if (MEMBERS.length >= MAX_MEMBERS || MEMBERS.some(m => m.cardId === c.cardId)) return;
+    MEMBERS.push({ cardId: c.cardId, name: c.name, image: c.image });
+    renderMembers();
+    chatBubble('note', c.name + josa(c.name, '이', '가') + ' 들어왔어요');
+    const hi = '안녕! 나 ' + c.name + josa(c.name, '이야', '야') + '. 나도 같이 얘기해도 돼?';
+    CHAT.push({ role:'model', text:hi, who:c.cardId });
+    chatBubble('model', hi, c.cardId);
+  }
+
   async function sendChat(e){
     e.preventDefault();
     const input = document.getElementById('chat-input'), btn = document.getElementById('chat-btn');
@@ -419,16 +489,22 @@
     CHAT.push({ role:'user', text });
     chatBubble('user', text);
     btn.disabled = true;
-    const wait = chatBubble('model', '…');
-    wait.classList.add('wait');
+    const wait = document.createElement('div');
+    wait.className = 'chat-msg idol wait'; wait.textContent = '…';
+    document.getElementById('chat-log').appendChild(wait); wait.scrollIntoView({ block:'end' });
     try {
       const r = await fetch('/api/cards/' + CARD.card_id + '/chat', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages: CHAT }) });
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ messages: CHAT, members: MEMBERS.map(m => m.cardId) }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail || '실패');
-      wait.classList.remove('wait');
-      wait.textContent = j.reply;
-      CHAT.push({ role:'model', text:j.reply });
+      wait.remove();
+      const replies = j.replies || [{ cardId: CARD.card_id, text: j.reply }];
+      for (let i = 0; i < replies.length; i++) {
+        if (i) await new Promise(res => setTimeout(res, 700));   // 단체방에서는 차례로 올라오게
+        CHAT.push({ role:'model', text: replies[i].text, who: replies[i].cardId });
+        chatBubble('model', replies[i].text, replies[i].cardId);
+      }
     } catch (err) {
       wait.classList.remove('wait'); wait.classList.add('err');
       wait.textContent = '답장을 못 받았어요. 다시 보내 주세요.';
@@ -438,6 +514,7 @@
     btn.disabled = false;
     input.focus();
   }
+
   // /demo 에서 들어온 시연 — 멀티콜 · 만들기 · 설문을 숨기고 처음으로 돌아갈 길만 남긴다
   let DEMO = false;
   try { DEMO = !!sessionStorage.getItem('lukids.demo'); } catch {}

@@ -723,3 +723,43 @@
   .stars button{flex:1;aspect-ratio:1;max-width:60px;border-radius:var(--rb);cursor:pointer;font-size:28px;line-height:1;
     background:var(--fill-alt);border:1px solid var(--line-normal);color:var(--label-assistive)}
   .stars button.on{color:var(--primary-normal);border-color:var(--primary-normal)}
+
+  /* ── 단체 채팅 ── */
+  #s-chat header{display:flex;align-items:center}
+  .chat-invite{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border-radius:var(--r-pill);cursor:pointer;
+    font:inherit;font-weight:800;font-size:13px;background:var(--fill-normal);border:1px solid var(--line-normal);color:var(--paper)}
+  .chat-invite svg{width:14px;height:14px}
+  .chat-invite[hidden]{display:none}
+  .chat-members{display:flex;flex:none}
+  .chat-members img,.chat-members span{width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:50% 20%;
+    border:2px solid var(--bg);margin-left:-12px;display:grid;place-items:center;background:var(--fill-normal);font-weight:800}
+  .chat-members > :first-child{margin-left:0}
+  .chat-name{display:block;font-size:11.5px;font-weight:800;color:var(--primary-normal);margin-bottom:2px}
+  .chat-text{display:block}
+  .chat-note{align-self:center;font-size:12px;color:var(--dim);padding:4px 10px}
+  .invite-sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+  .invite-sheet[hidden]{display:none}
+  .invite-sheet .dim{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+  .invite-box{position:relative;width:100%;max-width:460px;max-height:70vh;overflow:auto;background:var(--bg-elevated,#1f1f22);
+    border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .invite-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .invite-h b{font-size:17px;font-weight:800}
+  .invite-h button{width:32px;height:32px;border-radius:50%;border:none;background:var(--fill-normal);color:var(--paper);cursor:pointer;display:grid;place-items:center}
+  .invite-h svg{width:14px;height:14px}
+  .invite-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .invite-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rb);cursor:pointer;
+    background:var(--fill-alt);border:1px solid var(--line-normal);color:var(--paper);font:inherit}
+  .invite-item img,.invite-item .ph{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:50% 20%;background:var(--fill-normal)}
+  .invite-item b{font-size:14px;font-weight:800}
+  .invite-item small{font-size:11px;color:var(--dim)}
+
+  /* ── 발급 등급 ── */
+  .grade-reveal{display:flex;align-items:center;gap:12px;margin:2px 0 14px;padding:12px 14px;border-radius:var(--rb);
+    background:var(--fill-alt);border:1px solid var(--line-normal);animation:in .4s cubic-bezier(.2,.8,.3,1)}
+  .grade-reveal[hidden]{display:none}
+  .grade-reveal b{flex:none;min-width:52px;padding:6px 10px;border-radius:10px;text-align:center;font-size:20px;font-weight:900;letter-spacing:.02em;
+    background:var(--fill-normal);color:var(--paper)}
+  .grade-reveal span{font-size:14px;font-weight:700;color:var(--dim)}
+  .grade-reveal.g-sss{border-color:var(--primary-normal)}
+  .grade-reveal.g-sss b{background:var(--primary-normal);color:var(--static-black)}
+  .grade-reveal.g-s b{background:var(--paper);color:var(--static-black)}

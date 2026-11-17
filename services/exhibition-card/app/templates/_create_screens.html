@@ -106,6 +106,8 @@
   <header><button class="back" aria-label="뒤로" onclick="backFromResult()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CREATE YOUR OWN</div></header>
   <div class="q" id="result-q">사진을 만드는 중</div>
   <div class="qsub" id="result-sub">20초쯤 걸려요</div>
+  <!-- 발급하면 등급이 나온다 — 인쇄 카드에 찍히는 것과 같은 등급(app/card_print.py) -->
+  <div class="grade-reveal" id="result-grade" hidden><b></b><span></span></div>
 
   <div class="gen-stage" id="gen-stage">
     <img id="gen-img" alt="" hidden>
@@ -128,12 +130,8 @@
       <button type="button" class="ghost" id="share-send" onclick="sendShare()" hidden style="margin-top:8px">링크 보내기</button>
       <small>이 링크로 언제든 다시 통화하고 채팅할 수 있어요.</small>
     </div>
-    <button class="cta" onclick="printCard()">카드 인쇄하고 통화하기</button>
+    <button class="cta" onclick="printCard()">카드 인쇄하고 소통하기</button>
     <div class="after">
-      <a class="act" href="#" onclick="newCard(); return false">
-        <span><b>새 카드 만들기</b><small>다음 사람이 바로 만들 수 있어요</small></span>
-        <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
-      </a>
       <a class="act" href="#" id="save-card" onclick="saveCard(); return false">
         <span><b>핸드폰에 저장하기</b><small>카드 이미지를 사진첩에 저장해요</small></span>
         <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>

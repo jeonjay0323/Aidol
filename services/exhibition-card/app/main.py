@@ -25,7 +25,7 @@ HERE = Path(__file__).parent
 # call · room · db 가 import 될 때 GCP_PROJECT 를 읽는다. 그보다 먼저 .env 를 올린다.
 load_dotenv(HERE.parent / ".env")
 
-from . import call, chat, db, expr, imagegen, kids, review, room, simli  # noqa: E402
+from . import call, card_print, chat, db, expr, imagegen, kids, review, room, simli  # noqa: E402
 
 # 카드 QR에 박히는 주소. 전시 배포 시 고정 도메인으로 바꾼다.
 BASE_URL = os.getenv("BASE_URL", "").rstrip("/")
@@ -125,6 +125,7 @@ async def create_card(
         logging.warning(f"card_issued 로그 실패: {e}")
     return JSONResponse({
         "cardId": card_id,
+        "grade": card_print.values(card, {})["grade"],   # 인쇄 카드와 같은 등급
         "scanUrl": f"/c/{card_id}",
         "faceStatus": card["face_status"],
         "avatarType": card["avatar_type"],

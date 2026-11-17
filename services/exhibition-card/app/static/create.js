@@ -410,6 +410,7 @@ async function issueCard(){
     document.getElementById('result-sub').textContent = '카드 번호 ' + j.cardId;
     document.getElementById('result-pick').hidden = true;
     document.getElementById('result-done').hidden = false;
+    showGrade(j.grade);
     document.getElementById('share-url').value = shareUrl();
     document.getElementById('share-send').hidden = !navigator.share;
     window.onCardIssued && window.onCardIssued(j.cardId);   // 제작 페이지가 카드 미리보기를 띄운다
@@ -420,6 +421,19 @@ async function issueCard(){
     document.getElementById('issue-btn').disabled = false;
     document.getElementById('regen-btn').disabled = false;
   }
+}
+
+// 등급 — 인쇄 카드와 같은 값을 서버가 알려 준다. 높은 등급일수록 드물다
+const GRADE_INFO = { sss: ['SSS', '10% 확률의 최고 등급!'], s: ['S', '20% 확률의 높은 등급'],
+                     a: ['A', '30% 확률'], n: ['N', '40% 확률의 기본 등급'] };
+function showGrade(g){
+  const info = GRADE_INFO[g];
+  const el = document.getElementById('result-grade');
+  if (!info || !el) return;
+  el.className = 'grade-reveal g-' + g;
+  el.querySelector('b').textContent = info[0];
+  el.querySelector('span').textContent = info[1];
+  el.hidden = false;
 }
 
 // 내 아이돌 링크 — 카드 화면 주소
