@@ -38,26 +38,31 @@ def _send(subject, body):
 async def review(payload: dict):
     text = str(payload.get("text") or "").strip()[:1000]
     try:
-        stars = max(1, min(5, int(payload.get("stars") or 0)))
+        stars = int(payload.get("stars") or 0)
+        stars = min(5, stars) if stars > 0 else 0   # 별점 없이 글만 남겨도 된다
     except (TypeError, ValueError):
         stars = 0
     if not text and not stars:
         raise HTTPException(400, "별점이나 후기를 남겨 주세요")
     card_id = str(payload.get("cardId") or "")[:16] or None
     who = str(payload.get("name") or "").strip()[:20]
+    feature = str(payload.get("feature") or "").strip()[:20]
+    page = str(payload.get("page") or "").strip()[:60]
     card = db.get_card(card_id) if card_id else None
 
     try:
-        db.log_event("review", card_id=card_id, meta={"stars": stars, "text": text, "name": who})
+        db.log_event("review", card_id=card_id, meta={"stars": stars, "text": text, "name": who,
+                                                       "feature": feature, "page": page})
     except Exception as e:
         log.warning(f"review 로그 실패: {e}")
 
     idol = card["name"] if card else "—"
     body = (f"별점: {'★' * stars}{'☆' * (5 - stars)} ({stars}/5)\n"
+            f"기능: {feature or '—'} ({page or '—'})\n"
             f"아이돌: {idol} ({card_id or '—'})\n"
             f"남긴 사람: {who or '익명'}\n\n{text or '(후기 없음)'}\n")
     try:
-        sent = await asyncio.to_thread(_send, f"[LUKIDS 후기] {idol} · {stars}점", body)
+        sent = await asyncio.to_thread(_send, f"[LUKIDS 후기] {feature or idol} · {stars}점", body)
     except Exception as e:
         log.warning(f"후기 메일 실패: {e}")
         sent = False
