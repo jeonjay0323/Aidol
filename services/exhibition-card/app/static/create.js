@@ -483,6 +483,9 @@ async function saveCard(){
 function printCard(){
   clearInterval(nextTimer);
   window.open(`/label/${CREATE.cardId}?print=1`, '_blank');
+  logStep('print');
+  // 인쇄는 새 탭에서, 이 탭은 내 카드 화면으로 — 거기서 통화하고 채팅한다
+  setTimeout(() => { location.href = '/c/' + CREATE.cardId; }, 400);
 }
 
 /* ───────── 다음 카드 ─────────
@@ -496,20 +499,7 @@ function newCard(){
   location.href = '/make';
 }
 
-window.addEventListener('message', (e) => {
-  if (e.origin !== location.origin || !e.data || e.data.type !== 'label-printed') return;
-  if (!CREATE.cardId || e.data.id !== CREATE.cardId) return;
-  let left = NEXT_CARD_SEC;
-  const sub = document.getElementById('result-sub');
-  const show = () => { sub.textContent = `${left}초 뒤 새 카드 화면으로 돌아가요`; };
-  clearInterval(nextTimer);
-  show();
-  nextTimer = setInterval(() => {
-    left -= 1;
-    if (left <= 0) return newCard();
-    show();
-  }, 1000);
-});
+// (2026-11-17) 인쇄 탭이 닫히면 새 카드 화면으로 돌아가던 것은 껐다 — 인쇄 뒤에는 내 카드 화면에서 통화 · 채팅한다
 
 
 /* ───────── 아이돌이 먼저 거는 전화 ─────────

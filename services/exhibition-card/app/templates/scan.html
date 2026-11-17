@@ -46,11 +46,6 @@
 <div class="wrap">
 <section class="screen on" id="s-card">
   <header><div class="kicker">CARD SCANNED</div><a class="kicker home" href="/" id="home-link"><img src="/static/logo.svg" alt="LUKI2S" style="height:12px;width:auto;vertical-align:-1px"> →</a></header>
-  <div class="joinbar" id="joinbar" hidden>
-    <span class="joinico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-users"/></svg></span>
-    <div><b id="joinhost">지금 열려 있는 통화</b><small>먼저 온 사람이 대화 중이에요</small></div>
-    <button onclick="joinOpenLobby()">참여하기</button>
-  </div>
   <div class="hero">
     <div class="badge">{{ "OFFICIAL" if card.source == "official" else "USER" }}</div>
     {% if card.image_path %}<img class="face" src="{{ card.image_path }}" alt="{{ card.name }}">
@@ -88,15 +83,9 @@
       <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
     {% endif %}
-    <button class="act no-demo" onclick="openLobby()">
-      <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-users"/></svg></span>
-      <span><b>멀티콜</b><small>다른 카드를 스캔해 아이돌과 주인을 부른다</small></span>
-      <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
-    </button>
   </div>
 
   <button class="ghost" onclick="openReview()" style="margin-bottom:8px">★ 후기 남기기</button>
-  <button class="ghost no-demo" onclick="startCreate()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg> 내 아이돌 만들기 (유저 카드 발급)</button>
 </section>
 
 <!-- ══ 채팅 — 대화 내용은 서버에 남기지 않는다(app/chat.py) ══ -->
@@ -111,7 +100,7 @@
   <div class="invite-sheet" id="invite-sheet" hidden>
     <div class="dim" onclick="closeInvite()"></div>
     <div class="invite-box">
-      <div class="invite-h"><b>누구를 초대할까요?</b><button type="button" onclick="closeInvite()" aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-x"/></svg></button></div>
+      <div class="invite-h"><b>친구 아이돌을 초대해요</b><button type="button" onclick="closeInvite()" aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-x"/></svg></button></div>
       <div class="invite-list" id="invite-list"></div>
     </div>
   </div>
@@ -358,7 +347,7 @@
 <script src="/static/vrm-avatar.js?v=haneul-3"></script>
 <script src="/static/call-client.js?v=kids-1"></script>
 <script src="/static/ring.js?v=demo-1"></script>
-<script src="/static/create.js?v=grade-1"></script>
+<script src="/static/create.js?v=flow-1"></script>
 <script src="/static/room-client.js?v=kids-1"></script>
 <script>window.NO_CAMERA = {{ "true" if KIDS_MODE else "false" }};</script>
 <script>
@@ -453,7 +442,9 @@
     try {
       const all = await fetch('/api/gallery').then(r => r.json());
       const ids = MEMBERS.map(m => m.cardId);
-      const cand = all.filter(c => !ids.includes(c.cardId)).slice(0, 30);
+      // 친구들이 만든 아이돌을 먼저(최신순), 공식 아이돌은 뒤에
+      const rest = all.filter(c => !ids.includes(c.cardId));
+      const cand = [...rest.filter(c => !c.official), ...rest.filter(c => c.official)].slice(0, 30);
       list.innerHTML = '';
       cand.forEach(c => {
         const b = document.createElement('button');
@@ -461,7 +452,7 @@
         b.innerHTML = (c.image ? '<img alt="">' : '<span class="ph"></span>') + '<b></b><small></small>';
         if (c.image) b.querySelector('img').src = c.image;
         b.querySelector('b').textContent = c.name;
-        b.querySelector('small').textContent = c.official ? '공식' : (c.kind === 'virtual' ? '버추얼' : '실물');
+        b.querySelector('small').textContent = c.official ? '공식 아이돌' : '친구 아이돌';
         b.onclick = () => inviteToChat(c);
         list.appendChild(b);
       });
@@ -1139,7 +1130,6 @@
     }
   }
 
-  checkOpenLobby();
 
   /* 아이돌이 먼저 거는 전화 (static/ring.js)
      ?ring=1   이 카드가 먼저 전화를 건다 — 받기를 누르면 그 탭으로 바로 통화
@@ -1168,7 +1158,6 @@
       document.body.appendChild(b);
     }
   }, 0);
-  setInterval(checkOpenLobby, 5000);
 
   /* ───────── 카드 스캔 ───────── */
   let scanning = false, qrStream = null;
