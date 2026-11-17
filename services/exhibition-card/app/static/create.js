@@ -410,6 +410,8 @@ async function issueCard(){
     document.getElementById('result-sub').textContent = '카드 번호 ' + j.cardId;
     document.getElementById('result-pick').hidden = true;
     document.getElementById('result-done').hidden = false;
+    document.getElementById('share-url').value = shareUrl();
+    document.getElementById('share-send').hidden = !navigator.share;
     window.onCardIssued && window.onCardIssued(j.cardId);   // 제작 페이지가 카드 미리보기를 띄운다
     // (2026-10-07) 발급 뒤 아이돌이 먼저 거는 전화는 껐다 — 시연에서 인쇄 흐름을 끊는다.
     // 다시 켜려면 여기서 scheduleRing(j.cardId, RING_DELAY) 를 부른다.
@@ -418,6 +420,21 @@ async function issueCard(){
     document.getElementById('issue-btn').disabled = false;
     document.getElementById('regen-btn').disabled = false;
   }
+}
+
+// 내 아이돌 링크 — 카드 화면 주소
+function shareUrl(){ return location.origin + '/c/' + CREATE.cardId; }
+async function copyShare(){
+  const b = document.getElementById('share-copy');
+  try { await navigator.clipboard.writeText(shareUrl()); }
+  catch { const i = document.getElementById('share-url'); i.select(); document.execCommand && document.execCommand('copy'); }
+  b.textContent = '복사됨';
+  setTimeout(() => { b.textContent = '복사'; }, 1600);
+  logStep('share-copy');
+}
+async function sendShare(){
+  try { await navigator.share({ title: CREATE.name + ' · LUKIDS', text: '내가 만든 아이돌 ' + CREATE.name + '에게 놀러 와!', url: shareUrl() });
+        logStep('share-send'); } catch {}
 }
 
 // 인쇄용 카드 페이지를 새 창으로 열면 사진이 다 뜬 뒤 인쇄 창이 뜬다.

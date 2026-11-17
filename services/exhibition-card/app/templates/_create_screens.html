@@ -118,6 +118,16 @@
     <button class="ghost" id="regen-btn" onclick="generate()" disabled style="margin-top:10px">다시 만들기</button>
   </div>
   <div id="result-done" hidden>
+    <!-- 내 아이돌 링크 — 카드를 못 가져가도 이 주소로 다시 만나러 올 수 있다 -->
+    <div class="share">
+      <div class="share-label">내 아이돌 링크</div>
+      <div class="share-row">
+        <input id="share-url" readonly aria-label="내 아이돌 링크" onclick="this.select()">
+        <button type="button" id="share-copy" onclick="copyShare()">복사</button>
+      </div>
+      <button type="button" class="ghost" id="share-send" onclick="sendShare()" hidden style="margin-top:8px">링크 보내기</button>
+      <small>이 링크로 언제든 다시 통화하고 채팅할 수 있어요.</small>
+    </div>
     <button class="cta" onclick="printCard()">카드 인쇄하고 통화하기</button>
     <div class="after">
       <a class="act" href="#" onclick="newCard(); return false">

@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/tokens.css?v=pink-1">
 <title>{{ card.name }} · AIDOL</title>
-<link rel="stylesheet" href="/static/scan.css?v=popup-1">
+<link rel="stylesheet" href="/static/scan.css?v=chat-2">
 <script src="/static/presence.js?v=2" defer></script>
 </head>
 <body>
@@ -21,6 +21,8 @@
   <g id="g-users" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="9" cy="8" r="3.3"/><path d="M2.8 19.5a6.2 6.2 0 0 1 12.4 0"/>
     <path d="M16.2 5.2a3.3 3.3 0 0 1 0 5.9M17.6 14.2a6.2 6.2 0 0 1 3.6 5.3"/></g>
+  <g id="g-chat" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 5.5h16a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H10l-4.5 3.5V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z"/><path d="M8 10.5h8M8 13.5h5"/></g>
   <g id="g-mic" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <rect x="9" y="2.6" width="6" height="11" rx="3"/><path d="M5.5 11.2a6.5 6.5 0 0 0 13 0M12 17.7v3.7"/></g>
   <g id="g-mic-off" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -74,6 +76,11 @@
       {% else %}<span><b>{{ "영상통화 걸기" if card.face_status == "ready" else "음성통화 걸기" }}</b><small>{{ "얼굴 보고 이야기한다" if card.face_status == "ready" else "목소리로 이야기한다" }}</small></span>{% endif %}
       <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
     </button>
+    <button class="act" onclick="openChat()">
+      <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chat"/></svg></span>
+      <span><b>채팅하기</b><small>글로 이야기한다</small></span>
+      <span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-chevron"/></svg></span>
+    </button>
     {% if card.avatar_type == "vrm" and not card.expr %}
     <button class="act" onclick="openCustom()">
       <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg></span>
@@ -88,7 +95,49 @@
     </button>
   </div>
 
+  <button class="ghost" onclick="openReview()" style="margin-bottom:8px">★ 후기 남기기</button>
   <button class="ghost no-demo" onclick="startCreate()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#g-plus"/></svg> 내 아이돌 만들기 (유저 카드 발급)</button>
+</section>
+
+<!-- ══ 채팅 — 대화 내용은 서버에 남기지 않는다(app/chat.py) ══ -->
+<section class="screen" id="s-chat">
+  <header><button class="back" aria-label="뒤로" onclick="go('s-card')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">CHAT</div></header>
+  <div class="chat-who">
+    {% if card.image_path %}<img src="{{ card.image_path }}" alt="">{% endif %}
+    <div><b>{{ card.name }}</b><small>대화 내용은 저장되지 않아요</small></div>
+  </div>
+  <div class="chat-log" id="chat-log" aria-live="polite"></div>
+  <form class="chat-send" onsubmit="sendChat(event)">
+    <input id="chat-input" type="text" maxlength="300" placeholder="메시지를 입력하세요" autocomplete="off" enterkeyhint="send">
+    <button class="chat-btn" id="chat-btn">보내기</button>
+  </form>
+</section>
+
+<!-- ══ 후기 — 운영자에게 메일로 간다(app/review.py) ══ -->
+<section class="screen" id="s-review">
+  <header><button class="back" aria-label="뒤로" onclick="go('s-card')"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="transform:rotate(180deg)"><use href="#g-chevron"/></svg></button><div class="kicker">REVIEW</div></header>
+  <div id="rv-form">
+    <div class="q">이야기해 보니 어땠어요?</div>
+    <div class="qsub">{{ card.name }}에게 줄 별점을 눌러 주세요</div>
+    <div class="stars" id="rv-stars" role="radiogroup" aria-label="별점">
+      {% for n in range(1, 6) %}<button type="button" data-n="{{ n }}" aria-label="{{ n }}점" onclick="rateStars({{ n }})">★</button>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="rv-text">하고 싶은 말</label>
+      <textarea id="rv-text" rows="4" maxlength="1000" placeholder="재미있었던 점, 아쉬웠던 점을 자유롭게 써 주세요"></textarea>
+    </div>
+    <div class="field">
+      <label for="rv-name">닉네임 (안 써도 돼요)</label>
+      <input id="rv-name" type="text" maxlength="20" autocomplete="off" placeholder="예 · 별빛">
+    </div>
+    <p class="hint" id="rv-hint" role="status" hidden></p>
+    <button class="cta" id="rv-btn" onclick="sendReview()">후기 보내기</button>
+  </div>
+  <div id="rv-done" hidden style="text-align:center;padding:60px 0">
+    <div class="q">고마워요!</div>
+    <div class="qsub">남겨 준 후기는 루키즈를 더 재미있게 만드는 데 쓸게요.</div>
+    <button class="ghost" onclick="go('s-card')" style="margin-top:24px">카드로 돌아가기</button>
+  </div>
 </section>
 
 <!-- ══ 2. 멀티콜 로비 ══ -->
@@ -308,6 +357,87 @@
   const CARD = {{ card_json | safe }};
   const invited = [];   // 멀티콜에 초대된 카드 id
   const CREATE_HOME = () => go('s-card');   // create.js 가 만들기를 닫을 때
+
+  /* ───────── 후기 ───────── */
+  let rvStars = 0;
+  function openReview(){
+    document.getElementById('rv-form').hidden = false;
+    document.getElementById('rv-done').hidden = true;
+    go('s-review');
+  }
+  function rateStars(n){
+    rvStars = n;
+    document.querySelectorAll('#rv-stars button').forEach(b => b.classList.toggle('on', +b.dataset.n <= n));
+  }
+  async function sendReview(){
+    const text = document.getElementById('rv-text').value.trim();
+    const hintEl = document.getElementById('rv-hint'), btn = document.getElementById('rv-btn');
+    hintEl.hidden = true;
+    if (!rvStars && !text) { hintEl.textContent = '별점이나 하고 싶은 말을 남겨 주세요.'; hintEl.hidden = false; return; }
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/review', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ cardId: CARD.card_id, stars: rvStars, text, name: document.getElementById('rv-name').value.trim() }) });
+      if (!r.ok) throw new Error();
+      document.getElementById('rv-form').hidden = true;
+      document.getElementById('rv-done').hidden = false;
+      document.getElementById('rv-text').value = ''; rateStars(0);
+    } catch { hintEl.textContent = '보내지 못했어요. 잠시 뒤 다시 눌러 주세요.'; hintEl.hidden = false; }
+    btn.disabled = false;
+  }
+
+  /* ───────── 채팅 ───────── 지난 대화는 이 화면에만 들고 있다가 매번 같이 보낸다 */
+  const CHAT = [];
+  function chatBubble(role, text){
+    const d = document.createElement('div');
+    d.className = 'chat-msg ' + (role === 'model' ? 'idol' : 'me');
+    d.textContent = text;
+    const log = document.getElementById('chat-log');
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+    d.scrollIntoView({ block:'end' });
+    return d;
+  }
+  function openChat(){
+    go('s-chat');
+    if (!CHAT.length) {
+      // 이름 끝 글자에 받침이 있으면 '이야', 없으면 '야'
+      const last = CARD.name.charCodeAt(CARD.name.length - 1) - 0xAC00;
+      const ya = last >= 0 && last < 11172 && last % 28 ? '이야' : '야';
+      const hi = '안녕! 나 ' + CARD.name + ya + '. 오늘 어땠어?';
+      CHAT.push({ role:'model', text:hi });
+      chatBubble('model', hi);
+    }
+    setTimeout(() => document.getElementById('chat-input').focus(), 50);
+  }
+  async function sendChat(e){
+    e.preventDefault();
+    const input = document.getElementById('chat-input'), btn = document.getElementById('chat-btn');
+    const text = input.value.trim();
+    if (!text || btn.disabled) return;
+    input.value = '';
+    CHAT.push({ role:'user', text });
+    chatBubble('user', text);
+    btn.disabled = true;
+    const wait = chatBubble('model', '…');
+    wait.classList.add('wait');
+    try {
+      const r = await fetch('/api/cards/' + CARD.card_id + '/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages: CHAT }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || '실패');
+      wait.classList.remove('wait');
+      wait.textContent = j.reply;
+      CHAT.push({ role:'model', text:j.reply });
+    } catch (err) {
+      wait.classList.remove('wait'); wait.classList.add('err');
+      wait.textContent = '답장을 못 받았어요. 다시 보내 주세요.';
+      CHAT.pop();
+      input.value = text;
+    }
+    btn.disabled = false;
+    input.focus();
+  }
   // /demo 에서 들어온 시연 — 멀티콜 · 만들기 · 설문을 숨기고 처음으로 돌아갈 길만 남긴다
   let DEMO = false;
   try { DEMO = !!sessionStorage.getItem('lukids.demo'); } catch {}

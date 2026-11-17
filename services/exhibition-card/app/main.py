@@ -25,7 +25,7 @@ HERE = Path(__file__).parent
 # call · room · db 가 import 될 때 GCP_PROJECT 를 읽는다. 그보다 먼저 .env 를 올린다.
 load_dotenv(HERE.parent / ".env")
 
-from . import call, db, expr, imagegen, kids, room, simli  # noqa: E402
+from . import call, chat, db, expr, imagegen, kids, review, room, simli  # noqa: E402
 
 # 카드 QR에 박히는 주소. 전시 배포 시 고정 도메인으로 바꾼다.
 BASE_URL = os.getenv("BASE_URL", "").rstrip("/")
@@ -35,6 +35,8 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 app = FastAPI(title="Aidol Exhibition Card")
 app.include_router(call.router)
 app.include_router(room.router)
+app.include_router(chat.router)
+app.include_router(review.router)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.globals["KIDS_MODE"] = kids.KIDS_MODE   # 아이용 모드 — 카메라 요청을 끈다
