@@ -763,3 +763,26 @@
   .grade-reveal.g-sss{border-color:var(--primary-normal)}
   .grade-reveal.g-sss b{background:var(--primary-normal);color:var(--static-black)}
   .grade-reveal.g-s b{background:var(--paper);color:var(--static-black)}
+
+  /* 아이돌끼리 얘기하는 중 — 계속 듣기 */
+  .chat-more{display:block;margin:0 auto 6px;padding:9px 16px;border-radius:var(--r-pill);cursor:pointer;font:inherit;font-weight:800;font-size:13px;
+    background:var(--fill-normal);border:1px solid var(--line-normal);color:var(--paper)}
+  .chat-more[hidden]{display:none}
+
+  /* ── 채팅방 · 친구 ── */
+  .chat-who{position:relative}
+  .chat-code{margin-left:auto;flex:none;padding:5px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:800;
+    background:var(--fill-normal);color:var(--paper);letter-spacing:.04em}
+  .chat-code[hidden]{display:none}
+  .chat-msg.friend{align-self:flex-start;background:var(--fill-alt);border:1px solid var(--primary-normal);color:var(--paper);border-bottom-left-radius:6px}
+  .invite-sec{padding:12px 0;border-top:1px solid var(--line-normal)}
+  .invite-sec:first-of-type{border-top:none;padding-top:0}
+  .invite-t{font-size:13px;font-weight:800;color:var(--dim);margin-bottom:8px}
+  .invite-sec small{display:block;font-size:12px;line-height:18px;color:var(--dim);margin-top:6px}
+  .room-code{font-size:15px;font-weight:700}
+  .room-code b{font-size:30px;font-weight:900;letter-spacing:.12em;color:var(--primary-normal);margin-left:6px;vertical-align:-3px}
+  .invite-row{display:flex;gap:8px;margin-bottom:10px}
+  .invite-row input{flex:1;min-width:0;padding:11px 12px;border-radius:var(--rb);font:inherit;font-size:16px;
+    background:var(--bg);border:1px solid var(--line-normal);color:var(--paper)}
+  .invite-row button{flex:none;padding:0 14px;border:none;border-radius:var(--rb);cursor:pointer;font:inherit;font-weight:800;font-size:14px;
+    background:var(--primary-normal);color:var(--static-black)}
